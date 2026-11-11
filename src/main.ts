@@ -21,7 +21,7 @@ const shownHp = new Map<number, number>();
 const floats: { x: number; y: number; text: string; color: string; t: number }[] = [];
 
 // ---------- save ----------
-const SAVE = 'regalia-save-v1';
+const SAVE = 'fittoa-save-v1';
 function save() { try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch { /* storage unavailable */ } }
 function load(): State | null { try { const j = localStorage.getItem(SAVE); return j ? JSON.parse(j) : null; } catch { return null; } }
 function clearSave() { try { localStorage.removeItem(SAVE); } catch { /* ignore */ } }

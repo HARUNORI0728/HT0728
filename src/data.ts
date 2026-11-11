@@ -19,6 +19,10 @@ export const WEAPONS: Record<string, Weapon> = {
   javelin: { name: '手槍', type: 'lance', mt: 5, hit: 65, crit: 0, rng: [1, 2] },
   ironAxe: { name: '鉄の斧', type: 'axe', mt: 8, hit: 70, crit: 0, rng: [1, 1] },
   ironBow: { name: '鉄の弓', type: 'bow', mt: 6, hit: 85, crit: 0, rng: [2, 2] },
+  steelSword: { name: '鋼の剣', type: 'sword', mt: 8, hit: 85, crit: 0, rng: [1, 1] },
+  whiteSpear: { name: '白槍', type: 'lance', mt: 7, hit: 90, crit: 5, rng: [1, 1] },
+  stoneCannon: { name: '岩砲弾', type: 'anima', mt: 6, hit: 85, crit: 5, rng: [1, 2] },
+  waterBall: { name: '水弾', type: 'anima', mt: 3, hit: 95, crit: 0, rng: [1, 2] },
   wind: { name: 'ウィンド', type: 'anima', mt: 3, hit: 90, crit: 5, rng: [1, 2] },
   fire: { name: 'ファイアー', type: 'anima', mt: 5, hit: 85, crit: 0, rng: [1, 2] },
 };
@@ -29,6 +33,9 @@ export const WTYPE_NAMES: Record<WType, string> = { sword: '剣', lance: '槍', 
 
 export const CLASSES: Record<string, ClassDef> = {
   spellblade: { name: '魔法剣士', mov: 5, mtype: 'foot', sprite: 'sword' },
+  sorcerer: { name: '魔術師', mov: 5, mtype: 'foot', sprite: 'mage' },
+  swordKing: { name: '剣王', mov: 6, mtype: 'foot', sprite: 'sword' },
+  superd: { name: 'スペルドの戦士', mov: 6, mtype: 'foot', sprite: 'lancer' },
   myrmidon: { name: '剣士', mov: 5, mtype: 'foot', sprite: 'sword' },
   cavalier: { name: '槍騎士', mov: 7, mtype: 'horse', sprite: 'lancer' },
   mage: { name: '魔道士', mov: 5, mtype: 'foot', sprite: 'mage' },
@@ -61,10 +68,10 @@ export interface CharDef { id: string; name: string; cls: string; lv: number; st
 const S = (hp: number, str: number, mag: number, skl: number, spd: number, lck: number, def: number, res: number): Stats => ({ hp, str, mag, skl, spd, lck, def, res });
 
 export const CHARS: Record<string, CharDef> = {
-  ren: { id: 'ren', name: 'レン', cls: 'spellblade', lv: 1, st: S(22, 6, 6, 7, 8, 6, 6, 4), gr: S(70, 45, 50, 50, 50, 45, 35, 35), wps: ['ironSword', 'wind'], hair: '#2a3050' },
-  serena: { id: 'serena', name: 'セレナ', cls: 'myrmidon', lv: 1, st: S(20, 6, 2, 9, 10, 7, 5, 3), gr: S(65, 45, 20, 60, 65, 55, 30, 30), wps: ['rapier'], hair: '#cfd6e6' },
-  kai: { id: 'kai', name: 'カイ', cls: 'cavalier', lv: 3, st: S(24, 8, 0, 7, 7, 4, 8, 1), gr: S(80, 50, 5, 45, 40, 30, 50, 20), wps: ['ironLance', 'javelin'], hair: '#a8452f' },
-  mira: { id: 'mira', name: 'ミラ', cls: 'mage', lv: 1, st: S(17, 1, 8, 6, 6, 5, 3, 6), gr: S(55, 10, 65, 50, 45, 45, 15, 50), wps: ['fire'], hair: '#e58a4f' },
+  rudeus: { id: 'rudeus', name: 'ルーデウス', cls: 'sorcerer', lv: 1, st: S(20, 2, 9, 7, 7, 5, 4, 6), gr: S(60, 15, 70, 55, 45, 40, 30, 50), wps: ['stoneCannon', 'waterBall'], hair: '#b08a5a' },
+  eris: { id: 'eris', name: 'エリス', cls: 'myrmidon', lv: 1, st: S(21, 8, 0, 8, 10, 5, 5, 2), gr: S(75, 60, 5, 55, 65, 40, 35, 20), wps: ['ironSword'], hair: '#c22a2a' },
+  ruijerd: { id: 'ruijerd', name: 'ルイジェルド', cls: 'superd', lv: 8, st: S(30, 11, 2, 12, 10, 4, 9, 6), gr: S(60, 35, 10, 40, 35, 20, 35, 30), wps: ['whiteSpear'], hair: '#2f9a63' },
+  ghislaine: { id: 'ghislaine', name: 'ギレーヌ', cls: 'swordKing', lv: 10, st: S(32, 13, 0, 12, 12, 5, 8, 3), gr: S(65, 40, 0, 40, 40, 25, 30, 15), wps: ['steelSword'], hair: '#b9b4ac' },
 };
 
 export interface EnemyDef { cls: string; lv: number; x: number; y: number; wps: string[]; ai: 'charge' | 'hold' | 'guard'; boss?: string }
@@ -86,8 +93,8 @@ export const ENEMY_BASE: Record<string, Stats> = {
 
 export const CHAPTERS: Chapter[] = [
   {
-    title: '第1章　星蝕の夜',
-    goal: '勝利条件：敵の全滅　／　敗北条件：レンまたはセレナの敗走',
+    title: '第1章　帰郷',
+    goal: '勝利条件：敵の全滅　／　敗北条件：ルーデウスまたはエリスの敗走',
     map: [
       'GGGFFGGGGMMMGGG',
       'GGFFGGRRRGMMGGC',
@@ -101,39 +108,40 @@ export const CHAPTERS: Chapter[] = [
       'GGGGGGGGRRRGGGG',
     ],
     players: [
-      { id: 'ren', x: 4, y: 8 }, { id: 'mira', x: 3, y: 9 },
-      { id: 'serena', x: 6, y: 8 }, { id: 'kai', x: 7, y: 9 },
+      { id: 'rudeus', x: 4, y: 8 }, { id: 'ghislaine', x: 3, y: 9 },
+      { id: 'eris', x: 6, y: 8 }, { id: 'ruijerd', x: 7, y: 9 },
     ],
     enemies: [
       { cls: 'soldier', lv: 1, x: 6, y: 5, wps: ['ironLance'], ai: 'charge' },
       { cls: 'fighter', lv: 1, x: 9, y: 6, wps: ['ironAxe'], ai: 'charge' },
       { cls: 'archer', lv: 1, x: 7, y: 3, wps: ['ironBow'], ai: 'charge' },
-      { cls: 'fighter', lv: 2, x: 3, y: 3, wps: ['ironAxe'], ai: 'hold' },
+      { cls: 'fighter', lv: 2, x: 3, y: 3, wps: ['ironAxe'], ai: 'charge' },
+      { cls: 'soldier', lv: 2, x: 5, y: 2, wps: ['ironLance'], ai: 'charge' },
       { cls: 'soldier', lv: 2, x: 11, y: 3, wps: ['ironLance'], ai: 'hold' },
+      { cls: 'fighter', lv: 3, x: 12, y: 3, wps: ['ironAxe'], ai: 'hold' },
       { cls: 'archer', lv: 2, x: 12, y: 1, wps: ['ironBow'], ai: 'guard' },
-      { cls: 'knight', lv: 4, x: 14, y: 1, wps: ['javelin'], ai: 'guard', boss: '隊長ドルガ' },
+      { cls: 'knight', lv: 5, x: 14, y: 1, wps: ['javelin'], ai: 'guard', boss: '野盗頭ガズ' },
     ],
     intro: [
-      { who: '', text: '――前の人生の最後に覚えているのは、誰にも「ありがとう」を言えなかったことだ。' },
-      { who: '', text: '三十四年、逃げてばかりいた。だから二度目の産声をあげたとき、決めた。今度こそ、本気で生きると。' },
-      { who: '', text: 'それから十七年。ルミナス王国の辺境、ノルン村。蒼星が欠ける「星蝕」の夜――' },
-      { who: 'ミラ', text: 'レン！ 北の街道に松明がいっぱい……あれ、帝国の旗だよ！' },
-      { who: 'レン', text: '（先遣隊か。村の自警団じゃ、もたない……）ミラ、僕の後ろに。詠唱する時間は、僕が稼ぐ。' },
-      { who: 'ミラ', text: 'またそうやって。無詠唱だからって、一人で格好つけないでよね！' },
-      { who: 'セレナ', text: 'そこの二人、下がりなさい！ ここはルミナス王女セレナが引き受けます。カイ！' },
-      { who: 'カイ', text: 'はっ。……姫、敵は七。砦に指揮官がいます。' },
-      { who: 'レン', text: '王女殿下。この村の地形なら僕が一番詳しい。一緒に戦わせてください。' },
-      { who: 'セレナ', text: '……いい目をしているわね。名前は？' },
-      { who: 'レン', text: 'レン。ただの村人です。――今は、まだ。' },
+      { who: '', text: '魔大陸から歩きつづけて、三年。' },
+      { who: '', text: 'ようやく帰りついた故郷フィットア領は、見わたすかぎりの草原になっていた。' },
+      { who: 'ルーデウス', text: '……何も、ない。ロアの城壁も、ブエナ村も。' },
+      { who: 'エリス', text: 'ふん。だったら建て直せばいいじゃない！ ……建て直すのよ。絶対に。' },
+      { who: 'ルイジェルド', text: '待て。難民キャンプのほうから煙が上がっている。……武器の音だ。' },
+      { who: 'ギレーヌ', text: 'お嬢様！ ルーデウス！ 生きていたか。話は後だ、野盗どもが復興の物資を狙ってきている。' },
+      { who: 'エリス', text: 'ギレーヌ！ ちょうどいいわ、三年分の修行の成果、見せてあげる！' },
+      { who: 'ルーデウス', text: '（前の人生なら、布団をかぶって震えていただろうな）' },
+      { who: 'ルーデウス', text: '（でも今は違う。帰る場所は、自分で守る）――いきます。援護は任せてください。' },
     ],
     outro: [
-      { who: 'セレナ', text: '退いていく……。助かったわ、レン、ミラ。あなたたちがいなければ村は焼かれていた。' },
-      { who: 'ミラ', text: 'えへへ。でもレン、さっきの魔術、また詠唱してなかったでしょ。王女さまの前で！' },
-      { who: 'カイ', text: '無詠唱……王国の魔術師長でも成し得ぬ業だ。貴様、何者だ。' },
-      { who: 'レン', text: '（前世の理科の知識です、とは言えないよな……）ええと、独学で。' },
-      { who: 'セレナ', text: 'カイ、詮索は後。……先遣隊がここまで来たなら、王都が危ない。レン、力を貸してくれる？' },
-      { who: 'レン', text: '（逃げない。今度こそ）――はい。行きましょう、王都へ。' },
-      { who: '', text: '第1章　クリア。　続きは開発中です。' },
+      { who: 'ギレーヌ', text: '見事だ。二人とも、強くなったな。' },
+      { who: 'エリス', text: '当然でしょ！ ……ねえギレーヌ。お祖父様と、お父様たちは？' },
+      { who: 'ギレーヌ', text: '…………。それも、後で話す。' },
+      { who: 'ルイジェルド', text: 'ルーデウス。野盗にしては装備が揃いすぎていた。後ろに誰かいるぞ。' },
+      { who: 'ルーデウス', text: 'ええ。この土地を欲しがっている誰かが。……父さまたち捜索団にも、知らせないと。' },
+      { who: 'ルーデウス', text: '（家族を探す。故郷を取り戻す。やることは山ほどある）' },
+      { who: 'ルーデウス', text: '（上等だ。今度の人生は、本気で生きると決めたんだから）' },
+      { who: '', text: '第1章　クリア。　続きは制作中です。' },
     ],
   },
 ];

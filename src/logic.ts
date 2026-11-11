@@ -28,7 +28,7 @@ export function newChapter(index: number, roster?: Unit[]): State {
   for (const e of ch.enemies) {
     const b = ENEMY_BASE[e.cls], st = { ...b };
     for (const k of STAT_KEYS) st[k] += Math.floor((e.lv - 1) * (k === 'hp' ? 1.5 : k === 'lck' || k === 'res' ? 0.3 : 0.7));
-    units.push({ uid: uid++, id: e.cls, name: e.boss ?? '帝国' + CLASSES[e.cls].name, cls: e.cls, team: 'red', lv: e.lv, exp: 0, hp: st.hp, st, wps: [...e.wps], eq: 0, x: e.x, y: e.y, done: false, ai: e.ai, boss: !!e.boss, potions: 0 });
+    units.push({ uid: uid++, id: e.cls, name: e.boss ?? '野盗の' + CLASSES[e.cls].name, cls: e.cls, team: 'red', lv: e.lv, exp: 0, hp: st.hp, st, wps: [...e.wps], eq: 0, x: e.x, y: e.y, done: false, ai: e.ai, boss: !!e.boss, potions: 0 });
   }
   return { chapter: index, turn: 1, phase: 'blue', units, map: ch.map };
 }
@@ -183,7 +183,7 @@ export function planEnemy(s: State, u: Unit): Plan {
 }
 
 export function outcome(s: State): 'win' | 'lose' | null {
-  if (s.units.some(u => u.hp <= 0 && (u.id === 'ren' || u.id === 'serena'))) return 'lose';
+  if (s.units.some(u => u.hp <= 0 && (u.id === 'rudeus' || u.id === 'eris'))) return 'lose';
   if (!alive(s, 'red').length) return 'win';
   return null;
 }
