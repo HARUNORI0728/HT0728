@@ -34,17 +34,17 @@ export const SPR: Record<string, Sprite> = {
     '....kssssk...okb', '...kkcccckkssokb', '..kcccccccckkokb', '..kcdcccdck..okb', '..kskccccck..okb', '..kkkbbbbk..kbk.',
     '....kcckcck.kk..', '....kbbkbbk.....', '...kbbbkbbbk....', '...kkkk.kkkk....'] },
   cavalier: { hair: '#7a4a2a', rows: [
-    '..............w.', '.....kkkkk...kwk', '....khhhhhk..kb.', '...khhhhhhhk..b.', '...khssssshk..b.', '...khskssksk..b.',
-    '....ksssssk...b.', '...kkcccckk...b.', '..kcccccccckkkb.', '...kkcddckk.kkb.', '..kbbbbbbbbhhhk.', '.kbbbbbbbbbbhbbk',
-    '.kbbbbbbbbbbbkbk', '.kbbbbbbbbbbkbbk', '..kbk..kbk.kbkkk', '..kkk..kkk.kkk..'] },
+    '.w..............', 'kwk.kkkkk.......', '.b.khhhhhk......', '.b.khssssk.kk...', '.b.khssksk.kwwk.', '.b..ksssk.kwwkwk',
+    '.b.kkccckkkwwwwk', 'kskccccccckkwwwk', '.b.kcddcckgwwwk.', 'ggkwdddddwwwwwk.', 'gkwwwwwwwwwwwwk.', 'gkwwwwwwwwwwwwk.',
+    '.kggggggggggggk.', '.kwk.kwk.kwk.kwk', '.kwk.kwk.kwk.kwk', '.kkk.kkk.kkk.kkk'] },
   healer: { hair: '#c0703a', rows: [
     '.............kk.', '.....kkkkk..kyyk', '....khhhhhk.kyyk', '...khhhhhhhk.kk.', '...khssssshk.kb.', '...khskssksk.kb.',
     '....ksssssk..kb.', '...kkcccckk..kb.', '..kcccccccckskb.', '..kcdccccdckkkb.', '..kskcyyckk..kb.', '..kkkccccck..kb.',
     '...kccdcccck.kb.', '...kcccdcccck...', '..kcwcwcwcwcck..', '..kkkkkkkkkkkk..'] },
   priest: { hair: '#9a9aa8', rows: [
     '................', '.....kkkkk......', '....khhhhhk.....', '...khhhhhhhk....', '...khssssshk....', '...khskssksk....',
-    '....ksssssk.....', '...kkoyyyokk....', '..kooooyoooookk.', '..koooooyoooyskk', '..koyoooyoooybbk', '..kooyooyooykbyk',
-    '...koooyooookbk.', '...kooyoooyook..', '..kooooyoooyook.', '..kkkkkkkkkkkkk.'] },
+    '....ksssssk.....', '...kkccccckk....', '..kcccooocckkkkk', '..kcdcoyocdkbybk', '..kccoooocskyyyk', '..kcdooccookbybk',
+    '..kooocddcokoook', '..kooocddcokkkkk', '..kcooocddcooock', '..kdddddddddddk.'] },
   thief: { hair: '#2e2e3a', rows: [
     '................', '.....kkkkk......', '....khhhhhkk....', '...khhhhhhhhk...', '...khssssshk....', '...khskssksk....',
     '....kcccccck....', '...kccccdckk..w.', '...kcddddck.kwk.', '...kskddddksskk.', '...kkkddddkkk...', '....kdddddk.....',
@@ -65,6 +65,22 @@ export const SPR: Record<string, Sprite> = {
     '................', '...kk.....kk....', '..khhk...khhk...', '..khhhkkkkhhk...', '...khhhhhhhk....', '...khssssshk....',
     '...khskssksk....', '....kssksssk....', '...kkcccckkk....', '..kccccccccck...', '.wkcdccccdckwk..', 'wskkccccckkskw..',
     'w.kkkcdddck.w...', '....kcckcck.....', '...kbbbkbbbk....', '...kkkk.kkkk....'] },
+  princess: { hair: '#e8c060', rows: [
+    '..............w.', '.............kwk', '.....kkkkk...kwk', '....khyyyhk..kwk', '...khhhhhhhk.kwk', '..khhssssshhkkwk',
+    '..khhsksskshkkwk', '..khhsssssshkkwk', '..khhkcccckhkkwk', '..khhcccccchkyyk', '...khkcdddckhssk', '...kkcccccckk...',
+    '..kcccddddcccck.', '.kccdcooooocdcck', '.kcdccooooocccdk', '.kkkkkkkkkkkkkkk'] },
+  summoner: { hair: '#7a6ad0', rows: [
+    '................', '.....kkkkk......', '....khhhhhk.....', '...khhhhhhhk....', '...khssssshk....', '...khskssksk....',
+    '...kkssssskk....', '..kdcckddkccdk..', '.kdccdcyycdccdkk', '.kdccdcyycdcckss', '.kdccdcyycdcckk.', '.kdccdcyycdccdk.',
+    '.kdccdcyycdccdk.', '.kdccdcyycdccdk.', '.kdccdcyycdccdk.', '.kyyyyyyyyyyyyyk'] },
+  dragon: { hair: '#d8d8e8', rows: [
+    '.....kkkkk......', '....khhhhhk.....', '...khhhhhhhk....', '...khssssshk....', '...khskssksk....', '....ksssssk.....',
+    '..kkcckwwkcckk..', '.kccccwwoowcccck', '.kcdcwooooowcdck', '.kwcdwooccoowcsk', '.kskdwoocdoowdks', '..kkdwooccoowdk.',
+    '...kcwoocdoowk..', '...kdwoocdoowk..', '...kowooccoowok.', '..kwwwwwwwwwwwk.'] },
+  fang: { hair: '#8a6a4a', rows: [
+    '................', '................', '.....kkkkk......', '..kkkhhhhhkkk...', '.khhkhhhhhkhhk..', '.khhkssssskhhk..',
+    '.khhkskskskhhk..', '..kkkookookkk...', '...kkcccccckkkok', '..kcccddddcckkhk', '.kskcccddccckhhk', '..kkkcdddcckhhhk',
+    '...kcckkkkcckhhk', '..kcck....kcck..', '.kbbbk....kbbbk.', '.kkkkk....kkkkk.'] },
   monster: { hair: '#555', rows: [
     '................', '................', '...........k.k..', '..........kdkdk.', '.k.......kccccck', 'kck.....kcccyckk', '.kdkkkkkkccccckk', '.kdddcccccccckw.', '..kdcdcdcdcdck..', '..kdddcccdcddk..', '..kdcddkddcdk...', '..kdkk.kdkdk....', '..kdk..kdk.kdk..', '..kdk..kdk.kdk..', '.kddk.kddk.kddk.', '.kkkk.kkkk.kkkk.' ] },
 };
