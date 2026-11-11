@@ -33,6 +33,40 @@ export const SPR: Record<string, Sprite> = {
     '................', '.....kkkkk..kk..', '....khhhhhk.kbk.', '...khhhhhhhk.kbk', '...khsssshk..okb', '...kskssksk..okb',
     '....kssssk...okb', '...kkcccckkssokb', '..kcccccccckkokb', '..kcdcccdck..okb', '..kskccccck..okb', '..kkkbbbbk..kbk.',
     '....kcckcck.kk..', '....kbbkbbk.....', '...kbbbkbbbk....', '...kkkk.kkkk....'] },
+  cavalier: { hair: '#7a4a2a', rows: [
+    '..............w.', '.....kkkkk...kwk', '....khhhhhk..kb.', '...khhhhhhhk..b.', '...khssssshk..b.', '...khskssksk..b.',
+    '....ksssssk...b.', '...kkcccckk...b.', '..kcccccccckkkb.', '...kkcddckk.kkb.', '..kbbbbbbbbhhhk.', '.kbbbbbbbbbbhbbk',
+    '.kbbbbbbbbbbbkbk', '.kbbbbbbbbbbkbbk', '..kbk..kbk.kbkkk', '..kkk..kkk.kkk..'] },
+  healer: { hair: '#c0703a', rows: [
+    '.............kk.', '.....kkkkk..kyyk', '....khhhhhk.kyyk', '...khhhhhhhk.kk.', '...khssssshk.kb.', '...khskssksk.kb.',
+    '....ksssssk..kb.', '...kkcccckk..kb.', '..kcccccccckskb.', '..kcdccccdckkkb.', '..kskcyyckk..kb.', '..kkkccccck..kb.',
+    '...kccdcccck.kb.', '...kcccdcccck...', '..kcwcwcwcwcck..', '..kkkkkkkkkkkk..'] },
+  priest: { hair: '#9a9aa8', rows: [
+    '................', '.....kkkkk......', '....khhhhhk.....', '...khhhhhhhk....', '...khssssshk....', '...khskssksk....',
+    '....ksssssk.....', '...kkoyyyokk....', '..kooooyoooookk.', '..koooooyoooyskk', '..koyoooyoooybbk', '..kooyooyooykbyk',
+    '...koooyooookbk.', '...kooyoooyook..', '..kooooyoooyook.', '..kkkkkkkkkkkkk.'] },
+  thief: { hair: '#2e2e3a', rows: [
+    '................', '.....kkkkk......', '....khhhhhkk....', '...khhhhhhhhk...', '...khssssshk....', '...khskssksk....',
+    '....kcccccck....', '...kccccdckk..w.', '...kcddddck.kwk.', '...kskddddksskk.', '...kkkddddkkk...', '....kdddddk.....',
+    '....kdkkdk......', '....kbbkbbk.....', '...kbbbkbbbk....', '...kkkk.kkkk....'] },
+  shield: { hair: '#8a5a2a', rows: [
+    '................', '.....kkkkk....w.', '....khhhhhk...w.', '...khhhhhhhk..w.', '...khssssshk..w.', '...khskssksk..w.',
+    '....ksssssk...w.', '.kkkkcccckk..kyk', 'kggggkccccckkkbk', 'kgwgwgkcdccsskk.', 'kggyggkckcckk...', 'kgwgwgkkcdck....',
+    '.kgggk.kcck.....', '..kkk..kbbkbk...', '......kbbbkbbk..', '......kkkk.kkk..'] },
+  merc: { hair: '#6b3a1e', rows: [
+    '..............kk', '.....kkkkk...kwk', '....khhhhhk.kwk.', '...khhhhhhhkkwk.', '...khssssshkwk..', '...khskssksskk..',
+    '....kssssskwk...', '...kkcccckkwk...', '..kcccccckkwk...', '..kcdcbbcckk....', '..kskcbbcckk....', '..kkkcdddck.....',
+    '....kcckcck.....', '....kbbkbbk.....', '...kbbbkbbbk....', '...kkkk.kkkk....'] },
+  brute: { hair: '#3a2a22', rows: [
+    '................', '.....kkkkk......', '....kggggggk....', '....kgsssssk....', '....kgkssksk....', '....kgsssssk....',
+    '...kkkgggggkkk..', '.kkgggkccckgggkk', 'kgggggkcdckggggk', 'kgkgggkcccckgggk', 'kskgggcdddcgggsk', 'kkk.kkccccckk.kk',
+    '....kccdddck....', '....kggkkggk....', '...kgggkkgggk...', '...kkkkk.kkkk...'] },
+  beast: { hair: '#c98a3a', rows: [
+    '................', '...kk.....kk....', '..khhk...khhk...', '..khhhkkkkhhk...', '...khhhhhhhk....', '...khssssshk....',
+    '...khskssksk....', '....kssksssk....', '...kkcccckkk....', '..kccccccccck...', '.wkcdccccdckwk..', 'wskkccccckkskw..',
+    'w.kkkcdddck.w...', '....kcckcck.....', '...kbbbkbbbk....', '...kkkk.kkkk....'] },
+  monster: { hair: '#555', rows: [
+    '................', '................', '...........k.k..', '..........kdkdk.', '.k.......kccccck', 'kck.....kcccyckk', '.kdkkkkkkccccckk', '.kdddcccccccckw.', '..kdcdcdcdcdck..', '..kdddcccdcddk..', '..kdcddkddcdk...', '..kdkk.kdkdk....', '..kdk..kdk.kdk..', '..kdk..kdk.kdk..', '.kddk.kddk.kddk.', '.kkkk.kkkk.kkkk.' ] },
 };
 
 export function drawSprite(ctx: CanvasRenderingContext2D, name: string, team: string, x: number, y: number, s: number, hair?: string) {
