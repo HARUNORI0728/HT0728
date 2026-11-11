@@ -1,6 +1,10 @@
 // Screen, input and turn flow. Rules live in logic.ts.
-import { CHAPTERS, CHARS, CLASSES, STAT_KEYS, STAT_NAMES, WEAPONS, WTYPE_NAMES, type Line } from './data';
-import { addExp, alive, dist, expGain, fight, forecast, inRange, key, newChapter, outcome, planEnemy, stopTiles, terrainAt, threatTiles, unitAt, type State, type Unit } from './logic';
+import { CAST, CHAPTERS, CHARS, CLASSES, RANKS, RANK_PTS, STAT_KEYS, STAT_NAMES, SUPPORTS, SUPPORT_BONUS, WEAPONS, WTYPE_NAMES, type Line, type Stats, type SupportPair } from './data';
+import {
+  addExp, alive, bondStatus, dist, expGain, fight, forecast, gainBonds, initBonds, inRange, key, maxRank, newChapter, nextNeed, outcome, pairKey, planEnemy,
+  promote, promoOptions, rankName, rankUp, readyPairs, rosterOf, sCount, sLimit, stopTiles, terrainAt, threatTiles, tierOf, unitAt, usable,
+  type Bonds, type State, type Unit,
+} from './logic';
 import { drawSprite, drawTerrain } from './sprites';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -21,10 +25,29 @@ const shownHp = new Map<number, number>();
 const floats: { x: number; y: number; text: string; color: string; t: number }[] = [];
 
 // ---------- save ----------
-const SAVE = 'fittoa-save-v1';
-function save() { try { localStorage.setItem(SAVE, JSON.stringify(S)); } catch { /* storage unavailable */ } }
-function load(): State | null { try { const j = localStorage.getItem(SAVE); return j ? JSON.parse(j) : null; } catch { return null; } }
-function clearSave() { try { localStorage.removeItem(SAVE); } catch { /* ignore */ } }
+/** Between chapters: the party, its bonds, and which chapter comes next. */
+interface Camp { next: number; cleared: number; roster: Unit[]; bonds: Bonds }
+interface SaveData { v: 2; battle: State | null; camp: Camp | null }
+const SAVE = 'fittoa-save-v2', SAVE_V1 = 'fittoa-save-v1';
+let camp: Camp | null = null, inBattle = false;
+function save() {
+  const d: SaveData = { v: 2, battle: inBattle ? S : null, camp };
+  try { localStorage.setItem(SAVE, JSON.stringify(d)); } catch { /* storage unavailable */ }
+}
+function load(): SaveData | null {
+  try {
+    const j = localStorage.getItem(SAVE);
+    if (j) {
+      const d = JSON.parse(j) as SaveData;
+      if (d.battle) d.battle.bonds = initBonds(d.battle.bonds);
+      if (d.camp) d.camp.bonds = initBonds(d.camp.bonds);
+      return d.battle || d.camp ? d : null;
+    }
+    const old = localStorage.getItem(SAVE_V1); // v1 held only a mid-chapter State
+    if (old) { const st = JSON.parse(old) as State; st.bonds = initBonds(st.bonds); return { v: 2, battle: st, camp: null }; }
+  } catch { /* corrupt or unavailable */ }
+  return null;
+}
 
 // ---------- rendering ----------
 function render() {
@@ -87,7 +110,18 @@ function unitHtml(u: Unit) {
   const t = terrainAt(S, u.x, u.y);
   return `<div class="uhead"><b class="${u.team}">${u.name}</b><span>${CLASSES[u.cls].name}　Lv ${u.lv}${u.gr ? `　EXP ${u.exp}` : ''}</span></div>
     <div class="hp">HP ${u.hp} / ${u.st.hp}<div class="bar"><i style="width:${100 * u.hp / u.st.hp}%;background:${u.team === 'blue' ? '#5aa7ff' : '#ff6f61'}"></i></div></div>
-    <div class="stats">${st}</div><div class="wps">${wps}　／　${t.name}（守備+${t.def} 回避+${t.avo}）</div>`;
+    <div class="stats">${st}</div><div class="wps">${wps}　／　${t.name}（守備+${t.def} 回避+${t.avo}）</div>${u.team === 'blue' ? bondLine(u) : ''}`;
+}
+/** One-line summary of a unit's supports with allies on this map. */
+function bondLine(u: Unit) {
+  const items = alive(S, 'blue').filter(o => o !== u).flatMap(o => {
+    const p = SUPPORTS.find(q => pairKey(q.a, q.b) === pairKey(u.id, o.id));
+    if (!p) return [];
+    const b = S.bonds[pairKey(p.a, p.b)], need = nextNeed(p, b), st = bondStatus(S.bonds, p);
+    const prog = st === 'ready' ? '<em>会話待ち</em>' : st === 'sBlocked' ? 'S枠なし' : need === null ? '最大' : `${b.pts}/${need}`;
+    return [`${o.name} <b>${rankName(b.rank)}</b> ${prog}`];
+  });
+  return items.length ? `<div class="bondl"><span>支援</span>${items.join('　')}</div>` : '';
 }
 function info(html: string) { $('info').innerHTML = html; }
 function menu(items: [string, () => void, string?][]) {
@@ -134,7 +168,7 @@ function selectUnit(u: Unit) {
 function openMenu() {
   const u = sel!; mode = 'menu'; picked = null; targets = [];
   const items: [string, () => void, string?][] = [];
-  for (const wid of u.wps) {
+  for (const wid of usable(u)) {
     const ts = alive(S, 'red').filter(t => inRange(WEAPONS[wid], dist(u, t)));
     if (ts.length) items.push([`攻撃：${WEAPONS[wid].name}`, () => chooseTarget(wid, ts), 'primary']);
   }
@@ -155,8 +189,11 @@ function pickTarget(t: Unit) {
   info(`<div class="fc">${row('', u.name, t.name)}${row('HP', `${u.hp}`, `${t.hp}`)}
     ${row('威力', f.a.dmg + (f.a.double ? ' ×2' : ''), f.d ? f.d.dmg + (f.d.double ? ' ×2' : '') : '—')}
     ${row('命中', f.a.hit + '%', f.d ? f.d.hit + '%' : '—')}${row('必殺', f.a.crit + '%', f.d ? f.d.crit + '%' : '—')}
-    ${row('武器', f.a.w.name, f.d ? f.d.w.name : '反撃不可')}</div>`);
+    ${row('武器', f.a.w.name, f.d ? f.d.w.name : '反撃不可')}</div>${supRow(f.a.sup.from)}`);
   menu([['戦う', async () => { mode = 'busy'; await battle(u, curW, t); finish(u); }, 'primary'], ['もどる', openMenu]]);
+}
+function supRow(from: { name: string; rank: string }[]) {
+  return from.length ? `<p class="fcsup">支援：${from.map(f => `${f.name} ${f.rank}`).join('、')}</p>` : '';
 }
 async function finish(u: Unit) {
   mode = 'busy'; u.done = true; sel = picked = inspect = null; targets = [];
@@ -180,7 +217,7 @@ cv.addEventListener('click', async e => {
     if (!stops.has(key(tx, ty))) return idle();
     mode = 'busy'; await tween(sel!, tx, ty); openMenu();
   } else if (mode === 'menu') {
-    if (u && u.team === 'red') { const wid = sel!.wps.find(w => inRange(WEAPONS[w], dist(sel!, u))); if (wid) { chooseTarget(wid, alive(S, 'red').filter(t => inRange(WEAPONS[wid], dist(sel!, t)))); pickTarget(u); } }
+    if (u && u.team === 'red') { const wid = usable(sel!).find(w => inRange(WEAPONS[w], dist(sel!, u))); if (wid) { chooseTarget(wid, alive(S, 'red').filter(t => inRange(WEAPONS[wid], dist(sel!, t)))); pickTarget(u); } }
   } else if (mode === 'target') {
     if (u && targets.includes(u)) pickTarget(u); else openMenu();
   }
@@ -198,6 +235,7 @@ async function battle(att: Unit, wid: string, def: Unit) {
     await sleep(420);
   }
   shownHp.clear();
+  for (const g of gainBonds(S, [att, def])) float(g.partner, g.ready ? '支援会話あり' : `絆+${g.added}`, '#ff8fa8');
   const me = att.team === 'blue' ? att : def, foe = me === att ? def : att;
   if (me.hp > 0 && me.gr) {
     const gains = addExp(me, expGain(me, foe, strikes));
@@ -213,7 +251,10 @@ async function checkEnd(): Promise<boolean> {
   if (o === 'win') {
     await banner('勝利！', 1300);
     await play(CHAPTERS[S.chapter].outro);
-    clearSave(); showTitle('第1章クリア！　第2章は制作中です。');
+    camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster: rosterOf(S), bonds: S.bonds };
+    inBattle = false; save();
+    await supportTalks(camp);
+    showCamp(CHAPTERS[camp.cleared - 1].title.replace(/\s+/g, '　') + '　クリア！');
   } else {
     await banner('敗北……', 1500);
     showTitle('仲間が倒れてしまった。もう一度挑戦しよう。');
@@ -245,14 +286,125 @@ async function endTurn() {
   idle();
 }
 
+// ---------- support conversations ----------
+const castName = (id: string) => CAST[id]?.name ?? id;
+/** Plays every support conversation that is ready (one rank per pair), confirming each rank. */
+async function supportTalks(c: Camp) {
+  const seen = new Set<string>();
+  for (;;) {
+    const p = readyPairs(c.bonds).find(q => !seen.has(pairKey(q.a, q.b)));
+    if (!p) break;
+    seen.add(pairKey(p.a, p.b));
+    const next = RANKS[c.bonds[pairKey(p.a, p.b)].rank];
+    await banner(`支援会話　${castName(p.a)} × ${castName(p.b)}　${next}`, 1100);
+    const lines = p.talks[next];
+    await play(lines?.length ? lines : [{ who: '', text: `${castName(p.a)}と${castName(p.b)}は、しばらく語り合った。（この支援会話は制作中です）` }]);
+    const r = rankUp(c.bonds, p);
+    save();
+    if (r) await banner(`${castName(p.a)}と${castName(p.b)}の支援ランクが ${r} になった！`, 1300);
+  }
+}
+
+// ---------- between chapters ----------
+let campTab: 'units' | 'bonds' = 'units';
+const esc = (t: string) => t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]!));
+const MTYPE_NAMES = { foot: '歩兵', armor: '重装', horse: '騎馬', fly: '飛行' } as const;
+const gainText = (g: Partial<Stats>) => STAT_KEYS.filter(k => g[k]).map(k => `${STAT_NAMES[k]}+${g[k]}`).join(' ');
+function campMsg(t: string) { $('campMsg').textContent = t; }
+function showCamp(msg = '') {
+  if (!camp) return;
+  mode = 'busy'; campTab = 'units';
+  $('campTitle').textContent = `章間　難民キャンプ`;
+  campMsg(msg);
+  const has = !!CHAPTERS[camp.next];
+  const nb = $<HTMLButtonElement>('btnNext');
+  nb.disabled = !has; nb.textContent = has ? '次の章へ' : `第${camp.next + 1}章は制作中です`;
+  $('title').hidden = true; $('camp').hidden = false;
+  renderCamp();
+}
+function renderCamp() {
+  for (const b of document.querySelectorAll<HTMLButtonElement>('#campTabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === campTab));
+  $('campBody').innerHTML = '';
+  if (campTab === 'units') renderUnits(); else renderBonds();
+}
+function el(tag: string, cls: string, html = '') { const e = document.createElement(tag); if (cls) e.className = cls; e.innerHTML = html; return e; }
+function btn(label: string, fn: () => void, cls = '', disabled = false) {
+  const b = document.createElement('button'); b.textContent = label; if (cls) b.className = cls; b.disabled = disabled; b.onclick = fn; return b;
+}
+function unitCard(u: Unit) {
+  const c = CLASSES[u.cls];
+  const st = STAT_KEYS.map(k => `<div><span>${STAT_NAMES[k]}</span>${u.st[k]}</div>`).join('');
+  const wps = u.wps.map(w => WEAPONS[w].name).join('・');
+  return el('div', 'card', `<div class="uhead"><b class="blue">${esc(u.name)}</b><span>${c.name}${tierOf(u.cls) === 2 ? '（上級職）' : ''}　Lv ${u.lv}　EXP ${u.exp}　移動 ${c.mov}</span></div>
+    <div class="stats">${st}</div><div class="wps">武器：${wps}　／　使える武器種：${c.wtypes.map(t => WTYPE_NAMES[t]).join('・')}</div>`);
+}
+function renderUnits() {
+  const body = $('campBody');
+  for (const u of camp!.roster) {
+    const card = unitCard(u), opts = promoOptions(u);
+    if (opts.length) {
+      const ok = opts.some(o => o.ok);
+      card.appendChild(btn(ok ? 'クラスチェンジ' : 'クラスチェンジ（Lv10から）', () => renderPromo(u), ok ? 'primary' : '', !ok));
+    }
+    body.appendChild(card);
+  }
+}
+function renderPromo(u: Unit) {
+  const body = $('campBody'); body.innerHTML = '';
+  body.appendChild(el('p', 'hint', `${esc(u.name)}（${CLASSES[u.cls].name} Lv ${u.lv}）の上級職を選んでください。クラスチェンジするとLvは1に戻り、能力が上がります。`));
+  for (const o of promoOptions(u)) {
+    const c = CLASSES[o.to];
+    const newTypes = c.wtypes.filter(t => !CLASSES[u.cls].wtypes.includes(t));
+    const card = el('div', 'card', `<div class="uhead"><b>${c.name}</b><span>移動 ${c.mov}（${MTYPE_NAMES[c.mtype]}）　武器種 ${c.wtypes.map(t => WTYPE_NAMES[t]).join('・')}</span></div>
+      <p class="pdesc">${c.desc ?? ''}</p><p class="pgain">${gainText(c.bonus ?? {})}${c.crit ? `　必殺+${c.crit}` : ''}${newTypes.length ? `　新たに ${newTypes.map(t => WTYPE_NAMES[t]).join('・')} を使える` : ''}${c.gift && !u.wps.some(w => WEAPONS[w].type === WEAPONS[c.gift!].type) ? `（${WEAPONS[c.gift].name}を入手）` : ''}</p>`);
+    card.appendChild(btn(o.ok ? `${c.name}にする` : '条件を満たしていない', () => confirmPromo(u, o.to), o.ok ? 'primary' : '', !o.ok));
+    body.appendChild(card);
+  }
+  body.appendChild(btn('もどる', renderCamp));
+}
+function confirmPromo(u: Unit, to: string) {
+  const body = $('campBody'); body.innerHTML = '';
+  body.appendChild(el('div', 'card', `<p>${esc(u.name)}を<b class="gold">${CLASSES[to].name}</b>にクラスチェンジします。Lvは1に戻ります。よろしいですか？</p>`));
+  const row = el('div', 'row');
+  row.appendChild(btn('はい', () => {
+    const r = promote(u, to);
+    if (!r) return renderCamp();
+    save();
+    campMsg(`${u.name}は${CLASSES[to].name}になった！　${gainText(r.gains)}${r.gift ? `　${WEAPONS[r.gift].name}を手に入れた` : ''}`);
+    renderCamp();
+  }, 'primary'));
+  row.appendChild(btn('いいえ', () => renderPromo(u)));
+  body.appendChild(row);
+}
+function renderBonds() {
+  const body = $('campBody'), c = camp!, ids = new Set(c.roster.map(u => u.id));
+  const b = SUPPORT_BONUS;
+  body.appendChild(el('p', 'hint', `隣で一緒に戦うと絆が深まる。支援相手が2マス以内にいると、ランクに応じて命中・回避・必殺が上がる（C 命中/回避+${b.C.hit}　B +${b.B.hit}　A +${b.A.hit}　S +${b.S.hit}・ダメージ+${b.S.dmg}）。`));
+  body.appendChild(el('p', 'hint', `ルーデウスの恋愛（S）：${sCount(c.bonds, 'rudeus')} / ${sLimit('rudeus')}人　ほかの仲間は1人まで。`));
+  const pairs = SUPPORTS.filter(p => ids.has(p.a) && ids.has(p.b));
+  if (!pairs.length) body.appendChild(el('p', 'hint', '支援できる組はまだいない。'));
+  for (const p of pairs) body.appendChild(bondRow(p, c.bonds));
+}
+function bondRow(p: SupportPair, bonds: Bonds) {
+  const bd = bonds[pairKey(p.a, p.b)], need = nextNeed(p, bd), st = bondStatus(bonds, p);
+  const prev = bd.rank > 0 ? RANK_PTS[RANKS[bd.rank - 1]] : 0;
+  const pct = need === null ? 100 : Math.max(0, Math.min(100, 100 * (bd.pts - prev) / Math.max(1, need - prev)));
+  const label = st === 'ready' ? '会話待ち（章クリア後）' : st === 'sBlocked' ? 'S枠なし' : need === null ? '最大ランク' : `${bd.pts} / ${need}`;
+  return el('div', 'card bond', `<div class="bhead"><span>${castName(p.a)} × ${castName(p.b)}${p.tag ? `<small>（${p.tag}）</small>` : ''}</span><b class="rank">${rankName(bd.rank)}</b></div>
+    <div class="hp"><div class="bar"><i style="width:${pct}%;background:var(--rose)"></i></div><span>${label}</span></div>
+    <div class="wps">上限 ${p.max}${p.max === 'S' ? '（恋愛）' : ''}　次：${bd.rank < maxRank(p) ? RANKS[bd.rank] : '—'}</div>`);
+}
+
 // ---------- boot ----------
 function showTitle(msg = '') {
   $('titleMsg').textContent = msg;
   $('btnLoad').hidden = !load();
+  $('camp').hidden = true;
   $('title').hidden = false;
 }
 async function start(state: State, intro: boolean) {
-  S = state; mode = 'busy'; inspect = sel = picked = null;
+  S = state; mode = 'busy'; inspect = sel = picked = null; inBattle = true;
+  $('camp').hidden = true;
   terrain = document.createElement('canvas'); terrain.width = cv.width; terrain.height = cv.height;
   drawTerrain(terrain.getContext('2d')!, S.map, SC);
   $('title').hidden = true; hud(); info(''); menu([]);
@@ -261,8 +413,19 @@ async function start(state: State, intro: boolean) {
   await banner(S.phase === 'blue' ? '自軍フェイズ' : '敵軍フェイズ');
   idle();
 }
-$('btnNew').onclick = () => start(newChapter(0), true);
-$('btnLoad').onclick = () => { const s = load(); if (s) { s.phase = 'blue'; start(s, false); } };
+$('btnNew').onclick = () => { camp = null; start(newChapter(0), true); };
+$('btnLoad').onclick = () => {
+  const d = load();
+  if (!d) return;
+  camp = d.camp;
+  if (d.battle) { d.battle.phase = 'blue'; start(d.battle, false); } else if (camp) { $('title').hidden = true; showCamp(); }
+};
+$('btnNext').onclick = () => { if (camp && CHAPTERS[camp.next]) start(newChapter(camp.next, JSON.parse(JSON.stringify(camp.roster)), camp.bonds), true); };
+$('btnToTitle').onclick = () => showTitle();
+for (const b of document.querySelectorAll<HTMLButtonElement>('#campTabs button')) b.onclick = () => { campTab = b.dataset.tab as 'units' | 'bonds'; campMsg(''); renderCamp(); };
 showTitle();
 requestAnimationFrame(render);
-(window as any).__game = { get state() { return S; }, get mode() { return mode; }, get stops() { return [...stops]; } };
+(window as any).__game = {
+  get state() { return S; }, get mode() { return mode; }, get stops() { return [...stops]; },
+  get camp() { return camp; }, get screen() { return !$('camp').hidden ? 'camp' : !$('title').hidden ? 'title' : 'battle'; },
+};
