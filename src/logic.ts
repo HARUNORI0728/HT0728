@@ -54,15 +54,50 @@ export function makeUnit(id: string): Unit | null {
 export function makeEnemy(e: EnemyDef, uid: number): Unit {
   const b = ENEMY_BASE[e.cls] ?? ENEMY_BASE.soldier, st = { ...b };
   for (const k of STAT_KEYS) st[k] += Math.floor((e.lv - 1) * (k === 'hp' ? 1.5 : k === 'lck' || k === 'res' ? 0.3 : 0.7));
-  return { uid, id: e.cls, name: e.boss ?? '野盗の' + CLASSES[e.cls].name, cls: e.cls, team: 'red', lv: e.lv, exp: 0, hp: st.hp, st, wps: [...e.wps], eq: 0, x: e.x, y: e.y, done: false, ai: e.ai, boss: !!e.boss, potions: e.boss ? 1 : 0 };
+  return { uid, id: e.cls, name: e.boss ?? (e.prefix ?? '野盗の') + CLASSES[e.cls].name, cls: e.cls, team: 'red', lv: e.lv, exp: 0, hp: st.hp, st, wps: [...e.wps], eq: 0, x: e.x, y: e.y, done: false, ai: e.ai, boss: !!e.boss, potions: e.boss ? 1 : 0 };
+}
+
+/** Who goes into a chapter before any choice: fixed members, the free slots, and who may fill them. */
+export interface SortiePlan {
+  /** Fixed members who will deploy (roster copy, or a fresh recruit), guests included. */
+  fixed: { unit: Unit; guest: boolean; recruit: boolean }[];
+  /** Fixed members who cannot deploy (classic `out`). */
+  fixedOut: Unit[];
+  /** Sortie cap (guests not counted) and slots left after the fixed members. */
+  cap: number; free: number;
+  /** Roster members that may fill the free slots (out units included; they can't be picked). */
+  pool: Unit[];
+  /** Default picks: the first `free` deployable pool members in roster order. */
+  picks: string[];
+  /** True when there are more deployable candidates than free slots (show the sortie screen). */
+  choose: boolean;
+}
+
+export function sortiePlan(index: number, roster: Unit[] = []): SortiePlan {
+  const ch = CHAPTERS[index];
+  const fixed: SortiePlan['fixed'] = [], fixedOut: Unit[] = [], used = new Set<string>();
+  for (const p of ch.players) {
+    const kept = roster.find(r => r.id === p.id);
+    used.add(p.id);
+    if (kept?.out) { fixedOut.push(kept); continue; }
+    const unit = kept ?? makeUnit(p.id);
+    if (unit) fixed.push({ unit, guest: !!p.guest, recruit: !kept });
+  }
+  const nonGuest = fixed.filter(f => !f.guest).length;
+  const cap = ch.sortie ?? nonGuest + (ch.slots?.length ?? 0);
+  const free = Math.max(0, Math.min(cap - nonGuest, ch.slots?.length ?? 0));
+  const pool = roster.filter(r => !used.has(r.id) && !r.guest);
+  const ready = pool.filter(r => !r.out);
+  return { fixed, fixedOut, cap, free, pool, picks: ready.slice(0, free).map(r => r.id), choose: free > 0 && ready.length > free };
 }
 
 /**
  * Builds a chapter. `roster` = the party carried over (absent on a new game).
- * Fixed `players` deploy first (recruits come from CHARS), then `slots` fill from the roster in order
- * up to `sortie`. Units marked `out` never deploy; everyone not deployed waits on the bench.
+ * Fixed `players` deploy first (recruits come from CHARS), then `slots` fill up to `sortie` (guests not counted):
+ * from `picks` when given (the sortie screen), otherwise from the roster in order.
+ * Units marked `out` never deploy; everyone not deployed waits on the bench.
  */
-export function newChapter(index: number, roster?: Unit[], bonds?: Bonds, difficulty: Difficulty = 'casual'): State {
+export function newChapter(index: number, roster?: Unit[], bonds?: Bonds, difficulty: Difficulty = 'casual', picks?: string[]): State {
   const ch = CHAPTERS[index];
   let uid = 1;
   const pool = roster ? clone(roster) : [];
@@ -73,17 +108,14 @@ export function newChapter(index: number, roster?: Unit[], bonds?: Bonds, diffic
   };
   for (const p of ch.players) {
     const kept = pool.find(r => r.id === p.id);
+    used.add(p.id);
     if (kept?.out) continue;
     const base = kept ?? makeUnit(p.id);
     if (base) deploy(base, p.x, p.y, p.guest);
   }
-  const cap = ch.sortie ?? ch.players.length + (ch.slots?.length ?? 0);
-  for (const sl of ch.slots ?? []) {
-    if (units.length >= cap) break;
-    const next = pool.find(r => !used.has(r.id) && !r.out && !r.guest);
-    if (!next) break;
-    deploy(next, sl.x, sl.y);
-  }
+  const plan = sortiePlan(index, pool);
+  const order = (picks ?? plan.picks).map(id => pool.find(r => r.id === id)).filter((r): r is Unit => !!r && !used.has(r.id) && !r.out && !r.guest);
+  (ch.slots ?? []).slice(0, plan.free).forEach((sl, i) => { if (order[i]) deploy(order[i], sl.x, sl.y); });
   const bench = pool.filter(r => !used.has(r.id) && !r.guest);
   for (const e of ch.enemies) units.push(makeEnemy(e, uid++));
   return { chapter: index, turn: 1, phase: 'blue', units, map: ch.map, bonds: initBonds(bonds), difficulty, bench, flags: {} };
@@ -373,7 +405,10 @@ export function outcome(s: State): 'win' | 'lose' | null {
     }
     case 'seize': if (s.flags?.seized) return 'win'; break;
     case 'escape': if (blue.some(u => u.left) && !alive(s, 'blue').length) return 'win'; break;
-    case 'defend': case 'survive': if (s.turn > w.turns && s.phase === 'blue') return 'win'; break;
+    // Holding out also ends early once every enemy is down and no reinforcement is still due.
+    case 'defend': case 'survive':
+      if ((s.turn > w.turns && s.phase === 'blue') || (!alive(s, 'red').length && !reinforcementsPending(s))) return 'win';
+      break;
   }
   return null;
 }
@@ -387,6 +422,11 @@ export function canSeize(s: State, u: Unit): boolean {
 export function canEscape(s: State, u: Unit): boolean {
   const w = CHAPTERS[s.chapter].win;
   return w.type === 'escape' && u.team === 'blue' && w.tiles.some(([x, y]) => x === u.x && y === u.y);
+}
+
+/** Whether any reinforcement of this chapter has not appeared yet. */
+export function reinforcementsPending(s: State): boolean {
+  return (CHAPTERS[s.chapter].reinforce ?? []).some((w, wi) => w.units.some((_, ei) => !s.flags[`rf${wi}_${ei}`]));
 }
 
 /**
@@ -410,9 +450,10 @@ const nameOf = (id: string) => CAST[id]?.name ?? CHARS[id]?.name ?? id;
 export function goalText(ch: Chapter): string {
   const w = ch.win;
   const win = w.type === 'rout' ? '敵の全滅' : w.type === 'boss' ? 'ボスの撃破' : w.type === 'seize' ? '指定地点の制圧'
-    : w.type === 'escape' ? '全員の離脱' : w.type === 'defend' ? `${w.turns}ターン守り切る` : `${w.turns}ターン耐える`;
+    : w.type === 'escape' ? '全員の離脱' : w.type === 'defend' ? `${w.turns}ターン守り切る（敵の全滅でも勝利）` : `${w.turns}ターン耐える（敵の全滅でも勝利）`;
   const lc = loseCond(ch);
-  const lose = lc.units.map(nameOf).join('または') + 'の敗走' + (lc.tile ? '、または防衛地点への敵の侵入' : '');
+  const who = [...lc.units, ...ch.players.filter(p => p.guest && !lc.units.includes(p.id)).map(p => p.id)]; // guests always count
+  const lose = (who.length <= 2 ? who.map(nameOf).join('または') + 'の敗走' : who.map(nameOf).join('、') + 'のいずれかの敗走') + (lc.tile ? '、または防衛地点への敵の侵入' : '');
   return `勝利条件：${win}　／　敗北条件：${lose}`;
 }
 

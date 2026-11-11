@@ -117,6 +117,23 @@
   .card.out { border-style: dashed; }
   .card.out .uhead b { color: var(--dim); }
   .outTag { color: var(--foe); font-style: normal; font-size: 12.5px; }
+  .prepCount { margin: 0; font-family: var(--pixel); color: var(--dim); }
+  .prepCount b { color: var(--gold); font-weight: normal; font-size: 18px; }
+  .prepHead { margin: 6px 0 0; font-family: var(--pixel); font-weight: normal; font-size: 15px; color: var(--gold); }
+  .pick { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; text-align: left; width: 100%;
+    background: var(--panel); border: 2px solid var(--line); border-radius: 4px; padding: 8px 12px; min-height: 44px; font-family: var(--text); }
+  .pick .pname { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; min-width: 0; font-family: var(--pixel); }
+  .pick .pname b { font-weight: normal; font-size: 16px; color: var(--ally); }
+  .pick .pname span { color: var(--dim); font-size: 13px; }
+  .pick small { grid-column: 1; color: var(--dim); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .pick em { grid-column: 2; grid-row: 1 / span 2; font-style: normal; font-family: var(--pixel); font-size: 14px; color: var(--dim);
+    border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; white-space: nowrap; }
+  .pick.fixed em { color: var(--gold); border-color: var(--gold); }
+  .pick[aria-pressed="true"] { border-color: var(--gold); }
+  .pick[aria-pressed="true"] em { color: var(--night); background: var(--gold); border-color: var(--gold); }
+  .pick.out { border-style: dashed; }
+  .pick.out .pname b { color: var(--dim); }
+  .pick.out em { color: var(--foe); border-color: var(--foe); }
 </style>
 
 <main id="app">
@@ -135,7 +152,7 @@
       <button data-tab="bonds" role="tab">支援</button>
     </div>
     <div id="campBody"></div>
-    <div class="campBtns">
+    <div class="campBtns" id="campBtns">
       <button id="btnNext" class="primary">次の章へ</button>
       <button id="btnToTitle">タイトルへ</button>
     </div>

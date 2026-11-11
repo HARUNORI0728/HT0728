@@ -3,8 +3,8 @@ import { CAST, CHAPTERS, CHARS, CLASSES, RANKS, RANK_PTS, STAT_KEYS, STAT_NAMES,
 import {
   DIFFICULTY_NAMES, POTION_HEAL, addExp, alive, bondStatus, canEscape, canSeize, dist, expGain, fight, forecast, gainBonds, goalText, heal, healAmount, healExp, healTargets,
   initBonds, inRange, key, loseCond, makeEnemy, makeUnit, maxRank, newChapter, nextNeed, outcome, pairKey, planEnemy, promote, promoOptions, rankName, rankUp, readyPairs,
-  rosterOf, sCount, sLimit, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
-  type Bonds, type Difficulty, type State, type Unit,
+  rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
+  type Bonds, type Difficulty, type SortiePlan, type State, type Unit,
 } from './logic';
 import { drawSprite, drawTerrain } from './sprites';
 
@@ -24,6 +24,43 @@ let origin = { x: 0, y: 0 }, targets: Unit[] = [], curW = '';
 const offs = new Map<number, { dx: number; dy: number }>();
 const shownHp = new Map<number, number>();
 const floats: { x: number; y: number; text: string; color: string; t: number }[] = [];
+
+// ---------- camera ----------
+// The canvas shows 15×10 tiles; larger maps scroll. `cam` is the top-left of the view in map pixels.
+const cam = { x: 0, y: 0 };
+const VIEW_W = cv.width / T, VIEW_H = cv.height / T;
+const cols = () => S.map[0].length, rows = () => S.map.length;
+const scrolls = () => !!S && (cols() > VIEW_W || rows() > VIEW_H);
+function clampCam() {
+  cam.x = Math.round(Math.max(0, Math.min(cols() * T - cv.width, cam.x)));
+  cam.y = Math.round(Math.max(0, Math.min(rows() * T - cv.height, cam.y)));
+}
+/** Whether a tile is on screen, keeping one tile of margin except where the view already touches the map edge. */
+function inView(x: number, y: number, margin = 1) {
+  const l = cam.x / T, t = cam.y / T, r = l + VIEW_W - 1, b = t + VIEW_H - 1;
+  const ml = l > 0 ? margin : 0, mr = r < cols() - 1 ? margin : 0, mt = t > 0 ? margin : 0, mb = b < rows() - 1 ? margin : 0;
+  return x >= l + ml && x <= r - mr && y >= t + mt && y <= b - mb;
+}
+/** Centers the view on a tile (clamped to the map). */
+function centerOn(x: number, y: number) { cam.x = x * T + T / 2 - cv.width / 2; cam.y = y * T + T / 2 - cv.height / 2; clampCam(); }
+/** Scrolls smoothly to the given camera position. */
+async function panTo(x: number, y: number) {
+  const sx = cam.x, sy = cam.y, steps = fast() ? 1 : 10;
+  for (let i = 1; i <= steps; i++) { cam.x = sx + (x - sx) * i / steps; cam.y = sy + (y - sy) * i / steps; clampCam(); await sleep(16); }
+}
+/** Brings the given tiles into view (centered on their middle) when any of them is off screen. */
+async function follow(pts: { x: number; y: number }[], margin = 1) {
+  if (!scrolls() || pts.every(p => inView(p.x, p.y, margin))) return;
+  const mx = (Math.min(...pts.map(p => p.x)) + Math.max(...pts.map(p => p.x))) / 2;
+  const my = (Math.min(...pts.map(p => p.y)) + Math.max(...pts.map(p => p.y))) / 2;
+  const from = { ...cam };
+  centerOn(mx, my);
+  const to = { ...cam };
+  cam.x = from.x; cam.y = from.y;
+  await panTo(to.x, to.y);
+}
+/** Test log: for each enemy action, whether the actor was on screen before and after the camera followed it. */
+const followLog: { name: string; x: number; y: number; before: boolean; after: boolean; cam: { x: number; y: number } }[] = [];
 
 // ---------- save ----------
 /** Between chapters: the party, its bonds, the difficulty, and which chapter comes next. */
@@ -66,6 +103,8 @@ function load(): SaveData | null {
 // ---------- rendering ----------
 function render() {
   if (S) {
+    ctx.fillStyle = '#14121c'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.save(); ctx.translate(-cam.x, -cam.y);
     ctx.drawImage(terrain, 0, 0);
     const fill = (k: string, col: string) => { const [x, y] = k.split(',').map(Number); ctx.fillStyle = col; ctx.fillRect(x * T + 1, y * T + 1, T - 2, T - 2); };
     if (mode === 'move' || (mode === 'idle' && inspect)) {
@@ -97,8 +136,20 @@ function render() {
       ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, f.y - (40 - f.t) * 0.5);
       if (--f.t <= 0) floats.splice(i, 1);
     }
+    ctx.restore();
+    if (scrolls()) edgeMarks();
   }
   requestAnimationFrame(render);
+}
+/** Small arrows on the screen edges where the map continues. */
+function edgeMarks() {
+  ctx.fillStyle = 'rgba(232,197,106,.85)';
+  const W = cv.width, H = cv.height, a = 9;
+  const tri = (pts: number[]) => { ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); ctx.lineTo(pts[2], pts[3]); ctx.lineTo(pts[4], pts[5]); ctx.closePath(); ctx.fill(); };
+  if (cam.x > 0) tri([4, H / 2, 4 + a, H / 2 - a, 4 + a, H / 2 + a]);
+  if (cam.x < cols() * T - W) tri([W - 4, H / 2, W - 4 - a, H / 2 - a, W - 4 - a, H / 2 + a]);
+  if (cam.y > 0) tri([W / 2, 4, W / 2 - a, 4 + a, W / 2 + a, 4 + a]);
+  if (cam.y < rows() * T - H) tri([W / 2, H - 4, W / 2 - a, H - 4 - a, W / 2 + a, H - 4 - a]);
 }
 function float(u: Unit, text: string, color: string) { floats.push({ x: u.x * T + T / 2, y: u.y * T + 6, text, color, t: 40 }); }
 async function tween(u: Unit, x: number, y: number) {
@@ -178,11 +229,12 @@ function idle() {
   mode = 'idle'; sel = picked = null; targets = [];
   if (!inspect) { stops = new Set(); threat = new Set(); }
   hud();
-  info(inspect ? unitHtml(inspect) : '<p class="hint">青いユニットをタップして移動先を選ぼう。敵をタップすると移動・攻撃範囲が見られる。</p>');
+  info(inspect ? unitHtml(inspect) : `<p class="hint">青いユニットをタップして移動先を選ぼう。敵をタップすると移動・攻撃範囲が見られる。${scrolls() ? '地図はドラッグで動かせる。' : ''}</p>`);
   menu([['ターン終了', endTurn]]);
 }
 function selectUnit(u: Unit) {
   sel = u; inspect = picked = null; origin = { x: u.x, y: u.y };
+  void follow([u], 0);
   stops = stopTiles(S, u); threat = threatTiles(S, u, stops); mode = 'move';
   info(unitHtml(u)); menu([['キャンセル', idle]]);
 }
@@ -251,10 +303,44 @@ async function finish(u: Unit) {
   if (alive(S, 'blue').every(b => b.done)) { mode = 'idle'; endTurn(); } else idle();
 }
 
-cv.addEventListener('click', async e => {
+// Drag to scroll (maps larger than the screen only). A press that moves less than DRAG_PX stays a tap.
+// On scrolling maps a tap is taken from pointerup (the browser's own click after it is ignored), because
+// browsers may drop the synthesized click once a touch gesture has scrolled. 15×10 maps keep using click.
+const DRAG_PX = 10;
+let drag: { id: number; sx: number; sy: number; cx: number; cy: number; moved: boolean } | null = null;
+let skipClickUntil = 0;
+cv.addEventListener('pointerdown', e => {
+  if (!S || !scrolls() || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  drag = { id: e.pointerId, sx: e.clientX, sy: e.clientY, cx: cam.x, cy: cam.y, moved: false };
+});
+cv.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+  if (!drag.moved) {
+    if (Math.hypot(dx, dy) < DRAG_PX) return;
+    drag.moved = true;
+    try { cv.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
+  }
+  const k = cv.width / cv.getBoundingClientRect().width;
+  cam.x = drag.cx - dx * k; cam.y = drag.cy - dy * k; clampCam();
+});
+cv.addEventListener('pointerup', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const d = drag;
+  drag = null;
+  skipClickUntil = performance.now() + 500; // the click that follows this pointerup (if any) is not a second tap
+  if (!d.moved) void tapAt(e.clientX, e.clientY);
+});
+cv.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.id) drag = null; });
+cv.addEventListener('click', e => {
+  if (performance.now() < skipClickUntil) { skipClickUntil = 0; return; }
+  void tapAt(e.clientX, e.clientY);
+});
+
+async function tapAt(clientX: number, clientY: number) {
   if (mode === 'busy' || !S) return;
   const r = cv.getBoundingClientRect();
-  const tx = Math.floor((e.clientX - r.left) / r.width * (cv.width / T)), ty = Math.floor((e.clientY - r.top) / r.height * (cv.height / T));
+  const tx = Math.floor(((clientX - r.left) / r.width * cv.width + cam.x) / T), ty = Math.floor(((clientY - r.top) / r.height * cv.height + cam.y) / T);
   if (tx < 0 || ty < 0 || ty >= S.map.length || tx >= S.map[0].length) return;
   const u = unitAt(S, tx, ty);
   if (mode === 'idle') {
@@ -274,7 +360,7 @@ cv.addEventListener('click', async e => {
   } else if (mode === 'heal') {
     if (u && targets.includes(u)) pickHeal(u); else openMenu();
   }
-});
+}
 
 // ---------- combat presentation ----------
 async function battle(att: Unit, wid: string, def: Unit) {
@@ -335,15 +421,23 @@ function fortHeal(team: 'blue' | 'red') {
 async function endTurn() {
   if (mode === 'busy') return;
   mode = 'busy'; sel = picked = inspect = null; stops = new Set(); threat = new Set(); menu([]);
+  const camBefore = { ...cam };
   S.phase = 'red'; hud(); info('<p class="hint">敵軍が行動中……</p>');
   await banner('敵軍フェイズ');
   fortHeal('red');
   const actors = alive(S, 'red'); // reinforcements appear now but do not act this phase
   const rf = spawnReinforcements(S);
-  if (rf.length) { for (const u of rf) float(u, '増援', '#ff9a8f'); await banner('敵の増援が現れた！'); }
+  if (rf.length) { await follow(rf.slice(0, 1)); for (const u of rf) float(u, '増援', '#ff9a8f'); await banner('敵の増援が現れた！'); }
   for (const e of actors) {
     if (e.hp <= 0) continue;
     const p = planEnemy(S, e);
+    const acts = p.x !== e.x || p.y !== e.y || !!p.target || !!p.heal || !!p.potion;
+    if (acts) {
+      // Keep the actor (start and end) and its target on screen.
+      const before = inView(e.x, e.y, 0);
+      await follow([e, p, ...(p.target ? [p.target] : []), ...(p.heal ? [p.heal] : [])]);
+      followLog.push({ name: e.name, x: p.x, y: p.y, before, after: inView(e.x, e.y, 0) && inView(p.x, p.y, 0), cam: { ...cam } });
+    }
     await tween(e, p.x, p.y);
     if (p.heal && p.wid) await doHeal(e, p.wid, p.heal);
     else if (p.potion) { e.potions--; const h = Math.min(e.st.hp - e.hp, POTION_HEAL); e.hp += h; float(e, `+${h}`, '#8fe0a0'); await sleep(450); }
@@ -353,6 +447,7 @@ async function endTurn() {
   S.phase = 'blue'; S.turn++;
   for (const u of S.units) u.done = false;
   if (await checkEnd()) return; // survive / defend: the last enemy phase is over
+  if (scrolls()) await panTo(camBefore.x, camBefore.y); // back to where the player was looking
   fortHeal('blue'); save(); hud();
   await banner('自軍フェイズ');
   idle();
@@ -386,6 +481,7 @@ function campMsg(t: string) { $('campMsg').textContent = t; }
 function showCamp(msg = '') {
   if (!camp) return;
   mode = 'busy'; campTab = 'units';
+  prep = null; $('campTabs').hidden = false; $('campBtns').hidden = false;
   $('campTitle').textContent = `章間　難民キャンプ（${DIFFICULTY_NAMES[camp.difficulty]}）`;
   campMsg(msg);
   const has = !!CHAPTERS[camp.next];
@@ -468,6 +564,55 @@ function bondRow(p: SupportPair, bonds: Bonds) {
     <div class="wps">上限 ${p.max}${p.max === 'S' ? '（恋愛）' : ''}　次：${bd.rank < maxRank(p) ? RANKS[bd.rank] : '—'}</div>`);
 }
 
+// ---------- sortie preparation ----------
+/** The sortie screen's state: which chapter, its plan, and the ids picked for the free slots. */
+let prep: { index: number; plan: SortiePlan; picks: string[] } | null = null;
+/** 「次の章へ」: opens the sortie screen when there is a choice to make, otherwise starts right away. */
+function goNext() {
+  if (!camp || !CHAPTERS[camp.next]) return;
+  const plan = sortiePlan(camp.next, camp.roster);
+  if (!plan.choose) { start(newChapter(camp.next, camp.roster, camp.bonds, camp.difficulty), true); return; }
+  prep = { index: camp.next, plan, picks: [...plan.picks] };
+  campMsg('');
+  renderPrep();
+}
+const shortStats = (u: Unit) => (['hp', 'str', 'mag', 'spd', 'def'] as const).map(k => `${STAT_NAMES[k]}${u.st[k]}`).join(' ');
+function renderPrep() {
+  const p = prep!, c = camp!, plan = p.plan;
+  const fixedN = plan.fixed.filter(f => !f.guest).length, n = fixedN + p.picks.length;
+  $('campTabs').hidden = true; $('campBtns').hidden = true;
+  $('campTitle').textContent = `出撃準備　${CHAPTERS[p.index].title.replace(/\s+/g, '　')}`;
+  const body = $('campBody'); body.innerHTML = '';
+  body.appendChild(el('p', 'hint', `出撃できるのは${plan.cap}人まで。必ず出撃する仲間は固定で、残り${plan.free}枠を名簿から選ぶ。`));
+  body.appendChild(el('p', 'prepCount', `出撃 <b>${n}</b> / ${plan.cap}`));
+  body.appendChild(el('h3', 'prepHead', '必ず出撃'));
+  for (const f of plan.fixed) {
+    const tag = f.guest ? 'ゲスト（護衛対象）' : f.recruit ? '新たに加入' : '固定';
+    body.appendChild(el('div', 'pick fixed', `<span class="pname"><b>${esc(f.unit.name)}</b><span>${CLASSES[f.unit.cls].name}　Lv ${f.unit.lv}</span></span><small>${shortStats(f.unit)}</small><em>${tag}</em>`));
+  }
+  for (const u of plan.fixedOut) body.appendChild(el('div', 'pick fixed out', `<span class="pname"><b>${esc(u.name)}</b><span>${CLASSES[u.cls].name}　Lv ${u.lv}</span></span><small>戦線離脱（療養中）</small><em>出撃不可</em>`));
+  body.appendChild(el('h3', 'prepHead', `出撃メンバーを選ぶ（残り${plan.free}枠）`));
+  for (const u of plan.pool) {
+    const on = p.picks.includes(u.id);
+    const b = document.createElement('button');
+    b.className = 'pick' + (u.out ? ' out' : '');
+    b.setAttribute('aria-pressed', String(on)); b.disabled = !!u.out; b.dataset.id = u.id;
+    b.innerHTML = `<span class="pname"><b>${esc(u.name)}</b><span>${CLASSES[u.cls].name}　Lv ${u.lv}</span></span><small>${u.out ? '戦線離脱（療養中）' : shortStats(u)}</small><em>${u.out ? '出撃不可' : on ? '出撃' : '待機'}</em>`;
+    b.onclick = () => {
+      if (on) p.picks = p.picks.filter(id => id !== u.id);
+      else if (p.picks.length >= plan.free) { campMsg('出撃枠がいっぱいです。先にだれかを待機にしてください。'); return; }
+      else p.picks = [...p.picks, u.id];
+      campMsg('');
+      renderPrep();
+    };
+    body.appendChild(b);
+  }
+  const row = el('div', 'row');
+  row.appendChild(btn(`この${n}人で出撃する`, () => { const picks = p.picks; prep = null; start(newChapter(p.index, c.roster, c.bonds, c.difficulty, picks), true); }, 'primary', !p.picks.length && plan.free > 0));
+  row.appendChild(btn('章間にもどる', () => showCamp()));
+  body.appendChild(row);
+}
+
 // ---------- boot ----------
 /** Title screen. `panel` picks the button group: main (はじめから/つづきから), difficulty choice, or defeat. */
 function showTitle(msg = '', panel: 'main' | 'diff' | 'defeat' = 'main') {
@@ -480,8 +625,13 @@ function showTitle(msg = '', panel: 'main' | 'diff' | 'defeat' = 'main') {
 async function start(state: State, intro: boolean) {
   S = state; mode = 'busy'; inspect = sel = picked = null; inBattle = true;
   $('camp').hidden = true;
-  terrain = document.createElement('canvas'); terrain.width = cv.width; terrain.height = cv.height;
+  terrain = document.createElement('canvas'); terrain.width = cols() * T; terrain.height = rows() * T;
   drawTerrain(terrain.getContext('2d')!, S.map, SC);
+  // Scrolling maps take over touch drags on the canvas; 15×10 maps keep the page's normal touch behaviour.
+  cv.style.touchAction = scrolls() ? 'none' : 'manipulation';
+  drag = null; cam.x = cam.y = 0;
+  const lead = S.units.find(u => u.id === 'rudeus' && u.hp > 0) ?? alive(S, 'blue')[0];
+  if (lead) centerOn(lead.x, lead.y); else clampCam();
   $('title').hidden = true; hud(); info(''); menu([]);
   if (intro) await play(CHAPTERS[S.chapter].intro);
   save();
@@ -503,7 +653,7 @@ $('btnRetryPhase').onclick = () => { const d = load(); if (d?.battle) { camp = d
 $('btnRetryChapter').onclick = () => start(chapterStart(), false);
 $('btnDefeatTitle').onclick = () => showTitle();
 /** Next chapter: carries the roster (with classic losses), bonds and difficulty. */
-$('btnNext').onclick = () => { if (camp && CHAPTERS[camp.next]) start(newChapter(camp.next, camp.roster, camp.bonds, camp.difficulty), true); };
+$('btnNext').onclick = goNext;
 $('btnToTitle').onclick = () => showTitle();
 for (const b of document.querySelectorAll<HTMLButtonElement>('#campTabs button')) b.onclick = () => { campTab = b.dataset.tab as 'units' | 'bonds'; campMsg(''); renderCamp(); };
 showTitle();
@@ -519,4 +669,10 @@ requestAnimationFrame(render);
   /** Test helper: what the enemy AI would do with this unit (used by automated play-throughs). */
   plan(u: Unit) { return planEnemy(S, u); },
   spawnEnemy(e: EnemyDef) { if (!S) return null; const u = makeEnemy(e, Math.max(...S.units.map(v => v.uid)) + 1); S.units.push(u); return u; },
+  /** Camera (map pixels of the view's top-left), the view size in tiles, and the enemy-follow log. */
+  get cam() { return { ...cam, w: VIEW_W, h: VIEW_H }; }, followLog,
+  /** Test helper: center the view on a tile right away if it is off screen. */
+  reveal(x: number, y: number) { if (S && !inView(x, y, 0)) centerOn(x, y); return { ...cam }; },
+  /** Test helper: add a cast member to the camp roster (to try the sortie screen). */
+  addToRoster(id: string, out = false) { const u = makeUnit(id); if (!u || !camp) return null; if (out) u.out = true; camp.roster.push(u); return u; },
 };

@@ -197,9 +197,13 @@ export const CHARS: Record<string, CharDef> = {
   isolde: { id: 'isolde', name: 'イゾルテ', cls: 'myrmidon', lv: 12, st: S(32, 13, 1, 16, 14, 8, 10, 6), gr: S(60, 40, 10, 55, 45, 35, 35, 25), wps: ['steelSword'], hair: '#6a7a9a' },
   // 9章。上級職固定（上級Lv4＝実効Lv14）。成長率は全体に低い。
   perugius: { id: 'perugius', name: 'ペルギウス', cls: 'summoner', lv: 4, st: S(38, 8, 20, 18, 14, 12, 12, 18), gr: S(35, 15, 30, 25, 20, 20, 20, 30), wps: ['summon'], hair: '#d8dce4' },
+  // ---- ゲスト（章ごとの護衛対象。名簿には残らない。CAST・支援には入れない） ----
+  // 2章：捜索団の治療師（本作オリジナル）。杖しか持たないので攻撃できない。能力値は仮。
+  lotta: { id: 'lotta', name: 'ロッタ', cls: 'healer', lv: 3, st: S(22, 1, 6, 5, 6, 6, 4, 6), gr: S(50, 5, 45, 40, 40, 40, 20, 40), wps: ['healStaff'], hair: '#a0643c' },
 };
 
-export interface EnemyDef { cls: string; lv: number; x: number; y: number; wps: string[]; ai: 'charge' | 'hold' | 'guard'; boss?: string }
+/** prefix = 一般兵の名前の頭（省略時「野盗の」。例：「私兵の」→「私兵の槍兵」）。 */
+export interface EnemyDef { cls: string; lv: number; x: number; y: number; wps: string[]; ai: 'charge' | 'hold' | 'guard'; boss?: string; prefix?: string }
 export interface Line { who: string; text: string }
 export type Tile = [number, number];
 /**
@@ -219,7 +223,10 @@ export interface Chapter {
   title: string; map: string[];
   /** 必ず出撃する仲間（新規加入・物語上の必須メンバー）。guest は護衛対象など：倒れると敗北、次章へ持ち越さない。 */
   players: { id: string; x: number; y: number; guest?: boolean }[];
-  /** 名簿から自動で出撃させる残りの枠（名簿順。離脱者は除く）。sortie = 出撃の上限（players を含む）。 */
+  /**
+   * 名簿から出撃させる残りの枠の配置。sortie = 出撃の上限（players を含み、guest は数えない）。
+   * 名簿の仲間が残り枠より多いときは出撃準備の画面で選ぶ（少なければ名簿順で自動）。
+   */
   slots?: { x: number; y: number }[]; sortie?: number;
   enemies: EnemyDef[];
   win: WinCond; lose?: LoseCond; reinforce?: Reinforce[];
@@ -233,6 +240,10 @@ export const ENEMY_BASE: Record<string, Stats> = {
   archer: S(16, 4, 0, 4, 3, 1, 2, 0),
   knight: S(22, 6, 0, 3, 1, 2, 8, 1),
   healer: S(15, 0, 4, 3, 4, 2, 1, 4), // 3章以降の「野盗の治癒術師」用（仮）
+  // 2章の貴族の私兵・傭兵隊長用（仮）
+  myrmidon: S(17, 4, 0, 5, 6, 1, 2, 0),
+  cavalier: S(20, 5, 0, 3, 4, 1, 4, 0),
+  mercenary: S(20, 6, 0, 6, 6, 2, 4, 1),
 };
 
 export const CHAPTERS: Chapter[] = [
@@ -285,7 +296,94 @@ export const CHAPTERS: Chapter[] = [
       { who: 'ルーデウス', text: 'ええ。この土地を欲しがっている誰かが。……父さまたち捜索団にも、知らせないと。' },
       { who: 'ルーデウス', text: '（家族を探す。故郷を取り戻す。やることは山ほどある）' },
       { who: 'ルーデウス', text: '（上等だ。今度の人生は、本気で生きると決めたんだから）' },
-      { who: '', text: '第1章　クリア。　続きは制作中です。' },
+      { who: '', text: '第1章　クリア。' },
+    ],
+  },
+  {
+    // 2章（systems.md §6・§7）：ターン耐久8・捜索団員ロッタをゲストとして護衛。出撃5（ゲスト除く）、最初の敵11＋増援4。
+    // マップは依頼により 20×14（§6 の表は 15×10）。敵の約半数は hold / guard。川の東は橋2本でしか渡れない。
+    title: '第2章　捜索団の灯',
+    win: { type: 'survive', turns: 8 }, lose: { units: ['rudeus', 'paul'] },
+    map: [
+      'MMFFFGGGFFFGGWGGGFMM',
+      'MFFGGGGGGFFGGWGGGGFM',
+      'FFGGGFFGGGGGGWGGRRRC',
+      'FGGGGFFGGGGGGWGGRGGG',
+      'GGGGGGGGGGFGGBRRRGGG',
+      'GGGFGGGGGFFGGWGGGFFG',
+      'GGFFGGGGRRRGGWWGGFFG',
+      'RRRRRRRRRCRGGGWGGGGG',
+      'GGGGGGGFRRRGGGWGGGFF',
+      'GGFFGGGFFGGGGGBRRRRR',
+      'GGFGGGGGGGGFGGWGGGGG',
+      'GGGGGFFGGGGFFGWGGMMG',
+      'GGGGGFGGGGGGGGWGGMMM',
+      'GGGGGGGGGGGGGWWGGGMM',
+    ],
+    players: [
+      { id: 'rudeus', x: 1, y: 7 }, { id: 'paul', x: 10, y: 7 }, { id: 'lotta', x: 9, y: 7, guest: true },
+    ],
+    slots: [{ x: 2, y: 8 }, { x: 0, y: 8 }, { x: 1, y: 6 }, { x: 0, y: 6 }, { x: 1, y: 9 }],
+    sortie: 5,
+    enemies: [
+      // 北の森から野盗
+      { cls: 'fighter', lv: 3, x: 7, y: 1, wps: ['ironAxe'], ai: 'charge' },
+      { cls: 'fighter', lv: 2, x: 11, y: 1, wps: ['ironAxe'], ai: 'charge' },
+      { cls: 'soldier', lv: 2, x: 4, y: 2, wps: ['ironLance'], ai: 'charge' },
+      { cls: 'archer', lv: 3, x: 9, y: 3, wps: ['ironBow'], ai: 'hold' },
+      // 南の林から野盗
+      { cls: 'fighter', lv: 2, x: 7, y: 12, wps: ['ironAxe'], ai: 'charge' },
+      { cls: 'soldier', lv: 3, x: 11, y: 12, wps: ['ironLance'], ai: 'hold' },
+      // 川の東から貴族の私兵
+      { cls: 'soldier', lv: 3, x: 16, y: 4, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
+      { cls: 'cavalier', lv: 3, x: 17, y: 7, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
+      { cls: 'myrmidon', lv: 4, x: 16, y: 9, wps: ['ironSword'], ai: 'hold', prefix: '私兵の' },
+      { cls: 'archer', lv: 3, x: 18, y: 10, wps: ['ironBow'], ai: 'hold', prefix: '私兵の' },
+      { cls: 'mercenary', lv: 7, x: 19, y: 2, wps: ['steelSword'], ai: 'guard', boss: '傭兵隊長ドルガン' },
+    ],
+    reinforce: [
+      { turn: 3, units: [
+        { cls: 'fighter', lv: 3, x: 6, y: 0, wps: ['ironAxe'], ai: 'charge' },
+        { cls: 'soldier', lv: 3, x: 11, y: 0, wps: ['ironLance'], ai: 'charge' },
+      ] },
+      { turn: 5, units: [
+        { cls: 'cavalier', lv: 4, x: 19, y: 9, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
+        { cls: 'soldier', lv: 4, x: 19, y: 7, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
+      ] },
+    ],
+    intro: [
+      { who: '', text: 'ギレーヌの案内で、捜索団が拠点にしている村跡へ向かう途中。丘の向こうで角笛が鳴った。' },
+      { who: 'ルイジェルド', text: '村跡が囲まれている。野盗と……揃いの鎧を着た兵だ。' },
+      { who: 'ギレーヌ', text: 'あの旗は捜索団のものだ。砦にいるのは――' },
+      { who: 'パウロ', text: 'ロッタ、砦から出るな！ 怪我人の手当てを続けろ！ ……くそ、きりがねえ。' },
+      { who: 'ルーデウス', text: '……父さま？' },
+      { who: 'パウロ', text: 'あ？ なんだお前……いや、その目つき。……ルディ、なのか？' },
+      { who: 'ルーデウス', text: 'ええ。三年ぶりです、父さま。' },
+      { who: 'パウロ', text: '三年だぞ！ 三年も便りひとつよこさないで、どこをほっつき歩いてた！' },
+      { who: 'ルーデウス', text: '魔大陸から歩いて帰ってきたんです！ そっちこそ、捜索団ごと袋のねずみじゃないですか！' },
+      { who: 'エリス', text: '親子げんかは後にしなさい！ 敵が来るわよ！' },
+      { who: '傭兵隊長ドルガン', text: '涙の再会か、結構なこった。まとめて片づけろ！ この土地は伯爵さまがお買い上げだ！' },
+      { who: 'パウロ', text: '……ちっ。ルディ、話は終わってねえからな。日が沈むまで粘れば、あいつらは引く。' },
+      { who: 'ルーデウス', text: '望むところです。ロッタさんと怪我人は、僕たちが守ります。' },
+      { who: 'ルーデウス', text: '（言いたいことは山ほどある。でも、死なせたら一言も言えなくなる）' },
+    ],
+    outro: [
+      { who: '', text: '日が傾くころ、傭兵たちは旗を巻いて引きあげていった。' },
+      { who: 'ロッタ', text: '団長、怪我人は全員無事です。……あの魔術師さんたちのおかげですね。' },
+      { who: 'パウロ', text: 'さっきの岩の魔術。俺の背中を狙った槍を、きっちり弾いてたな。' },
+      { who: 'ルーデウス', text: '父さまこそ。僕の前に出た剣士を、二人まとめて。腕はなまってないんですね。' },
+      { who: 'パウロ', text: '当たり前だ。……なあルディ。三年ぶん、言うことを考えてたんだ。説教も、謝るのも。' },
+      { who: 'パウロ', text: '……お前の顔を見たら、全部忘れた。' },
+      { who: 'ルーデウス', text: '奇遇ですね。僕も道中ずっと練習してたんですけど、きれいに飛びました。' },
+      { who: '', text: '二人の声が、ぴたりと重なった。「――ごめん」' },
+      { who: 'パウロ', text: '……おい。今のは俺が先だったろ。' },
+      { who: 'ルーデウス', text: 'いえ、僕のほうが半拍早かったです。' },
+      { who: 'エリス', text: 'どっちでもいいわよ！ ……もう、そういうところがそっくりなんだから。' },
+      { who: 'ギレーヌ', text: '三年たっても変わらんな、この親子は。' },
+      { who: 'パウロ', text: 'よし、今夜は飲むぞ。三年ぶんだ。' },
+      { who: 'ルーデウス', text: '僕は水でいいです。……でも、隣には座りますよ。' },
+      { who: 'ルイジェルド', text: '捕らえた傭兵が吐いた。雇い主はアスラの貴族、この一帯を丸ごと狙っているそうだ。' },
+      { who: '', text: '第2章　クリア。' },
     ],
   },
 ];
