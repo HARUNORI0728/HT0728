@@ -1,11 +1,13 @@
 // Static game data: weapons, classes, terrain, characters, chapters.
 
 export interface Stats { hp: number; str: number; mag: number; skl: number; spd: number; lck: number; def: number; res: number }
-export type WType = 'sword' | 'lance' | 'axe' | 'bow' | 'anima' | 'light' | 'dark';
+/** fang = 獣族の固有攻撃（武器欄なし）。staff = 回復の杖（攻撃・反撃には使わない）。 */
+export type WType = 'sword' | 'lance' | 'axe' | 'bow' | 'anima' | 'light' | 'dark' | 'fang' | 'staff';
 export type MoveType = 'foot' | 'armor' | 'horse' | 'fly';
 export type Team = 'blue' | 'red';
 
-export interface Weapon { name: string; type: WType; mt: number; hit: number; crit: number; rng: [number, number] }
+/** heal = 杖の回復値（staff のみ）。 */
+export interface Weapon { name: string; type: WType; mt: number; hit: number; crit: number; rng: [number, number]; heal?: number }
 /**
  * tier 1 = base class, tier 2 = promoted. wtypes = weapon types the class may use.
  * bonus = stats added on promotion into this class; crit = class crit bonus; gift = weapon granted on promotion
@@ -34,11 +36,21 @@ export const WEAPONS: Record<string, Weapon> = {
   wind: { name: 'ウィンド', type: 'anima', mt: 3, hit: 90, crit: 5, rng: [1, 2] },
   fire: { name: 'ファイアー', type: 'anima', mt: 5, hit: 85, crit: 0, rng: [1, 2] },
   lightning: { name: 'ライトニング', type: 'light', mt: 4, hit: 95, crit: 5, rng: [1, 2] },
+  // ペルギウス専用の理魔術（systems.md §4。名前は仮）。「章ごと8回」の回数制は未実装（所持品・回数制の作業で入れる）。
+  summon: { name: '召喚術', type: 'anima', mt: 9, hit: 85, crit: 0, rng: [1, 3] },
+  // 獣族の牙爪：全員共通の仮想武器。威力は logic.ts fangMight() が Lv から足す。wps には入れない。
+  fang: { name: '牙爪', type: 'fang', mt: 0, hit: 90, crit: 10, rng: [1, 1] },
+  // 杖（systems.md §1）。名称は仮（原作の呪文名は要確認）。遠隔治癒の「章ごと3回」は未実装。結界の杖は未実装（実装メモ参照）。
+  healStaff: { name: '初級治癒の杖', type: 'staff', mt: 0, hit: 0, crit: 0, rng: [1, 1], heal: 10 },
+  midHealStaff: { name: '中級治癒の杖', type: 'staff', mt: 0, hit: 0, crit: 0, rng: [1, 1], heal: 18 },
+  farHealStaff: { name: '遠隔治癒の杖', type: 'staff', mt: 0, hit: 0, crit: 0, rng: [1, 3], heal: 10 },
 };
 export const MAGIC: WType[] = ['anima', 'light', 'dark'];
 /** key beats value */
 export const TRIANGLE: Partial<Record<WType, WType>> = { sword: 'axe', axe: 'lance', lance: 'sword', anima: 'light', light: 'dark', dark: 'anima' };
-export const WTYPE_NAMES: Record<WType, string> = { sword: '剣', lance: '槍', axe: '斧', bow: '弓', anima: '理', light: '光', dark: '闇' };
+export const WTYPE_NAMES: Record<WType, string> = { sword: '剣', lance: '槍', axe: '斧', bow: '弓', anima: '理', light: '光', dark: '闇', fang: '牙爪', staff: '杖' };
+/** 牙爪の威力 = min(FANG_MAX, FANG_BASE + floor(実効Lv / 2))（systems.md §2）。 */
+export const FANG_BASE = 3, FANG_MAX = 12;
 
 const B = (hp: number, str: number, mag: number, skl: number, spd: number, lck: number, def: number, res: number): Partial<Stats> => ({ hp, str, mag, skl, spd, lck, def, res });
 
@@ -58,11 +70,15 @@ export const CLASSES: Record<string, ClassDef> = {
   mercenary: { name: '傭兵', mov: 5, mtype: 'foot', sprite: 'sword', tier: 1, wtypes: ['sword'] },
   waterMage: { name: '水王級魔術師', mov: 5, mtype: 'foot', sprite: 'mage', tier: 1, wtypes: ['anima'] },
   shieldFencer: { name: '盾剣士', mov: 5, mtype: 'foot', sprite: 'sword', tier: 1, wtypes: ['sword'] },
-  healer: { name: '治癒術師', mov: 5, mtype: 'foot', sprite: 'mage', tier: 1, wtypes: ['anima', 'light'] },
+  healer: { name: '治癒術師', mov: 5, mtype: 'foot', sprite: 'healer', tier: 1, wtypes: ['anima', 'light', 'staff'] }, // 敵用（シルフィエットは魔導護衛へ）
   horseKnight: { name: '騎士', mov: 7, mtype: 'horse', sprite: 'lancer', tier: 1, wtypes: ['sword', 'lance'] },
   strongman: { name: '重装', mov: 4, mtype: 'armor', sprite: 'armor', tier: 1, wtypes: ['axe'] },
-  priest: { name: '神撃術師', mov: 5, mtype: 'foot', sprite: 'mage', tier: 1, wtypes: ['light'] },
-  thief: { name: '盗賊', mov: 6, mtype: 'foot', sprite: 'sword', tier: 1, wtypes: ['sword'] },
+  priest: { name: '神撃術師', mov: 5, mtype: 'foot', sprite: 'priest', tier: 1, wtypes: ['light', 'staff'] },
+  thief: { name: '盗賊', mov: 6, mtype: 'foot', sprite: 'thief', tier: 1, wtypes: ['fang'] },
+  // 打合せ後の新職（world.md §3.1）。名前はすべて仮名。移動力は既存の歩兵に合わせた仮置き。
+  magicGuard: { name: '魔導護衛', mov: 5, mtype: 'foot', sprite: 'healer', tier: 1, wtypes: ['anima', 'light', 'staff'] },
+  princess: { name: '王女', mov: 5, mtype: 'foot', sprite: 'sword', tier: 1, wtypes: ['sword'] },
+  beastWarrior: { name: '獣戦士', mov: 6, mtype: 'foot', sprite: 'beast', tier: 1, wtypes: ['fang'] },
   // ---- promoted classes (tier 2) ----
   archmage: { name: '大魔術師', mov: 6, mtype: 'foot', sprite: 'mage', tier: 2, wtypes: ['anima', 'light'], bonus: B(3, 0, 3, 1, 1, 0, 1, 3), gift: 'lightning', desc: '魔力と魔防が伸びる。光魔術も扱える。' },
   magicArmor: { name: '魔導鎧', mov: 5, mtype: 'armor', sprite: 'armor', tier: 2, wtypes: ['anima', 'axe'], bonus: B(6, 4, 1, 0, 0, 0, 5, 1), gift: 'ironAxe', desc: '魔力で動く鎧をまとう。重く硬い。斧も振るえる。' },
@@ -72,19 +88,27 @@ export const CLASSES: Record<string, ClassDef> = {
   swordEmperor: { name: '剣帝', mov: 7, mtype: 'foot', sprite: 'sword', tier: 2, wtypes: ['sword'], bonus: B(4, 2, 0, 2, 2, 0, 2, 1), crit: 10, desc: '剣王のさらに上。必殺+10。' },
   swordMaster: { name: '剣豪', mov: 6, mtype: 'foot', sprite: 'sword', tier: 2, wtypes: ['sword', 'axe'], bonus: B(5, 2, 0, 2, 2, 0, 2, 1), gift: 'ironAxe', desc: '三流派をこなす万能の剣士。' },
   waterEmperor: { name: '水帝級魔術師', mov: 5, mtype: 'foot', sprite: 'mage', tier: 2, wtypes: ['anima'], bonus: B(3, 0, 4, 2, 1, 0, 1, 3), desc: '水魔術を極める。魔力が大きく伸びる。' },
-  sage: { name: '賢者', mov: 5, mtype: 'foot', sprite: 'mage', tier: 2, wtypes: ['anima', 'light'], bonus: B(4, 0, 2, 1, 1, 0, 2, 4), gift: 'lightning', desc: '攻撃と治癒の両方に通じる。魔防が高い。' },
+  sage: { name: '賢者', mov: 5, mtype: 'foot', sprite: 'mage', tier: 2, wtypes: ['anima', 'light', 'staff'], bonus: B(4, 0, 2, 1, 1, 0, 2, 4), gift: 'lightning', desc: '攻撃と治癒の両方に通じる。魔防が高い。' },
   guardian: { name: '守護剣士', mov: 6, mtype: 'foot', sprite: 'sword', tier: 2, wtypes: ['sword', 'lance'], bonus: B(5, 2, 0, 1, 2, 0, 3, 2), gift: 'ironLance', desc: '仲間を守る盾役。槍も扱える。' },
-  saintHealer: { name: '聖級治癒術師', mov: 5, mtype: 'foot', sprite: 'mage', tier: 2, wtypes: ['anima', 'light'], bonus: B(4, 0, 2, 1, 1, 0, 1, 4), gift: 'lightning', desc: '治癒魔術の聖級。魔防が高い。' },
+  saintHealer: { name: '聖級治癒術師', mov: 5, mtype: 'foot', sprite: 'healer', tier: 2, wtypes: ['anima', 'light', 'staff'], bonus: B(4, 0, 2, 1, 1, 0, 1, 4), gift: 'lightning', desc: '治癒魔術の聖級。魔防が高い。' },
   paladin: { name: '聖騎士', mov: 8, mtype: 'horse', sprite: 'lancer', tier: 2, wtypes: ['sword', 'lance', 'axe'], bonus: B(5, 2, 0, 1, 1, 0, 2, 2), gift: 'ironAxe', desc: '騎馬の上級職。剣・槍・斧を使う。' },
   sniper: { name: '狙撃手', mov: 6, mtype: 'foot', sprite: 'archer', tier: 2, wtypes: ['bow'], bonus: B(4, 2, 0, 3, 1, 0, 2, 1), crit: 10, desc: '弓を極める。必殺+10。' },
   bowRider: { name: '弓騎兵', mov: 8, mtype: 'horse', sprite: 'archer', tier: 2, wtypes: ['bow', 'sword'], bonus: B(4, 1, 0, 2, 2, 0, 1, 1), gift: 'ironSword', desc: '馬上から弓を射る。剣も使う。' },
   colossus: { name: '剛力将', mov: 5, mtype: 'armor', sprite: 'armor', tier: 2, wtypes: ['axe', 'lance'], bonus: B(6, 3, 0, 1, 0, 0, 3, 2), gift: 'ironLance', desc: '怪力と装甲。槍も扱える。' },
-  highPriest: { name: '大司祭', mov: 6, mtype: 'foot', sprite: 'mage', tier: 2, wtypes: ['light', 'anima'], bonus: B(4, 0, 2, 1, 1, 0, 1, 4), gift: 'wind', desc: '神撃の上級職。理魔術も使う。' },
+  highPriest: { name: '大司祭', mov: 6, mtype: 'foot', sprite: 'priest', tier: 2, wtypes: ['light', 'anima', 'staff'], bonus: B(4, 0, 2, 1, 1, 0, 1, 4), gift: 'wind', desc: '神撃の上級職。理魔術も使う。' },
   assassin: { name: '暗殺者', mov: 7, mtype: 'foot', sprite: 'sword', tier: 2, wtypes: ['sword'], bonus: B(3, 1, 0, 3, 2, 0, 1, 1), crit: 10, desc: '急所を突く。必殺+10。' },
   rogue: { name: '義賊', mov: 7, mtype: 'foot', sprite: 'archer', tier: 2, wtypes: ['sword', 'bow'], bonus: B(4, 1, 0, 2, 2, 2, 1, 1), gift: 'ironBow', desc: '身軽な万能職。弓も使う。' },
   halberdier: { name: '重槍兵', mov: 6, mtype: 'foot', sprite: 'lancer', tier: 2, wtypes: ['lance'], bonus: B(5, 2, 0, 1, 1, 0, 3, 1), desc: '槍兵の上級職。' },
   berserker: { name: '狂戦士', mov: 6, mtype: 'foot', sprite: 'axe', tier: 2, wtypes: ['axe'], bonus: B(6, 3, 0, 1, 2, 0, 1, 0), crit: 15, desc: '必殺+15。' },
   warrior: { name: '戦士長', mov: 6, mtype: 'foot', sprite: 'axe', tier: 2, wtypes: ['axe', 'bow'], bonus: B(6, 2, 0, 1, 1, 0, 2, 1), gift: 'ironBow', desc: '斧と弓を使う。' },
+  // ---- 打合せ後の新上級職（仮。候補・名前・数値はクラスチェンジ担当と要調整） ----
+  // 魔導護衛の前衛寄りの上級職（もう一方の候補は賢者）。
+  guardMage: { name: '守護魔導士', mov: 6, mtype: 'foot', sprite: 'healer', tier: 2, wtypes: ['anima', 'light', 'staff'], bonus: B(5, 1, 2, 1, 1, 0, 3, 2), gift: 'lightning', desc: '仲間の前に立つ魔導護衛の上級職。HPと守備が伸びる。' },
+  // 牙爪系の上級職。gift は持たない（牙爪は武器欄を使わない）。
+  shadowFang: { name: '影牙', mov: 7, mtype: 'foot', sprite: 'thief', tier: 2, wtypes: ['fang'], bonus: B(3, 1, 0, 3, 3, 1, 1, 1), crit: 10, desc: '身軽さを極めた牙爪の使い手。必殺+10。' },
+  fierceFang: { name: '猛牙', mov: 7, mtype: 'foot', sprite: 'beast', tier: 2, wtypes: ['fang'], bonus: B(5, 3, 0, 1, 2, 0, 2, 0), desc: '攻めに徹する牙爪の使い手。力とHPが伸びる。' },
+  // ペルギウス専用。最初から上級職でクラスチェンジなし（PROMOS に載せない）。
+  summoner: { name: '召喚術師', mov: 5, mtype: 'foot', sprite: 'priest', tier: 2, wtypes: ['anima'], desc: '使い魔を呼ぶ甲龍王の術。上級職固定。' },
   general: { name: '将軍', mov: 5, mtype: 'armor', sprite: 'armor', tier: 2, wtypes: ['lance', 'sword', 'axe'], bonus: B(5, 2, 0, 1, 1, 0, 3, 3), gift: 'ironSword', desc: '重騎士の上級職。' },
 };
 
@@ -107,11 +131,13 @@ export const PROMOS: Record<string, Promo[]> = {
   waterMage: P('waterEmperor', 'sage'),
   shieldFencer: P('guardian'),
   healer: P('saintHealer', 'sage'),
+  magicGuard: P('sage', 'guardMage'),
+  beastWarrior: P('fierceFang'),
   horseKnight: P('paladin'),
   archer: P('sniper', 'bowRider'),
   strongman: P('colossus'),
   priest: P('highPriest'),
-  thief: P('assassin', 'rogue'),
+  thief: P('shadowFang'), // 暗殺者・義賊は剣・弓なので牙爪の盗賊からは外した（敵の剣盗賊を作るときに使う）
   soldier: P('halberdier'),
   fighter: P('berserker', 'warrior'),
   knight: P('general'),
@@ -147,14 +173,56 @@ export const CHARS: Record<string, CharDef> = {
   eris: { id: 'eris', name: 'エリス', cls: 'myrmidon', lv: 1, st: S(21, 8, 0, 8, 10, 5, 5, 2), gr: S(75, 60, 5, 55, 65, 40, 35, 20), wps: ['ironSword'], hair: '#c22a2a' },
   ruijerd: { id: 'ruijerd', name: 'ルイジェルド', cls: 'superd', lv: 8, st: S(30, 11, 2, 12, 10, 4, 9, 6), gr: S(60, 35, 10, 40, 35, 20, 35, 30), wps: ['whiteSpear'], hair: '#2f9a63' },
   ghislaine: { id: 'ghislaine', name: 'ギレーヌ', cls: 'swordKing', lv: 10, st: S(32, 13, 0, 12, 12, 5, 8, 3), gr: S(65, 40, 0, 40, 40, 25, 30, 15), wps: ['steelSword'], hair: '#b9b4ac' },
+  // ---- 2章以降に加入（能力値・成長率はすべて仮。加入Lvは systems.md §6 の「味方の平均Lv」、年長者は +2〜3） ----
+  // 2章（平均Lv3）。年長者なので成長率は低め。
+  paul: { id: 'paul', name: 'パウロ', cls: 'mercenary', lv: 6, st: S(28, 10, 1, 11, 11, 7, 7, 3), gr: S(55, 35, 5, 35, 35, 30, 25, 15), wps: ['ironSword'], hair: '#7a5230' },
+  // 3章（平均Lv4）。
+  roxy: { id: 'roxy', name: 'ロキシー', cls: 'waterMage', lv: 6, st: S(22, 1, 12, 10, 9, 6, 3, 10), gr: S(45, 5, 50, 40, 35, 30, 15, 45), wps: ['waterBall', 'fire'], hair: '#5aa0e0' },
+  elinalise: { id: 'elinalise', name: 'エリナリーゼ', cls: 'shieldFencer', lv: 7, st: S(26, 8, 2, 11, 13, 10, 8, 6), gr: S(50, 30, 10, 35, 40, 40, 30, 25), wps: ['rapier'], hair: '#f0d27a' },
+  // 4章（平均Lv6）。シルフィエットは万能型：魔力・速さ高め、HP・守備は中程度。
+  sylphiette: { id: 'sylphiette', name: 'シルフィエット', cls: 'magicGuard', lv: 6, st: S(25, 4, 9, 9, 11, 7, 6, 8), gr: S(65, 25, 55, 45, 55, 45, 35, 40), wps: ['wind', 'healStaff'], hair: '#eeeef4' },
+  luke: { id: 'luke', name: 'ルーク', cls: 'horseKnight', lv: 6, st: S(26, 9, 0, 8, 9, 6, 7, 3), gr: S(65, 45, 5, 40, 40, 35, 35, 20), wps: ['ironSword', 'ironLance'], hair: '#8a6440' },
+  // 打たれ弱い指揮役。
+  ariel: { id: 'ariel', name: 'アリエル', cls: 'princess', lv: 6, st: S(20, 7, 4, 9, 10, 10, 4, 7), gr: S(50, 35, 25, 50, 50, 60, 20, 40), wps: ['rapier'], hair: '#f2c94c' },
+  // 5章（平均Lv7）。
+  sara: { id: 'sara', name: 'サラ', cls: 'archer', lv: 7, st: S(25, 9, 0, 11, 11, 6, 6, 3), gr: S(60, 45, 5, 55, 50, 35, 25, 20), wps: ['ironBow'], hair: '#e6cf7a' },
+  // 6章（平均Lv9）。ザノバは力と守備が突出、速さは最低。
+  zanoba: { id: 'zanoba', name: 'ザノバ', cls: 'strongman', lv: 9, st: S(36, 15, 0, 7, 2, 5, 14, 2), gr: S(85, 65, 0, 30, 10, 30, 55, 10), wps: ['ironAxe'], hair: '#b8956a' },
+  cliff: { id: 'cliff', name: 'クリフ', cls: 'priest', lv: 9, st: S(23, 2, 12, 11, 9, 8, 4, 12), gr: S(50, 10, 55, 45, 40, 40, 20, 50), wps: ['lightning', 'healStaff'], hair: '#4a3426' },
+  // 7章（平均Lv10）。獣族の格闘は武器を持たない（wps: []、牙爪で戦う）。リニアは回避型、プルセナは攻め寄り。
+  linia: { id: 'linia', name: 'リニア', cls: 'thief', lv: 10, st: S(28, 10, 0, 13, 16, 12, 6, 4), gr: S(60, 40, 5, 50, 65, 50, 25, 20), wps: [], hair: '#c9a46a' },
+  // プルセナの外見・得意分野は原作要確認。髪色は仮。
+  pursena: { id: 'pursena', name: 'プルセナ', cls: 'beastWarrior', lv: 10, st: S(30, 12, 0, 12, 14, 7, 7, 3), gr: S(65, 50, 5, 45, 55, 35, 30, 15), wps: [], hair: '#9a8a7a' },
+  // 8章（平均Lv12）。受けて返す反撃型。種族・階位・外見は原作要確認。髪色は仮。
+  isolde: { id: 'isolde', name: 'イゾルテ', cls: 'myrmidon', lv: 12, st: S(32, 13, 1, 16, 14, 8, 10, 6), gr: S(60, 40, 10, 55, 45, 35, 35, 25), wps: ['steelSword'], hair: '#6a7a9a' },
+  // 9章。上級職固定（上級Lv4＝実効Lv14）。成長率は全体に低い。
+  perugius: { id: 'perugius', name: 'ペルギウス', cls: 'summoner', lv: 4, st: S(38, 8, 20, 18, 14, 12, 12, 18), gr: S(35, 15, 30, 25, 20, 20, 20, 30), wps: ['summon'], hair: '#d8dce4' },
 };
 
 export interface EnemyDef { cls: string; lv: number; x: number; y: number; wps: string[]; ai: 'charge' | 'hold' | 'guard'; boss?: string }
 export interface Line { who: string; text: string }
+export type Tile = [number, number];
+/**
+ * 勝利条件（systems.md §7）。rout = 全滅、boss = boss フラグの敵をすべて撃破、seize = ルーデウスが tiles で制圧、
+ * escape = 生存者全員が tiles から離脱、defend = turns ターン守り切る（敵が lose.tile に乗ると敗北）、
+ * survive = turns ターン目の敵軍フェイズを終えたら勝利。
+ */
+export type WinCond =
+  | { type: 'rout' } | { type: 'boss' }
+  | { type: 'seize'; tiles: Tile[] } | { type: 'escape'; tiles: Tile[] }
+  | { type: 'defend'; turns: number } | { type: 'survive'; turns: number };
+/** 敗北条件：units の誰かが倒れる（ルーデウスは常に含む）、または敵が tile に乗る（defend 用）。 */
+export interface LoseCond { units: string[]; tile?: Tile }
+/** 指定ターンの敵軍フェイズ開始時に出現。出現マスが埋まっていれば次のターンに持ち越す。 */
+export interface Reinforce { turn: number; units: EnemyDef[] }
 export interface Chapter {
-  title: string; goal: string; map: string[];
-  players: { id: string; x: number; y: number }[];
+  title: string; map: string[];
+  /** 必ず出撃する仲間（新規加入・物語上の必須メンバー）。guest は護衛対象など：倒れると敗北、次章へ持ち越さない。 */
+  players: { id: string; x: number; y: number; guest?: boolean }[];
+  /** 名簿から自動で出撃させる残りの枠（名簿順。離脱者は除く）。sortie = 出撃の上限（players を含む）。 */
+  slots?: { x: number; y: number }[]; sortie?: number;
   enemies: EnemyDef[];
+  win: WinCond; lose?: LoseCond; reinforce?: Reinforce[];
   intro: Line[]; outro: Line[];
 }
 
@@ -164,12 +232,13 @@ export const ENEMY_BASE: Record<string, Stats> = {
   fighter: S(19, 4, 0, 2, 3, 0, 2, 0),
   archer: S(16, 4, 0, 4, 3, 1, 2, 0),
   knight: S(22, 6, 0, 3, 1, 2, 8, 1),
+  healer: S(15, 0, 4, 3, 4, 2, 1, 4), // 3章以降の「野盗の治癒術師」用（仮）
 };
 
 export const CHAPTERS: Chapter[] = [
   {
     title: '第1章　帰郷',
-    goal: '勝利条件：敵の全滅　／　敗北条件：ルーデウスまたはエリスの敗走',
+    win: { type: 'rout' }, lose: { units: ['rudeus', 'eris'] },
     map: [
       'GGGFFGGGGMMMGGG',
       'GGFFGGRRRGMMGGC',
@@ -232,12 +301,16 @@ export const CAST: Record<string, { name: string; cls: string }> = {
   paul: { name: 'パウロ', cls: 'mercenary' },
   roxy: { name: 'ロキシー', cls: 'waterMage' },
   elinalise: { name: 'エリナリーゼ', cls: 'shieldFencer' },
-  sylphiette: { name: 'シルフィエット', cls: 'healer' },
+  sylphiette: { name: 'シルフィエット', cls: 'magicGuard' },
   luke: { name: 'ルーク', cls: 'horseKnight' },
   sara: { name: 'サラ', cls: 'archer' },
   zanoba: { name: 'ザノバ', cls: 'strongman' },
   cliff: { name: 'クリフ', cls: 'priest' },
   linia: { name: 'リニア', cls: 'thief' },
+  ariel: { name: 'アリエル', cls: 'princess' },
+  pursena: { name: 'プルセナ', cls: 'beastWarrior' },
+  isolde: { name: 'イゾルテ', cls: 'myrmidon' },
+  perugius: { name: 'ペルギウス', cls: 'summoner' },
 };
 
 export type SupportRank = 'C' | 'B' | 'A' | 'S';
@@ -318,32 +391,61 @@ const TALK_ERIS_RUIJERD_C: Line[] = [
   { who: 'ルイジェルド', text: 'そうだ。焦らずにな。' },
 ];
 
-/** world.md ch.4 — every pair. Order = order support talks play after a chapter. */
+/** world.md §4 — 全43組（S 9・A 34）。並び順 = 章クリア後に支援会話を再生する順。 */
 export const SUPPORTS: SupportPair[] = [
+  // 会話本文のある組（第1章の4人）
   pair('rudeus', 'eris', 'S', '', { C: TALK_RUDEUS_ERIS_C }, 10),
   pair('rudeus', 'ruijerd', 'A', '', { C: TALK_RUDEUS_RUIJERD_C }),
   pair('rudeus', 'ghislaine', 'A', '', { C: TALK_RUDEUS_GHISLAINE_C }),
   pair('eris', 'ghislaine', 'A', '師弟', { C: TALK_ERIS_GHISLAINE_C }, 10),
   pair('eris', 'ruijerd', 'A', '', { C: TALK_ERIS_RUIJERD_C }),
-  pair('rudeus', 'sylphiette', 'S'),
-  pair('rudeus', 'roxy', 'S'),
+  // ルーデウス（15組。うちSは結婚候補7人）
+  pair('rudeus', 'sylphiette', 'S', '幼なじみ', {}, 10),
+  pair('rudeus', 'roxy', 'S', '師弟', {}, 10),
   pair('rudeus', 'sara', 'S', 'IF'),
-  pair('rudeus', 'paul', 'A', '親子'),
+  pair('rudeus', 'ariel', 'S', 'IF'),
+  pair('rudeus', 'linia', 'S', 'IF', {}, 30),
+  pair('rudeus', 'pursena', 'S', 'IF', {}, 30),
+  pair('rudeus', 'paul', 'A', '親子', {}, 10),
   pair('rudeus', 'zanoba', 'A', '師弟'),
   pair('rudeus', 'cliff', 'A'),
   pair('rudeus', 'luke', 'A'),
-  pair('rudeus', 'linia', 'A'),
+  pair('rudeus', 'elinalise', 'A'),
+  pair('rudeus', 'perugius', 'A'),
+  // エリス
   pair('eris', 'roxy', 'A'),
   pair('eris', 'sylphiette', 'A'),
+  pair('eris', 'ariel', 'A', 'IF'),
+  pair('eris', 'isolde', 'A', '剣神流と水神流'),
+  // ロキシー
   pair('roxy', 'sylphiette', 'A'),
   pair('roxy', 'elinalise', 'A'),
   pair('roxy', 'paul', 'A', '元仲間'),
-  pair('cliff', 'elinalise', 'S'),
+  // シルフィエット
+  pair('sylphiette', 'ariel', 'A', '主従', {}, 10),
+  pair('luke', 'sylphiette', 'A', '元同僚'),
+  pair('sylphiette', 'elinalise', 'A', '血縁'),
+  pair('sylphiette', 'paul', 'A', '幼いころの顔なじみ'),
+  // アリエル
+  pair('ariel', 'luke', 'A', '主従'),
+  pair('ariel', 'perugius', 'A'),
+  // パウロ
   pair('paul', 'elinalise', 'A', '元仲間'),
   pair('paul', 'ghislaine', 'A', '元仲間'),
-  pair('luke', 'sara', 'S', 'IF'),
-  pair('luke', 'sylphiette', 'A', '元同僚'),
+  pair('paul', 'isolde', 'A'),
+  // エリナリーゼ
+  pair('cliff', 'elinalise', 'S'), // 未決：打合せで扱いが決まっていない。現状維持（S可）
+  // ギレーヌ
+  pair('ghislaine', 'pursena', 'A', '獣族同士'),
+  pair('ghislaine', 'isolde', 'A'),
+  // ルーク
+  pair('luke', 'sara', 'S', 'IF'), // 未決：打合せで扱いが決まっていない。現状維持（S可）
+  // リニア
+  pair('linia', 'pursena', 'A', '相棒', {}, 10),
   pair('zanoba', 'linia', 'A'),
-  pair('zanoba', 'cliff', 'A'),
   pair('sara', 'linia', 'A'),
+  // プルセナ・ザノバ・ペルギウス
+  pair('pursena', 'cliff', 'A'),
+  pair('zanoba', 'cliff', 'A'),
+  pair('perugius', 'ruijerd', 'A', 'ラプラス戦役'), // 経緯は原作要確認
 ];

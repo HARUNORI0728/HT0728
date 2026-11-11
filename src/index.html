@@ -109,6 +109,14 @@
   .row { display: flex; gap: 8px; flex-wrap: wrap; }
   .row button, .campBtns button { flex: 1 1 140px; }
   .campBtns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  #title .btns.wide { width: min(360px, 100%); }
+  button.diff { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 8px 12px; }
+  button.diff b { font-weight: normal; color: var(--gold); font-size: 16px; }
+  button.diff small { font-family: var(--text); font-size: 12.5px; color: var(--dim); line-height: 1.5; }
+  .heal { color: var(--heal); }
+  .card.out { border-style: dashed; }
+  .card.out .uhead b { color: var(--dim); }
+  .outTag { color: var(--foe); font-style: normal; font-size: 12.5px; }
 </style>
 
 <main id="app">
@@ -148,9 +156,19 @@
   <h1>フィットア奪還戦記</h1>
   <p>『無職転生』の非公式ファンゲーム（個人で遊ぶ用）。消えた故郷を、仲間と取り戻す。</p>
   <p id="titleMsg"></p>
-  <div class="btns">
+  <div id="titleMain" class="btns">
     <button id="btnNew" class="primary">はじめから</button>
     <button id="btnLoad" hidden>つづきから</button>
+  </div>
+  <div id="diffPick" class="btns wide" hidden>
+    <button data-diff="casual" class="diff"><b>カジュアル</b><small>倒れた仲間は撤退し、次の章で復帰する。敗北したら直前の自軍フェイズからやり直せる。</small></button>
+    <button data-diff="classic" class="diff"><b>クラシック</b><small>倒れた仲間は戦線離脱し、以後は出撃できない。敗北すると章の最初から。</small></button>
+    <button id="btnDiffBack">もどる</button>
+  </div>
+  <div id="defeat" class="btns" hidden>
+    <button id="btnRetryPhase" class="primary">直前の自軍フェイズから</button>
+    <button id="btnRetryChapter">章の最初から</button>
+    <button id="btnDefeatTitle">タイトルへ</button>
   </div>
 </div>
 <!--SCRIPT-->
