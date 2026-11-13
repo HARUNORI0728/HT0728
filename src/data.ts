@@ -1,4 +1,5 @@
 // Static game data: weapons, classes, terrain, characters, chapters.
+import type { SceneId } from './script/scenes';
 
 export interface Stats { hp: number; str: number; mag: number; skl: number; spd: number; lck: number; def: number; res: number }
 /** fang = 獣族の固有攻撃（武器欄なし）。staff = 回復の杖（攻撃・反撃には使わない）。 */
@@ -224,13 +225,17 @@ export const CHARS: Record<string, CharDef> = {
   lotta: { id: 'lotta', name: 'ロッタ', cls: 'healer', lv: 3, st: S(22, 1, 6, 5, 6, 6, 4, 6), gr: S(50, 5, 45, 40, 40, 40, 20, 40), wps: ['healStaff'], hair: '#a0643c' },
 };
 
-/** prefix = 一般兵の名前の頭（省略時「野盗の」。例：「私兵の」→「私兵の槍兵」）。 */
-export interface EnemyDef { cls: string; lv: number; x: number; y: number; wps: string[]; ai: 'charge' | 'hold' | 'guard'; boss?: string; prefix?: string }
+/**
+ * prefix = 一般兵の名前の頭（省略時「野盗の」。例：「私兵の」→「私兵の槍兵」）。
+ * defeat = 倒されたときの扱い（表示だけ。盤面から消えるのは同じ）：captured = 捕縛、retreat = 撤退。省略時は通常の撃破。
+ */
+export interface EnemyDef { cls: string; lv: number; x: number; y: number; wps: string[]; ai: 'charge' | 'hold' | 'guard'; boss?: string; prefix?: string; defeat?: 'captured' | 'retreat' }
 /**
  * One line of a conversation. face = 立ち絵の表情（省略時 normal。その表情の絵が無ければ normal）。
  * pos = 立ち絵を出す側（省略時は自動：すでに出ていればその側、なければ空いている側）。
+ * art = false：立ち絵を出さない（脚本の表情「-」。立ち絵のない脇役・一般兵）。
  */
-export interface Line { who: string; text: string; face?: 'normal' | 'smile' | 'angry' | 'sad' | 'dere'; pos?: 'left' | 'right' }
+export interface Line { who: string; text: string; face?: 'normal' | 'smile' | 'angry' | 'sad' | 'dere'; pos?: 'left' | 'right'; art?: false }
 /**
  * 話者名・ユニット名 → 立ち絵とマップ用絵の ID（assets/portraits/<ID>_<表情>.png, assets/units/<ID>.png）。
  * 仲間（CHARS / CAST の名前）は自動で引けるので、ここには名前のある敵・ゲスト・NPC を足す。
@@ -238,6 +243,7 @@ export interface Line { who: string; text: string; face?: 'normal' | 'smile' | '
  */
 export const SPEAKER_IDS: Record<string, string> = {
   'ガズ': 'gaz', 'ドルガン': 'dolgan', 'ロッタ': 'lotta',
+  'ナナホシ': 'nanahoshi', // 仲間にはせず会話パートだけに出る（第3章以降）
   'オーベール': 'auber', 'ガル・ファリオン': 'gall', 'ダリウス': 'darius', 'オルステッド': 'orsted',
   '傭兵団長': 'mercboss', '使徒': 'apostle', '迷宮の主': 'labyrinth',
 };
@@ -255,6 +261,24 @@ export type WinCond =
 export interface LoseCond { units: string[]; tile?: Tile }
 /** 指定ターンの敵軍フェイズ開始時に出現。出現マスが埋まっていれば次のターンに持ち越す。 */
 export interface Reinforce { turn: number; units: EnemyDef[] }
+/**
+ * 戦闘中の会話の発生条件（どれも章ごとに一度だけ。発生済みは State.flags の `talk:<場面ID>` に記録してセーブに残る）。
+ * - turn：turn ターン目の phase（blue = 自軍 / red = 敵軍）フェイズ開始時。
+ * - reinforce：章の reinforce[wave] が出現した直後（マスが埋まって持ち越されたら、実際に出たとき）。
+ * - firstFight：仲間 unit（キャラID）が初めて戦闘するとき。仕掛けても反撃でも、戦闘画面の前。
+ * - bossFight：ボス boss（キャラID。SPEAKER_IDS で名前から引く）と初めて戦闘になるとき。どちらが仕掛けても戦闘画面の前。
+ * - bossDefeat：ボス boss を倒したとき。撃破の演出の直後。
+ * - firstHeal：仲間 unit が初めて杖で回復したとき。回復の演出の直後。
+ * 同じ戦闘で重なったら firstFight → bossFight の順。話者が盤面にいない（離脱・未出撃）仲間の台詞は飛ばす。
+ */
+export type TalkWhen =
+  | { type: 'turn'; turn: number; phase: Team }
+  | { type: 'reinforce'; wave: number }
+  | { type: 'firstFight'; unit: string }
+  | { type: 'bossFight'; boss: string }
+  | { type: 'bossDefeat'; boss: string }
+  | { type: 'firstHeal'; unit: string };
+export interface TalkEvent { scene: SceneId; when: TalkWhen }
 export interface Chapter {
   title: string; map: string[];
   /** 必ず出撃する仲間（新規加入・物語上の必須メンバー）。guest は護衛対象など：倒れると敗北、次章へ持ち越さない。 */
@@ -266,7 +290,13 @@ export interface Chapter {
   slots?: { x: number; y: number }[]; sortie?: number;
   enemies: EnemyDef[];
   win: WinCond; lose?: LoseCond; reinforce?: Reinforce[];
-  intro: Line[]; outro: Line[];
+  /**
+   * 会話（場面ID。本文は design/script-*.md → src/script/scenes.ts）。prologue = ニューゲーム時に開幕より前に一度だけ。
+   * intro = 開幕（出撃前）、outro = 終幕（勝利後）、interlude = 幕間（終幕のあと、支援会話と拠点の前）。
+   */
+  prologue?: SceneId; intro: SceneId; outro: SceneId; interlude?: SceneId;
+  /** 戦闘中の会話。 */
+  talks?: TalkEvent[];
 }
 
 /** Base stats for generic enemies at level 1, plus per-level gains. */
@@ -313,28 +343,17 @@ export const CHAPTERS: Chapter[] = [
       { cls: 'soldier', lv: 2, x: 11, y: 3, wps: ['ironLance'], ai: 'hold' },
       { cls: 'fighter', lv: 3, x: 12, y: 3, wps: ['ironAxe'], ai: 'hold' },
       { cls: 'archer', lv: 2, x: 14, y: 3, wps: ['ironBow'], ai: 'guard' },
-      { cls: 'knight', lv: 5, x: 13, y: 2, wps: ['javelin'], ai: 'guard', boss: '野盗頭ガズ' },
+      { cls: 'knight', lv: 5, x: 13, y: 2, wps: ['javelin'], ai: 'guard', boss: '野盗頭ガズ', defeat: 'captured' },
     ],
-    intro: [
-      { who: '', text: '魔大陸から歩きつづけて、三年。' },
-      { who: '', text: 'ようやく帰りついた故郷フィットア領は、見わたすかぎりの草原になっていた。' },
-      { who: 'ルーデウス', text: '……何も、ない。ロアの城壁も、ブエナ村も。', face: 'sad' },
-      { who: 'エリス', text: 'ふん。だったら建て直せばいいじゃない！ ……建て直すのよ。絶対に。', face: 'angry' },
-      { who: 'ルイジェルド', text: '待て。難民キャンプのほうから煙が上がっている。……武器の音だ。' },
-      { who: 'ギレーヌ', text: 'お嬢様！ ルーデウス！ 生きていたか。話は後だ、野盗どもが復興の物資を狙ってきている。', face: 'smile' },
-      { who: 'エリス', text: 'ギレーヌ！ ちょうどいいわ、三年分の修行の成果、見せてあげる！', face: 'smile' },
-      { who: 'ルーデウス', text: '（前の人生なら、布団をかぶって震えていただろうな）', face: 'sad' },
-      { who: 'ルーデウス', text: '（でも今は違う。帰る場所は、自分で守る）――いきます。援護は任せてください。', face: 'angry' },
-    ],
-    outro: [
-      { who: 'ギレーヌ', text: '見事だ。二人とも、強くなったな。', face: 'smile' },
-      { who: 'エリス', text: '当然でしょ！ ……ねえギレーヌ。お祖父様と、お父様たちは？', face: 'sad' },
-      { who: 'ギレーヌ', text: '…………。それも、後で話す。', face: 'sad' },
-      { who: 'ルイジェルド', text: 'ルーデウス。野盗にしては装備が揃いすぎていた。後ろに誰かいるぞ。' },
-      { who: 'ルーデウス', text: 'ええ。この土地を欲しがっている誰かが。……父さまたち捜索団にも、知らせないと。', face: 'angry' },
-      { who: 'ルーデウス', text: '（家族を探す。故郷を取り戻す。やることは山ほどある）' },
-      { who: 'ルーデウス', text: '（上等だ。今度の人生は、本気で生きると決めたんだから）', face: 'smile' },
-      { who: '', text: '第1章　クリア。' },
+    prologue: 'prologue', intro: 'ch1.intro', outro: 'ch1.outro', interlude: 'ch1.interlude',
+    talks: [
+      { scene: 'ch1.battle1', when: { type: 'firstFight', unit: 'eris' } },
+      { scene: 'ch1.battle2', when: { type: 'firstFight', unit: 'ruijerd' } },
+      { scene: 'ch1.battle3', when: { type: 'firstFight', unit: 'ghislaine' } },
+      { scene: 'ch1.battle4', when: { type: 'turn', turn: 2, phase: 'blue' } },
+      { scene: 'ch1.battle5', when: { type: 'turn', turn: 3, phase: 'blue' } },
+      { scene: 'ch1.battle6', when: { type: 'bossFight', boss: 'gaz' } },
+      { scene: 'ch1.battle7', when: { type: 'bossDefeat', boss: 'gaz' } },
     ],
   },
   {
@@ -379,7 +398,7 @@ export const CHAPTERS: Chapter[] = [
       { cls: 'cavalier', lv: 3, x: 18, y: 7, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
       { cls: 'myrmidon', lv: 4, x: 17, y: 9, wps: ['ironSword'], ai: 'hold', prefix: '私兵の' },
       { cls: 'archer', lv: 3, x: 18, y: 10, wps: ['ironBow'], ai: 'hold', prefix: '私兵の' },
-      { cls: 'mercenary', lv: 7, x: 19, y: 2, wps: ['steelSword'], ai: 'guard', boss: '傭兵隊長ドルガン' },
+      { cls: 'mercenary', lv: 7, x: 19, y: 2, wps: ['steelSword'], ai: 'guard', boss: '傭兵隊長ドルガン', defeat: 'retreat' },
     ],
     reinforce: [
       { turn: 3, units: [
@@ -391,39 +410,16 @@ export const CHAPTERS: Chapter[] = [
         { cls: 'soldier', lv: 4, x: 19, y: 7, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
       ] },
     ],
-    intro: [
-      { who: '', text: 'ギレーヌの案内で、捜索団が拠点にしている村跡へ向かう途中。丘の向こうで角笛が鳴った。' },
-      { who: 'ルイジェルド', text: '村跡が囲まれている。野盗と……揃いの鎧を着た兵だ。', face: 'angry' },
-      { who: 'ギレーヌ', text: 'あの旗は捜索団のものだ。砦にいるのは――' },
-      { who: 'パウロ', text: 'ロッタ、砦から出るな！ 怪我人の手当てを続けろ！ ……くそ、きりがねえ。', face: 'angry' },
-      { who: 'ルーデウス', text: '……父さま？' },
-      { who: 'パウロ', text: 'あ？ なんだお前……いや、その目つき。……ルディ、なのか？' },
-      { who: 'ルーデウス', text: 'ええ。三年ぶりです、父さま。', face: 'smile' },
-      { who: 'パウロ', text: '三年だぞ！ 三年も便りひとつよこさないで、どこをほっつき歩いてた！', face: 'angry' },
-      { who: 'ルーデウス', text: '魔大陸から歩いて帰ってきたんです！ そっちこそ、捜索団ごと袋のねずみじゃないですか！', face: 'angry' },
-      { who: 'エリス', text: '親子げんかは後にしなさい！ 敵が来るわよ！', face: 'angry' },
-      { who: '傭兵隊長ドルガン', text: '涙の再会か、結構なこった。まとめて片づけろ！ この土地は伯爵さまがお買い上げだ！', face: 'angry' },
-      { who: 'パウロ', text: '……ちっ。ルディ、話は終わってねえからな。日が沈むまで粘れば、あいつらは引く。', face: 'angry' },
-      { who: 'ルーデウス', text: '望むところです。ロッタさんと怪我人は、僕たちが守ります。', face: 'smile' },
-      { who: 'ルーデウス', text: '（言いたいことは山ほどある。でも、死なせたら一言も言えなくなる）', face: 'sad' },
-    ],
-    outro: [
-      { who: '', text: '日が傾くころ、傭兵たちは旗を巻いて引きあげていった。' },
-      { who: 'ロッタ', text: '団長、怪我人は全員無事です。……あの魔術師さんたちのおかげですね。' },
-      { who: 'パウロ', text: 'さっきの岩の魔術。俺の背中を狙った槍を、きっちり弾いてたな。', face: 'smile' },
-      { who: 'ルーデウス', text: '父さまこそ。僕の前に出た剣士を、二人まとめて。腕はなまってないんですね。', face: 'smile' },
-      { who: 'パウロ', text: '当たり前だ。……なあルディ。三年ぶん、言うことを考えてたんだ。説教も、謝るのも。', face: 'sad' },
-      { who: 'パウロ', text: '……お前の顔を見たら、全部忘れた。', face: 'sad' },
-      { who: 'ルーデウス', text: '奇遇ですね。僕も道中ずっと練習してたんですけど、きれいに飛びました。', face: 'smile' },
-      { who: '', text: '二人の声が、ぴたりと重なった。「――ごめん」' },
-      { who: 'パウロ', text: '……おい。今のは俺が先だったろ。', face: 'angry' },
-      { who: 'ルーデウス', text: 'いえ、僕のほうが半拍早かったです。', face: 'smile' },
-      { who: 'エリス', text: 'どっちでもいいわよ！ ……もう、そういうところがそっくりなんだから。', face: 'smile' },
-      { who: 'ギレーヌ', text: '三年たっても変わらんな、この親子は。', face: 'smile' },
-      { who: 'パウロ', text: 'よし、今夜は飲むぞ。三年ぶんだ。', face: 'smile' },
-      { who: 'ルーデウス', text: '僕は水でいいです。……でも、隣には座りますよ。', face: 'smile' },
-      { who: 'ルイジェルド', text: '捕らえた傭兵が吐いた。雇い主はアスラの貴族、この一帯を丸ごと狙っているそうだ。', face: 'angry' },
-      { who: '', text: '第2章　クリア。' },
+    intro: 'ch2.intro', outro: 'ch2.outro', interlude: 'ch2.interlude',
+    talks: [
+      { scene: 'ch2.battle1', when: { type: 'firstFight', unit: 'paul' } },
+      { scene: 'ch2.battle2', when: { type: 'turn', turn: 2, phase: 'blue' } },
+      { scene: 'ch2.battle3', when: { type: 'reinforce', wave: 0 } },
+      { scene: 'ch2.battle4', when: { type: 'firstHeal', unit: 'lotta' } },
+      { scene: 'ch2.battle5', when: { type: 'reinforce', wave: 1 } },
+      { scene: 'ch2.battle6', when: { type: 'bossFight', boss: 'dolgan' } },
+      { scene: 'ch2.battle7', when: { type: 'bossDefeat', boss: 'dolgan' } },
+      { scene: 'ch2.battle8', when: { type: 'turn', turn: 7, phase: 'blue' } },
     ],
   },
 ];
@@ -482,7 +478,7 @@ const TALK_RUDEUS_ERIS_C: Line[] = [
   { who: 'エリス', text: '十分じゃないわ。あの斧の男、一撃で倒せなかった。', face: 'angry' },
   { who: 'ルーデウス', text: '倒せてましたよ。二撃で。', face: 'smile' },
   { who: 'エリス', text: 'それじゃだめなの！ 一撃で倒せてたら、あんたが前に出なくてすんだのよ。', face: 'angry' },
-  { who: 'ルーデウス', text: '……ああ。俺をかばおうとして、無理してたんですね。', face: 'smile' },
+  { who: 'ルーデウス', text: '……ああ。僕をかばおうとして、無理してたんですね。', face: 'smile' },
   { who: 'エリス', text: 'ち、違うわよ！ 魔術師は後ろにいるものなの。そういう決まりなの！', face: 'angry' },
   { who: 'ルーデウス', text: 'じゃあ明日は、決まりどおり後ろから援護します。エリスが一撃で決められるように。', face: 'smile' },
   { who: 'エリス', text: '……ふん。外したら承知しないんだから。', face: 'smile' },
@@ -495,7 +491,7 @@ const TALK_RUDEUS_RUIJERD_C: Line[] = [
   { who: 'ルイジェルド', text: 'そうだ。だが、後ろに並んでいた小さい子が泣いていた。', face: 'sad' },
   { who: 'ルーデウス', text: '……気づきませんでした。明日は列の後ろから配ります。', face: 'sad' },
   { who: 'ルイジェルド', text: 'それでいい。戦士は強い者より、先に弱い者を見るものだ。', face: 'smile' },
-  { who: 'ルーデウス', text: '旅の間にさんざん教わったのに、まだまだですね、俺。', face: 'sad' },
+  { who: 'ルーデウス', text: '旅の間にさんざん教わったのに、まだまだですね、僕。', face: 'sad' },
   { who: 'ルイジェルド', text: '気づけば直せる。お前はいつもそうしてきた。', face: 'smile' },
 ];
 const TALK_RUDEUS_GHISLAINE_C: Line[] = [

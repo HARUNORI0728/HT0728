@@ -3,6 +3,10 @@ import { build } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
+// Screenplay → src/script/scenes.ts (fails the build when the screenplay has a formatting error).
+const script = spawnSync(process.execPath, ['tools/build-script.mjs'], { stdio: 'inherit' });
+if (script.status !== 0) process.exit(script.status ?? 1);
+
 // Character art: shrink assets/ into play/assets/ (skips outputs newer than their source) and refresh
 // src/art-manifest.ts. Without Python/Pillow the committed play/assets and manifest are used as they are.
 const art = spawnSync(process.env.PYTHON || 'python3', ['tools/optimize_art.py'], { stdio: 'inherit' });

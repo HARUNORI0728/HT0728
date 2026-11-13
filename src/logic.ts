@@ -2,8 +2,9 @@
 import {
   CAST, CHAPTERS, CHARS, CLASSES, ENEMY_BASE, FANG_BASE, FANG_MAX, MAGIC, PROMOS, RANKS, RANK_PTS, STAT_KEYS, SUPPORTS, SUPPORT_BONUS, SUPPORT_CAP, SUPPORT_GAIN, SUPPORT_RANGE,
   S_LIMIT, S_LIMIT_DEFAULT, TERRAIN, TRIANGLE, WEAPONS, moveCost,
-  type ArtId, type Chapter, type EnemyDef, type LoseCond, type PromoReq, type Stats, type SupportBonus, type SupportPair, type SupportRank, type Team, type Weapon,
+  type ArtId, type Chapter, type EnemyDef, type LoseCond, type PromoReq, type Stats, type SupportBonus, type SupportPair, type SupportRank, type TalkEvent, type TalkWhen, type Team, type Weapon,
 } from './data';
+import { idForName } from './render/who';
 
 export interface Unit {
   uid: number; id: string; name: string; cls: string; team: Team;
@@ -19,6 +20,8 @@ export interface Unit {
   guest?: boolean;
   /** 離脱マスから離脱した（盤面から外し、判定から除く）。 */
   left?: boolean;
+  /** ボスが倒されたときの扱い（EnemyDef.defeat）。 */
+  defeat?: 'captured' | 'retreat';
 }
 /** Bond progress per pair (key = pairKey). rank: 0 = none, 1 = C … 4 = S. */
 export interface Bond { pts: number; rank: number }
@@ -54,7 +57,7 @@ export function makeUnit(id: string): Unit | null {
 export function makeEnemy(e: EnemyDef, uid: number): Unit {
   const b = ENEMY_BASE[e.cls] ?? ENEMY_BASE.soldier, st = { ...b };
   for (const k of STAT_KEYS) st[k] += Math.floor((e.lv - 1) * (k === 'hp' ? 1.5 : k === 'lck' || k === 'res' ? 0.3 : 0.7));
-  return { uid, id: e.cls, name: e.boss ?? (e.prefix ?? '野盗の') + CLASSES[e.cls].name, cls: e.cls, team: 'red', lv: e.lv, exp: 0, hp: st.hp, st, wps: [...e.wps], eq: 0, x: e.x, y: e.y, done: false, ai: e.ai, boss: !!e.boss, potions: e.boss ? 1 : 0 };
+  return { uid, id: e.cls, name: e.boss ?? (e.prefix ?? '野盗の') + CLASSES[e.cls].name, cls: e.cls, team: 'red', lv: e.lv, exp: 0, hp: st.hp, st, wps: [...e.wps], eq: 0, x: e.x, y: e.y, done: false, ai: e.ai, boss: !!e.boss, potions: e.boss ? 1 : 0, ...(e.defeat ? { defeat: e.defeat } : {}) };
 }
 
 /** Who goes into a chapter before any choice: fixed members, the free slots, and who may fill them. */
@@ -442,19 +445,41 @@ export function reinforcementsPending(s: State): boolean {
 
 /**
  * Reinforcements due at the start of this enemy phase. A wave whose tile is occupied waits for the next turn
- * (per unit). Returns the units placed.
+ * (per unit). Returns the units placed; `appeared` receives the index of each wave that appeared for the first time.
  */
-export function spawnReinforcements(s: State): Unit[] {
+export function spawnReinforcements(s: State, appeared?: number[]): Unit[] {
   const waves = CHAPTERS[s.chapter].reinforce ?? [], out: Unit[] = [];
   let uid = Math.max(0, ...s.units.map(u => u.uid)) + 1;
   waves.forEach((w, wi) => w.units.forEach((e, ei) => {
     const f = `rf${wi}_${ei}`;
     if (s.flags[f] || s.turn < w.turn || unitAt(s, e.x, e.y)) return;
+    const first = !w.units.some((_, j) => s.flags[`rf${wi}_${j}`]);
     const u = makeEnemy(e, uid++);
     s.units.push(u); s.flags[f] = true; out.push(u);
+    if (first) appeared?.push(wi);
   }));
   return out;
 }
+
+// ---------- battle conversations ----------
+
+/** Flag (in State.flags, so it is saved) marking a battle conversation as played. */
+export const talkKey = (scene: string) => `talk:${scene}`;
+/** Character id of a boss unit (from its name, e.g. 野盗頭ガズ → gaz), or null. */
+export const bossId = (u: Unit) => (u.boss && u.team === 'red' ? idForName(u.name) : null);
+const TALK_ORDER: TalkWhen['type'][] = ['firstFight', 'bossFight'];
+/**
+ * This chapter's battle conversations that match `test` and have not played yet: data order, except that
+ * firstFight comes before bossFight when one combat sets off both.
+ */
+export function dueTalks(s: State, test: (w: TalkWhen) => boolean): TalkEvent[] {
+  const pri = (w: TalkWhen) => { const i = TALK_ORDER.indexOf(w.type); return i < 0 ? TALK_ORDER.length : i; };
+  return (CHAPTERS[s.chapter].talks ?? []).filter(e => !s.flags[talkKey(e.scene)] && test(e.when)).sort((a, b) => pri(a.when) - pri(b.when));
+}
+/** Conversations a combat between `a` and `b` sets off (before the fight is shown). */
+export const fightTalks = (s: State, a: Unit, b: Unit) => dueTalks(s, w =>
+  (w.type === 'firstFight' && [a, b].some(u => u.team === 'blue' && u.id === w.unit)) ||
+  (w.type === 'bossFight' && [a, b].some(u => bossId(u) === w.boss)));
 
 const nameOf = (id: string) => CAST[id]?.name ?? CHARS[id]?.name ?? id;
 /** The goal line shown under the map, generated from the chapter data. */

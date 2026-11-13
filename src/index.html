@@ -217,6 +217,26 @@
   .pick.out { border-style: dashed; }
   .pick.out .pname b { color: var(--dim); }
   .pick.out em { color: var(--foe); border-color: var(--foe); }
+  /* Skip: ends the whole conversation. */
+  #dlgSkip { position: absolute; z-index: 3; top: max(10px, env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px));
+    min-height: 36px; padding: 4px 12px; font-size: 13px; background: var(--panel); border-color: var(--line); color: var(--dim); box-shadow: 0 2px 8px rgba(0, 0, 0, .5); }
+  /* Extras without a portrait (ハンナ, トト …): a plain name tag. Unnamed enemies (野盗) use the enemy tag. */
+  #dlgBox.npc #dlgName { background: var(--panel); border-color: var(--dim); color: var(--ink); }
+  #dlgBox.thought #dlgText { color: #cfdcff; }
+  #dlgBox.narr #dlgText { color: var(--gold); opacity: .92; }
+  /* 序章: a monologue on a dark screen, lines centred and fading in, no portraits or name tags. */
+  #dlg.mono { align-items: center; background: radial-gradient(ellipse at 50% 45%, #1a1726 0, #0b0a10 70%); }
+  #dlg.mono .dlgSlot, #dlg.mono #dlgFace, #dlg.mono #dlgName { display: none; }
+  #dlg.mono #dlgBox { background: none; border: none; box-shadow: none; justify-content: center; text-align: center; min-height: 40vh; align-items: center; max-width: 34em; padding: 24px 8px 40px; }
+  #dlg.mono #dlgText { font-size: 18px; line-height: 2.1; color: var(--ink); text-wrap: pretty; }
+  #dlg.mono #dlgBox.thought #dlgText { color: var(--ally); }
+  #dlg.mono #dlgNext { right: 50%; transform: translateX(50%); bottom: 0; animation: none; color: var(--dim); }
+  #dlgText.fadein { animation: lineIn .6s ease-out both; }
+  @keyframes lineIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @media (max-width: 560px) { #dlg.mono #dlgText { font-size: 16px; line-height: 2; } }
+  @media (prefers-reduced-motion: reduce) { #dlgText.fadein { animation: none; } }
+  .logList { display: flex; flex-direction: column; gap: 6px; }
+  button.logItem { text-align: left; font-family: var(--text); }
 </style>
 
 <main id="app">
@@ -234,6 +254,7 @@
     <div id="campTabs" role="tablist">
       <button data-tab="units" role="tab">部隊</button>
       <button data-tab="bonds" role="tab">支援</button>
+      <button data-tab="log" role="tab">記録</button>
     </div>
     <div id="campBody"></div>
     <div class="campBtns" id="campBtns">
@@ -252,6 +273,7 @@
     <div id="dlgText"></div>
     <div id="dlgNext">▼ タップで次へ</div>
   </div>
+  <button id="dlgSkip" type="button">スキップ ▶▶</button>
 </div>
 
 <div id="title" class="overlay">

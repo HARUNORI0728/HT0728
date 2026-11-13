@@ -4,12 +4,14 @@ import {
   DIFFICULTY_NAMES, POTION_HEAL, addExp, alive, bondStatus, canEscape, canSeize, dist, expGain, fight, forecast, gainBonds, goalText, heal, healAmount, healExp, healTargets,
   initBonds, inRange, key, loseCond, makeEnemy, makeUnit, maxRank, newChapter, nextNeed, outcome, pairKey, planEnemy, promote, promoOptions, rankName, rankUp, readyPairs,
   rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
+  bossId, dueTalks, fightTalks, onMap, talkKey,
   type Bonds, type Difficulty, type SortiePlan, type State, type Unit,
 } from './logic';
 import { RES, T } from './render/common';
 import { FLOAT_LIFE, drawCursor, drawEdgeMarks, drawFloat, drawTile, drawVignette, type Float } from './render/fx';
 import { drawTerrain } from './render/terrain';
 import { drawIcon, drawPortrait, drawUnit } from './render/units';
+import { SCENES, SCENE_ORDER, type SceneId } from './script/scenes';
 import { faceHtml, idForName, idForUnit, loadUnitArt, portraitFailed, portraitUrl, preloadPortrait, spriteUrl, type Face } from './render/art';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -18,7 +20,8 @@ const fast = () => !!(window as any).__fast;
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, fast() ? 0 : ms));
 
 let S: State;
-let terrain: HTMLCanvasElement;
+/** The terrain, drawn once per chapter at the final resolution (RES backing pixels per map pixel). Null while drawing. */
+let terrain: HTMLCanvasElement | null = null;
 type Mode = 'idle' | 'move' | 'menu' | 'target' | 'heal' | 'busy';
 let mode: Mode = 'busy';
 let sel: Unit | null = null, picked: Unit | null = null, inspect: Unit | null = null;
@@ -80,17 +83,46 @@ const followLog: { name: string; x: number; y: number; before: boolean; after: b
 // ---------- save ----------
 /** Between chapters: the party, its bonds, the difficulty, and which chapter comes next. */
 interface Camp { next: number; cleared: number; roster: Unit[]; bonds: Bonds; difficulty: Difficulty }
-interface SaveData { v: 3; battle: State | null; camp: Camp | null }
-// v3: State gained difficulty / bench / flags, Camp gained difficulty, Unit gained out / guest / left.
-const SAVE = 'fittoa-save-v3', SAVE_V2 = 'fittoa-save-v2', SAVE_V1 = 'fittoa-save-v1';
-let camp: Camp | null = null, inBattle = false;
+/**
+ * seen = conversations watched (for the camp's 記録): scene ids (序章・開幕・終幕・幕間) and support talks
+ * (`sup:<pairKey>:<rank>`). Battle conversations that have played are State.flags `talk:<scene>`.
+ */
+interface SaveData { v: 4; battle: State | null; camp: Camp | null; seen: string[] }
+// v4: added `seen`. v3: State gained difficulty / bench / flags, Camp gained difficulty, Unit gained out / guest / left.
+const SAVE = 'fittoa-save-v4', SAVE_V3 = 'fittoa-save-v3', SAVE_V2 = 'fittoa-save-v2', SAVE_V1 = 'fittoa-save-v1';
+let camp: Camp | null = null, inBattle = false, seen: string[] = [];
 function save() {
-  const d: SaveData = { v: 3, battle: inBattle ? S : null, camp };
+  const d: SaveData = { v: 4, battle: inBattle ? S : null, camp, seen };
   try { localStorage.setItem(SAVE, JSON.stringify(d)); } catch { /* storage unavailable */ }
+}
+/**
+ * Records a battle conversation in the stored save right away, without saving the rest of the state (a save in the
+ * middle of an action would let the unit act again after reloading). Reloading never plays it twice.
+ */
+function persistFlag(k: string) {
+  try {
+    const j = localStorage.getItem(SAVE); if (!j) return;
+    const d = JSON.parse(j);
+    if (d?.battle && d.battle.chapter === S.chapter) { d.battle.flags = { ...(d.battle.flags ?? {}), [k]: true }; localStorage.setItem(SAVE, JSON.stringify(d)); }
+  } catch { /* storage unavailable */ }
+}
+const markSeen = (k: string) => { if (!seen.includes(k)) seen.push(k); };
+const supKey = (a: string, b: string, rank: string) => `sup:${pairKey(a, b)}:${rank}`;
+/** For saves older than v4: what the player must have watched to get this far. */
+function seenFrom(battle: State | null, cp: Camp | null): string[] {
+  const out: string[] = ['prologue'];
+  const done = cp ? cp.cleared : battle ? battle.chapter : 0;
+  CHAPTERS.forEach((ch, i) => {
+    if (i < done) out.push(ch.intro, ch.outro, ...(ch.interlude ? [ch.interlude] : []));
+    else if (battle && i === battle.chapter) out.push(ch.intro);
+  });
+  const bonds = cp?.bonds ?? battle?.bonds;
+  if (bonds) for (const p of SUPPORTS) for (let r = 0; r < (bonds[pairKey(p.a, p.b)]?.rank ?? 0); r++) out.push(supKey(p.a, p.b, RANKS[r]));
+  return out;
 }
 const validUnit = (u: any): u is Unit => !!u && typeof u.id === 'string' && !!CLASSES[u.cls] && !!u.st && Array.isArray(u.wps) && u.wps.every((w: string) => !!WEAPONS[w]);
 const validDiff = (d: unknown): Difficulty => (d === 'classic' ? 'classic' : 'casual');
-/** Accepts v3, and v2/v1 shapes (missing fields are filled in). Anything malformed is dropped rather than thrown. */
+/** Accepts v4, and v3/v2/v1 shapes (missing fields are filled in). Anything malformed is dropped rather than thrown. */
 function normalize(d: any): SaveData | null {
   const b = d?.battle;
   const battle = b && Array.isArray(b.units) && Array.isArray(b.map) && CHAPTERS[b.chapter] && b.units.every(validUnit) ? upgradeState(b as State) : null;
@@ -100,11 +132,12 @@ function normalize(d: any): SaveData | null {
     cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty) };
   }
   if (battle && cp && !b.difficulty) battle.difficulty = cp.difficulty;
-  return battle || cp ? { v: 3, battle, camp: cp } : null;
+  const sn = Array.isArray(d?.seen) ? d.seen.filter((k: unknown) => typeof k === 'string') : seenFrom(battle, cp);
+  return battle || cp ? { v: 4, battle, camp: cp, seen: sn } : null;
 }
 function load(): SaveData | null {
   // Newest first; a corrupt or unreadable entry falls through to the next older one.
-  for (const k of [SAVE, SAVE_V2, SAVE_V1]) {
+  for (const k of [SAVE, SAVE_V3, SAVE_V2, SAVE_V1]) {
     try {
       const j = localStorage.getItem(k);
       if (!j) continue;
@@ -117,15 +150,17 @@ function load(): SaveData | null {
 
 // ---------- rendering ----------
 function render(now = performance.now()) {
-  if (S) {
+  if (S && !terrain) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#14121c'; ctx.fillRect(0, 0, cv.width, cv.height); }
+  if (S && terrain) {
     const W = VW, H = VH, sec = now / 1000;
     ctx.setTransform(RES, 0, 0, RES, 0, 0);
     ctx.fillStyle = '#14121c'; ctx.fillRect(0, 0, W, H);
-    // the terrain was drawn once at chapter start; copy just the visible part (plus the strip above the map)
-    const sx = Math.max(0, cam.x), sy = Math.max(0, cam.y);
-    const sw = Math.min(W - (sx - cam.x), terrain.width - sx), sh = Math.min(H - (sy - cam.y), terrain.height - sy);
-    if (sw > 0 && sh > 0) ctx.drawImage(terrain, sx, sy, sw, sh, sx - cam.x, sy - cam.y, sw, sh);
-    if (cam.y < 0 && topPad) ctx.drawImage(topPad, cam.x, 0, W, topPad.height, 0, -cam.y - topPad.height, W, topPad.height);
+    // the terrain was drawn once at chapter start (RES pixels per map pixel, as the canvas): copy just the visible
+    // part 1:1, plus the strip above the map
+    const sx = Math.max(0, cam.x), sy = Math.max(0, cam.y), tw = terrain.width / RES, th = terrain.height / RES;
+    const sw = Math.min(W - (sx - cam.x), tw - sx), sh = Math.min(H - (sy - cam.y), th - sy);
+    if (sw > 0 && sh > 0) ctx.drawImage(terrain, sx * RES, sy * RES, sw * RES, sh * RES, sx - cam.x, sy - cam.y, sw, sh);
+    if (cam.y < 0 && topPad) ctx.drawImage(topPad, cam.x * RES, 0, W * RES, topPad.height, 0, -cam.y - TOP_PAD, W, TOP_PAD);
     ctx.save(); ctx.translate(-cam.x, -cam.y);
     const tile = (k: string, kind: Parameters<typeof drawTile>[1], a = 1) => { const [x, y] = k.split(',').map(Number); drawTile(ctx, kind, x, y, a); };
     if (mode === 'move' || (mode === 'idle' && inspect)) {
@@ -162,8 +197,8 @@ function edgeMarks() {
  * into the night, so the map seems to go on rather than end at a hard edge.
  */
 let topPad: HTMLCanvasElement | null = null;
-function makeTopPad() {
-  const h = TOP_PAD, c = document.createElement('canvas'); c.width = terrain.width; c.height = h;
+function makeTopPad(terrain: HTMLCanvasElement) {
+  const h = Math.round(TOP_PAD * RES), c = document.createElement('canvas'); c.width = terrain.width; c.height = h;
   const g = c.getContext('2d')!;
   g.save(); g.translate(0, h); g.scale(1, -1); g.drawImage(terrain, 0, 0, terrain.width, h, 0, 0, terrain.width, h); g.restore();
   const fade = g.createLinearGradient(0, 0, 0, h); fade.addColorStop(0, 'rgba(20,18,28,1)'); fade.addColorStop(0.35, 'rgba(20,18,28,.7)'); fade.addColorStop(1, 'rgba(20,18,28,.12)');
@@ -231,12 +266,20 @@ function menu(items: [string, () => void, string?][]) {
 type Side = 'left' | 'right';
 interface Stand { id: string; face: Face; last: number }
 const isFoe = (id: string) => !CHARS[id] && !CAST[id];
-function play(lines: Line[]): Promise<void> {
+/** Unnamed enemy speakers (野盗, 私兵 …): name tag in the enemy colour. */
+const FOE_NAME = /野盗|私兵|傭兵|兵士?$/;
+/**
+ * Plays a conversation. mono = the monologue look (序章): a dark screen, no portraits, every line centred;
+ * narration in the normal ink, the hero's inner voice in the ally colour. The skip button ends it at once.
+ */
+function play(lines: Line[], opts: { mono?: boolean } = {}): Promise<void> {
   return new Promise(done => {
-    const d = $('dlg'), face = $<HTMLCanvasElement>('dlgFace'), box = $('dlgBox'), name = $('dlgName');
+    const d = $('dlg'), face = $<HTMLCanvasElement>('dlgFace'), box = $('dlgBox'), name = $('dlgName'), text = $('dlgText');
     const slot = (s: Side) => d.querySelector<HTMLElement>(`.dlgSlot.${s}`)!;
     const stands: Record<Side, Stand | null> = { left: null, right: null };
-    for (const l of lines) preloadPortrait(idForName(l.who), l.face ?? 'normal');
+    const mono = !!opts.mono;
+    d.classList.toggle('mono', mono);
+    if (!mono) for (const l of lines) preloadPortrait(idForName(l.who), l.face ?? 'normal');
     for (const s of ['left', 'right'] as Side[]) { const e = slot(s); e.className = `dlgSlot ${s} empty`; e.querySelector('img')!.removeAttribute('src'); }
     let i = 0;
     const put = (s: Side, st: Stand) => {
@@ -248,12 +291,13 @@ function play(lines: Line[]): Promise<void> {
       if (entering) { e.classList.add('empty'); void e.offsetWidth; } // restart the slide-in
       e.classList.remove('empty');
     };
+    const end = () => { d.hidden = true; d.onclick = null; $('dlgSkip').onclick = null; d.classList.remove('mono'); done(); };
     const show = () => {
-      if (i >= lines.length) { d.hidden = true; d.onclick = null; done(); return; }
-      const n = i, l = lines[i++], id = idForName(l.who);
+      if (i >= lines.length) { end(); return; }
+      const n = i, l = lines[i++], id = mono ? null : idForName(l.who);
       const f: Face = l.face && !portraitFailed(id, l.face) ? l.face : 'normal'; // a missing expression falls back to normal
       let side: Side | null = null;
-      if (id && portraitUrl(id, f) && !portraitFailed(id, f)) {
+      if (id && l.art !== false && portraitUrl(id, f) && !portraitFailed(id, f)) { // face "-" in the screenplay: never a portrait
         side = l.pos ?? (stands.left?.id === id ? 'left' : stands.right?.id === id ? 'right' : null);
         if (!side) {
           const pref: Side = isFoe(id) ? 'right' : 'left', other: Side = pref === 'left' ? 'right' : 'left';
@@ -264,20 +308,54 @@ function play(lines: Line[]): Promise<void> {
         put(side, { id, face: f, last: n });
       }
       for (const s of ['left', 'right'] as Side[]) slot(s).classList.toggle('on', s === side);
+      const thought = !!l.who && /^（[\s\S]*）$/.test(l.text);
       box.classList.toggle('narr', !l.who);
-      box.classList.toggle('foe', !!id && isFoe(id) && id !== 'lotta');
+      box.classList.toggle('thought', thought);
+      box.classList.toggle('foe', (!!id && isFoe(id) && id !== 'lotta') || (!id && FOE_NAME.test(l.who)));
+      box.classList.toggle('npc', !!l.who && !id && !FOE_NAME.test(l.who) && !Object.values(CHARS).some(v => v.name === l.who));
       box.dataset.side = side ?? '';
-      name.hidden = !l.who; name.textContent = l.who;
+      name.hidden = !l.who || mono; name.textContent = l.who;
       // No portrait drawn (none delivered, or it failed): the old vector face inside the box, for the cast.
-      const c = !side ? Object.values(CHARS).find(v => v.name === l.who) : undefined;
+      const c = !side && !mono && l.art !== false ? Object.values(CHARS).find(v => v.name === l.who) : undefined;
       face.hidden = !c;
       if (c) drawPortrait(face, { ...c, team: 'blue' });
-      $('dlgText').textContent = l.text;
+      text.textContent = l.text;
+      if (mono) { text.classList.remove('fadein'); void text.offsetWidth; text.classList.add('fadein'); }
       if (fast()) show();
     };
+    $('dlgSkip').onclick = e => { e.stopPropagation(); i = lines.length; show(); };
     d.hidden = false; d.onclick = show; show();
   });
 }
+/** Test log: every conversation played, in order (scene id, or `sup:…` for support talks). */
+const playedLog: string[] = [];
+/** Lines of a scene, dropping those of cast members who are not on the map (fallen, benched) during a battle. */
+function sceneLines(id: SceneId, inBattleTalk: boolean): Line[] {
+  const lines = SCENES[id].lines;
+  if (!inBattleTalk || !S) return lines;
+  return lines.filter(l => {
+    const cid = idForName(l.who);
+    if (!cid || !CHARS[cid]) return true; // narration, extras, enemies
+    return S.units.some(u => u.team === 'blue' && u.id === cid && onMap(u));
+  });
+}
+/** Plays a screenplay scene. Story scenes (序章・開幕・終幕・幕間) go into `seen` for the camp's 記録. */
+async function playScene(id: SceneId, battleTalk = false) {
+  playedLog.push(id);
+  if (!battleTalk) markSeen(id);
+  const lines = sceneLines(id, battleTalk);
+  if (lines.length) await play(lines, { mono: id === 'prologue' });
+}
+/** Plays this chapter's due battle conversations (each once; recorded in the save straight away). */
+async function runTalks(evs: ReturnType<typeof dueTalks>) {
+  for (const ev of evs) {
+    if (S.flags[talkKey(ev.scene)]) continue;
+    S.flags[talkKey(ev.scene)] = true;
+    persistFlag(talkKey(ev.scene));
+    await playScene(ev.scene, true);
+  }
+}
+const turnTalks = () => runTalks(dueTalks(S, w => w.type === 'turn' && w.turn === S.turn && w.phase === S.phase));
 
 // ---------- player flow ----------
 function idle() {
@@ -345,6 +423,7 @@ async function doHeal(u: Unit, sid: string, t: Unit) {
   const h = heal(u, sid, t);
   float(t, `+${h}`, '#8fe0a0');
   await sleep(450);
+  if (u.team === 'blue') await runTalks(dueTalks(S, w => w.type === 'firstHeal' && w.unit === u.id));
   if (u.team === 'blue' && u.gr) {
     const gains = addExp(u, healExp(h));
     if (gains) await banner(`${u.name} レベルアップ！ Lv ${u.lv}　` + (gainText(gains) || '成長なし'), 1700);
@@ -451,6 +530,7 @@ function preloadChapterArt() {
   for (const u of S.units) { const id = idForUnit(u); if (id) { preloadPortrait(id); preloadPortrait(id, 'angry'); } }
 }
 async function battle(att: Unit, wid: string, def: Unit) {
+  await runTalks(fightTalks(S, att, def)); // a member's first fight, then the first clash with a boss
   shownHp.set(att.uid, att.hp); shownHp.set(def.uid, def.hp);
   const strikes = fight(S, att, wid, def);
   await cutin(att, def);
@@ -463,6 +543,9 @@ async function battle(att: Unit, wid: string, def: Unit) {
     await sleep(420);
   }
   shownHp.clear();
+  for (const u of [att, def]) if (u.team === 'red' && u.hp <= 0 && u.defeat) { float(u, u.defeat === 'captured' ? '捕縛' : '撤退', '#e8c56a'); await sleep(500); }
+  const downBoss = [att, def].map(u => (u.hp <= 0 ? bossId(u) : null)).filter((id): id is string => !!id);
+  if (downBoss.length) await runTalks(dueTalks(S, w => w.type === 'bossDefeat' && downBoss.includes(w.boss)));
   for (const g of gainBonds(S, [att, def])) float(g.partner, g.ready ? '支援会話あり' : `絆+${g.added}`, '#ff8fa8');
   const fallen = [att, def].find(u => u.team === 'blue' && u.hp <= 0);
   if (fallen && !fallen.guest && !loseCond(CHAPTERS[S.chapter]).units.includes(fallen.id)) {
@@ -482,9 +565,14 @@ async function checkEnd(): Promise<boolean> {
   mode = 'busy'; hud();
   if (o === 'win') {
     await banner('勝利！', 1300);
-    await play(CHAPTERS[S.chapter].outro);
+    const ch = CHAPTERS[S.chapter];
+    // The camp is saved first (with the closing scenes marked seen), so closing the page mid-scene loses nothing:
+    // they can be watched again from the camp's 記録.
     camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster: rosterOf(S), bonds: S.bonds, difficulty: S.difficulty };
+    markSeen(ch.outro); if (ch.interlude) markSeen(ch.interlude);
     inBattle = false; save();
+    await playScene(ch.outro);
+    if (ch.interlude) await playScene(ch.interlude);
     await supportTalks(camp);
     const lost = camp.roster.filter(u => u.out && !S.bench.some(b => b.id === u.id)).map(u => u.name);
     showCamp(CHAPTERS[camp.cleared - 1].title.replace(/\s+/g, '　') + '　クリア！' + (lost.length ? `　${lost.join('、')}は戦線離脱した。` : ''));
@@ -515,8 +603,13 @@ async function endTurn() {
   await banner('敵軍フェイズ');
   fortHeal('red');
   const actors = alive(S, 'red'); // reinforcements appear now but do not act this phase
-  const rf = spawnReinforcements(S);
-  if (rf.length) { await follow(rf.slice(0, 1)); for (const u of rf) float(u, '増援', '#ff9a8f'); await banner('敵の増援が現れた！'); }
+  await turnTalks();
+  const waves: number[] = [];
+  const rf = spawnReinforcements(S, waves);
+  if (rf.length) {
+    await follow(rf.slice(0, 1)); for (const u of rf) float(u, '増援', '#ff9a8f'); await banner('敵の増援が現れた！');
+    await runTalks(dueTalks(S, w => w.type === 'reinforce' && waves.includes(w.wave)));
+  }
   for (const e of actors) {
     if (e.hp <= 0) continue;
     const p = planEnemy(S, e);
@@ -539,6 +632,7 @@ async function endTurn() {
   if (scrolls()) await panTo(camBefore.x, camBefore.y); // back to where the player was looking
   fortHeal('blue'); save(); hud();
   await banner('自軍フェイズ');
+  await turnTalks();
   idle();
 }
 
@@ -546,14 +640,16 @@ async function endTurn() {
 const castName = (id: string) => CAST[id]?.name ?? id;
 /** Plays every support conversation that is ready (one rank per pair), confirming each rank. */
 async function supportTalks(c: Camp) {
-  const seen = new Set<string>();
+  const done = new Set<string>();
   for (;;) {
-    const p = readyPairs(c.bonds).find(q => !seen.has(pairKey(q.a, q.b)));
+    const ids = new Set(c.roster.map(u => u.id)); // only pairs who have both joined (start points alone can fill C)
+    const p = readyPairs(c.bonds).find(q => !done.has(pairKey(q.a, q.b)) && ids.has(q.a) && ids.has(q.b));
     if (!p) break;
-    seen.add(pairKey(p.a, p.b));
+    done.add(pairKey(p.a, p.b));
     const next = RANKS[c.bonds[pairKey(p.a, p.b)].rank];
     await banner(`支援会話　${castName(p.a)} × ${castName(p.b)}　${next}`, 1100);
     const lines = p.talks[next];
+    markSeen(supKey(p.a, p.b, next)); playedLog.push(supKey(p.a, p.b, next));
     await play(lines?.length ? lines : [{ who: '', text: `${castName(p.a)}と${castName(p.b)}は、しばらく語り合った。（この支援会話は制作中です）` }]);
     const r = rankUp(c.bonds, p);
     save();
@@ -562,7 +658,8 @@ async function supportTalks(c: Camp) {
 }
 
 // ---------- between chapters ----------
-let campTab: 'units' | 'bonds' = 'units';
+type CampTab = 'units' | 'bonds' | 'log';
+let campTab: CampTab = 'units';
 const esc = (t: string) => t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]!));
 const MTYPE_NAMES = { foot: '歩兵', armor: '重装', horse: '騎馬', fly: '飛行' } as const;
 const gainText = (g: Partial<Stats>) => STAT_KEYS.filter(k => g[k]).map(k => `${STAT_NAMES[k]}+${g[k]}`).join(' ');
@@ -582,7 +679,7 @@ function showCamp(msg = '') {
 function renderCamp() {
   for (const b of document.querySelectorAll<HTMLButtonElement>('#campTabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === campTab));
   $('campBody').innerHTML = '';
-  if (campTab === 'units') renderUnits(); else renderBonds();
+  if (campTab === 'units') renderUnits(); else if (campTab === 'bonds') renderBonds(); else renderLog();
 }
 function el(tag: string, cls: string, html = '') { const e = document.createElement(tag); if (cls) e.className = cls; e.innerHTML = html; return e; }
 function btn(label: string, fn: () => void, cls = '', disabled = false) {
@@ -658,6 +755,31 @@ function bondRow(p: SupportPair, bonds: Bonds) {
     <div class="wps">上限 ${p.max}${p.max === 'S' ? '（恋愛）' : ''}　次：${bd.rank < maxRank(p) ? RANKS[bd.rank] : '—'}</div>`);
 }
 
+/** 記録: every story scene and support talk watched so far, in story order; tap one to watch it again. */
+function renderLog() {
+  const body = $('campBody');
+  body.appendChild(el('p', 'hint', 'これまでに見た会話を、もう一度見られる。'));
+  const scenes = SCENE_ORDER.filter(id => !/\.battle\d+$/.test(id) && seen.includes(id));
+  let part = -1;
+  const list = el('div', 'logList');
+  for (const id of scenes) {
+    const sc = SCENES[id];
+    if (sc.chapter !== part) { part = sc.chapter; list.appendChild(el('h3', 'prepHead', esc(sc.chapter === 0 ? '序章' : CHAPTERS[sc.chapter - 1]?.title.replace(/\s+/g, '　') ?? `第${sc.chapter}章`))); }
+    list.appendChild(btn(sc.title.replace(/^第\d+章　/, ''), () => replay(() => playScene(id)), 'logItem'));
+  }
+  const sups = seen.filter(k => k.startsWith('sup:'));
+  if (sups.length) list.appendChild(el('h3', 'prepHead', '支援会話'));
+  for (const k of sups) {
+    const [, pk, rank] = k.split(':'), p = SUPPORTS.find(q => pairKey(q.a, q.b) === pk);
+    if (!p) continue;
+    const lines = p.talks[rank as keyof typeof p.talks];
+    list.appendChild(btn(`${castName(p.a)} × ${castName(p.b)}　${rank}`, () => replay(() => play(lines?.length ? lines : [{ who: '', text: `${castName(p.a)}と${castName(p.b)}は、しばらく語り合った。（この支援会話は制作中です）` }])), 'logItem'));
+  }
+  if (!scenes.length && !sups.length) list.appendChild(el('p', 'hint', 'まだ記録はない。'));
+  body.appendChild(list);
+}
+async function replay(go: () => Promise<void>) { const y = $('camp').scrollTop; await go(); $('camp').scrollTop = y; }
+
 // ---------- sortie preparation ----------
 /** The sortie screen's state: which chapter, its plan, and the ids picked for the free slots. */
 let prep: { index: number; plan: SortiePlan; picks: string[] } | null = null;
@@ -716,12 +838,25 @@ function showTitle(msg = '', panel: 'main' | 'diff' | 'defeat' = 'main') {
   $('camp').hidden = true;
   $('title').hidden = false;
 }
+/** Test log: how long each chapter's terrain took to draw (ms). */
+const terrainMs: number[] = [];
 async function start(state: State, intro: boolean) {
   S = state; mode = 'busy'; inspect = sel = picked = null; inBattle = true;
-  $('camp').hidden = true;
-  terrain = document.createElement('canvas'); terrain.width = cols() * T; terrain.height = rows() * T;
-  drawTerrain(terrain.getContext('2d')!, S.map);
-  topPad = makeTopPad();
+  $('camp').hidden = true; $('title').hidden = true;
+  // The terrain is painted at the canvas's final resolution (RES), so it is as crisp as the figures. That takes
+  // a moment on big maps: say so first, so the screen does not look frozen.
+  terrain = null; topPad = null; hud(); menu([]);
+  info('<p class="hint">地図を描いています……</p>');
+  const b = $('banner'); b.textContent = '地図を描いています'; b.hidden = false;
+  await new Promise<void>(r => requestAnimationFrame(() => setTimeout(r, 0)));
+  const t0 = performance.now();
+  const tc = document.createElement('canvas'); tc.width = Math.round(cols() * T * RES); tc.height = Math.round(rows() * T * RES);
+  const tg = tc.getContext('2d')!; tg.setTransform(RES, 0, 0, RES, 0, 0);
+  drawTerrain(tg, S.map);
+  terrainMs.push(Math.round(performance.now() - t0));
+  b.hidden = true;
+  terrain = tc;
+  topPad = makeTopPad(tc);
   // Scrolling maps take over touch drags on the canvas; 15×10 maps keep the page's normal touch behaviour.
   cv.style.touchAction = scrolls() ? 'none' : 'manipulation';
   drag = null; cam.x = 0; cam.y = -TOP_PAD;
@@ -729,29 +864,36 @@ async function start(state: State, intro: boolean) {
   if (lead) centerOn(lead.x, lead.y); else clampCam();
   $('title').hidden = true; hud(); info(''); menu([]);
   preloadChapterArt();
-  if (intro) await play(CHAPTERS[S.chapter].intro);
+  if (intro) await playScene(CHAPTERS[S.chapter].intro);
   save();
   await banner(S.phase === 'blue' ? '自軍フェイズ' : '敵軍フェイズ');
+  await turnTalks();
   idle();
 }
 $('btnNew').onclick = () => showTitle('難易度を選んでください。', 'diff');
 for (const b of document.querySelectorAll<HTMLButtonElement>('#diffPick button[data-diff]')) {
-  b.onclick = () => { camp = null; start(newChapter(0, undefined, undefined, b.dataset.diff as Difficulty), true); };
+  b.onclick = async () => {
+    camp = null; seen = [];
+    $('title').hidden = true;
+    const ch = CHAPTERS[0];
+    if (ch.prologue) await playScene(ch.prologue); // 序章：戦闘のない会話パート
+    start(newChapter(0, undefined, undefined, b.dataset.diff as Difficulty), true);
+  };
 }
 $('btnDiffBack').onclick = () => showTitle();
 $('btnLoad').onclick = () => {
   const d = load();
   if (!d) return;
-  camp = d.camp;
+  camp = d.camp; seen = d.seen;
   if (d.battle) { d.battle.phase = 'blue'; start(d.battle, false); } else if (camp) { $('title').hidden = true; showCamp(); }
 };
-$('btnRetryPhase').onclick = () => { const d = load(); if (d?.battle) { camp = d.camp; d.battle.phase = 'blue'; start(d.battle, false); } };
+$('btnRetryPhase').onclick = () => { const d = load(); if (d?.battle) { camp = d.camp; seen = d.seen; d.battle.phase = 'blue'; start(d.battle, false); } };
 $('btnRetryChapter').onclick = () => start(chapterStart(), false);
 $('btnDefeatTitle').onclick = () => showTitle();
 /** Next chapter: carries the roster (with classic losses), bonds and difficulty. */
 $('btnNext').onclick = goNext;
 $('btnToTitle').onclick = () => showTitle();
-for (const b of document.querySelectorAll<HTMLButtonElement>('#campTabs button')) b.onclick = () => { campTab = b.dataset.tab as 'units' | 'bonds'; campMsg(''); renderCamp(); };
+for (const b of document.querySelectorAll<HTMLButtonElement>('#campTabs button')) b.onclick = () => { campTab = b.dataset.tab as CampTab; campMsg(''); renderCamp(); };
 showTitle();
 loadUnitArt();
 requestAnimationFrame(render);
@@ -775,5 +917,11 @@ requestAnimationFrame(render);
   /** Test helper: center the view on a tile right away if it is off screen. */
   reveal(x: number, y: number) { if (S && !inView(x, y, 0)) centerOn(x, y); return { ...cam }; },
   /** Test helper: add a cast member to the camp roster (to try the sortie screen). */
+  /** Conversations played so far on this page (scene ids / sup:…), the watched list (記录), terrain draw times. */
+  playedLog, get seen() { return [...seen]; }, terrainMs,
+  /** Test helper: show a screenplay scene now (for screenshots). */
+  playScene(id: SceneId, battleTalk = false) { return playScene(id, battleTalk); },
+  /** Test helper: open the camp on a tab. */
+  campTab(t: CampTab) { campTab = t; renderCamp(); },
   addToRoster(id: string, out = false) { const u = makeUnit(id); if (!u || !camp) return null; if (out) u.out = true; camp.roster.push(u); return u; },
 };
