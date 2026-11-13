@@ -342,17 +342,17 @@ export const CHAPTERS: Chapter[] = [
     // マップは依頼により 20×14（§6 の表は 15×10）。敵の約半数は hold / guard。川の東は橋2本と浅瀬1か所で渡る。
     title: '第2章　捜索団の灯',
     win: { type: 'survive', turns: 8 }, lose: { units: ['rudeus', 'paul'] },
-    // 20×14。廃村を柵が囲み、門は北・南・西・東の4か所（南の柵は一部崩れている）。中央の砦跡にロッタとパウロ。
+    // 20×14。廃村を柵が囲み、門は北・南・西・東の4か所（北門は廃墟の脇の1マス、南の柵は一部崩れている）。西門そばの砦跡にロッタとパウロ。
     // 北の森と南の林から野盗、東の川（橋2本と浅瀬）を渡って私兵が来る。北東の砦に傭兵隊長。
     map: [
       'MMFFFGFGFFFGGGGWXXMM',
       'MFFHGGGFGFFYGGGWGGXM',
       'FFHHGFFGGGGGGGGWGRRC',
-      'FGHGGFFGYGRRRRRBRRGG',
-      'GGGGGGLLLGRLLLGWGGGG',
-      'GGGYGGLDDGRGDLGWGGFF',
-      'GGGGGGLGGGRDGLGWWGFF',
-      'RRRRRRRRRCRRRRRRBRRR',
+      'FGHGGFFGYGGGGGRBRRGG',
+      'GGGGGGLLLGLLLLRWGGGG',
+      'GGGYGGLDDUGGDLRWGGFF',
+      'GGGGGGLGGGGDGLRWWGFF',
+      'RRRRRRRCRRRRRRRRBRRR',
       'GGGGGGLDGGGGGLGGWGGG',
       'GGFGGGLDDGGUDLGGPGGG',
       'AAAGGGLLLGLGLLGGWGGG',
@@ -361,7 +361,7 @@ export const CHAPTERS: Chapter[] = [
       'GGGGFFFGGGGGFGGWGMMM',
     ],
     players: [
-      { id: 'rudeus', x: 1, y: 7 }, { id: 'paul', x: 10, y: 7 }, { id: 'lotta', x: 9, y: 7, guest: true },
+      { id: 'rudeus', x: 1, y: 7 }, { id: 'paul', x: 8, y: 7 }, { id: 'lotta', x: 7, y: 7, guest: true },
     ],
     slots: [{ x: 2, y: 8 }, { x: 0, y: 8 }, { x: 1, y: 6 }, { x: 0, y: 6 }, { x: 1, y: 9 }],
     sortie: 5,
@@ -370,13 +370,13 @@ export const CHAPTERS: Chapter[] = [
       { cls: 'fighter', lv: 3, x: 7, y: 1, wps: ['ironAxe'], ai: 'charge' },
       { cls: 'fighter', lv: 2, x: 11, y: 1, wps: ['ironAxe'], ai: 'charge' },
       { cls: 'soldier', lv: 2, x: 4, y: 2, wps: ['ironLance'], ai: 'charge' },
-      { cls: 'archer', lv: 3, x: 9, y: 2, wps: ['ironBow'], ai: 'hold' },
+      { cls: 'archer', lv: 3, x: 8, y: 1, wps: ['ironBow'], ai: 'hold' },
       // 南の林から野盗
       { cls: 'fighter', lv: 2, x: 7, y: 12, wps: ['ironAxe'], ai: 'charge' },
       { cls: 'soldier', lv: 3, x: 11, y: 12, wps: ['ironLance'], ai: 'hold' },
       // 川の東から貴族の私兵
-      { cls: 'soldier', lv: 3, x: 17, y: 4, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
-      { cls: 'cavalier', lv: 3, x: 17, y: 7, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
+      { cls: 'soldier', lv: 3, x: 18, y: 4, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
+      { cls: 'cavalier', lv: 3, x: 18, y: 7, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
       { cls: 'myrmidon', lv: 4, x: 17, y: 9, wps: ['ironSword'], ai: 'hold', prefix: '私兵の' },
       { cls: 'archer', lv: 3, x: 18, y: 10, wps: ['ironBow'], ai: 'hold', prefix: '私兵の' },
       { cls: 'mercenary', lv: 7, x: 19, y: 2, wps: ['steelSword'], ai: 'guard', boss: '傭兵隊長ドルガン' },

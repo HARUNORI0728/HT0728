@@ -514,24 +514,27 @@ export function drawTerrain(c: C2D, map: string[]) {
   softStroke(c, waterP, '47,120,200', T * 0.22, T * 0.08);
   // shallows
   if (hasAny(map, 'P')) {
-    const sp = shapeOf(ch => ch === 'P', 0.22, 0.42, 0.06).p;
-    soft(sp, 'rgba(150,220,235,.95)', T * 0.22, 'P');
-    c.save(); c.clip(sp, 'evenodd');
+    // a light band across the river from bank to bank (we are inside the water clip), fading along the flow
     for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
       if (map[y][x] !== 'P') continue;
       const r = tileR(x, y, 'ford');
-      for (let i = 0; i < 16; i++) {
-        const px = (x + 0.1 + r() * 0.8) * T, py = (y + 0.1 + r() * 0.8) * T, rr = (2.5 + r() * 4) * u;
+      const vert = isWater(atC(x, y - 1)) || isWater(atC(x, y + 1)); // river runs north–south: cross west–east
+      const g = vert ? c.createLinearGradient(0, y * T, 0, (y + 1) * T) : c.createLinearGradient(x * T, 0, (x + 1) * T, 0);
+      g.addColorStop(0, 'rgba(160,225,238,0)'); g.addColorStop(0.25, 'rgba(160,225,238,.92)'); g.addColorStop(0.75, 'rgba(160,225,238,.92)'); g.addColorStop(1, 'rgba(160,225,238,0)');
+      c.fillStyle = g;
+      if (vert) c.fillRect((x - 0.5) * T, y * T, T * 2, T); else c.fillRect(x * T, (y - 0.5) * T, T, T * 2);
+      const along = (a: number, b: number): [number, number] => vert ? [(x - 0.3 + a * 1.6) * T, (y + 0.2 + b * 0.6) * T] : [(x + 0.2 + b * 0.6) * T, (y - 0.3 + a * 1.6) * T];
+      for (let i = 0; i < 22; i++) {
+        const [px, py] = along(r(), r()), rr = (2.5 + r() * 4) * u;
         c.fillStyle = ['#c9b58e', '#a8977a', '#d8cba8'][i % 3]; c.strokeStyle = 'rgba(60,70,80,.45)'; c.lineWidth = 1 * u;
         c.beginPath(); c.ellipse(px, py, rr, rr * 0.7, r(), 0, 7); c.fill(); c.stroke();
       }
-      // stepping stones across
-      for (let i = 0; i < 3; i++) {
-        const px = (x + 0.25 + i * 0.25 + (r() - 0.5) * 0.08) * T, py = (y + 0.3 + i * 0.2 + (r() - 0.5) * 0.08) * T;
-        O.rock(c, px, py, 1.0 * u, r, 8);
+      // stepping stones from bank to bank
+      for (let i = 0; i < 5; i++) {
+        const [px, py] = along(0.1 + i * 0.2 + (r() - 0.5) * 0.05, 0.5 + (r() - 0.5) * 0.4);
+        O.rock(c, px, py + 4 * u, 1.05 * u, r, 8);
       }
     }
-    c.restore();
   }
   // flow lines follow the river's direction
   c.lineCap = 'round';
@@ -699,7 +702,7 @@ export function drawTerrain(c: C2D, map: string[]) {
     if (near(x, y, 'DUZL')) {
       const q = r();
       const [px, py] = corner();
-      if (near(x, y, 'D') && q < 0.3) { const s = u * 1.1; put(py, q < 0.12 ? () => O.well(c, px, py, s) : () => O.haystack(c, px, py, s)); }
+      if (near(x, y, 'D') && q < 0.24) { const s = u * 1.1; put(py, q < 0.05 ? () => O.well(c, px, py, s) : () => O.haystack(c, px, py, s)); }
       else if (q < 0.4) { const s = u * (0.6 + r() * 0.4); put(py, () => O.rock(c, px, py, s, rng(hashStr(`rb${x},${y}`)), 12)); }
       else if (q < 0.47) { const f = r() < 0.5; put(py, () => O.cart(c, px, py, u * 0.9, true, f)); }
       else if (q < 0.55) { const s = u; put(py, () => O.crate(c, px, py, s)); }
