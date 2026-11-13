@@ -121,12 +121,23 @@ export function newChapter(index: number, roster?: Unit[], bonds?: Bonds, diffic
   return { chapter: index, turn: 1, phase: 'blue', units, map: ch.map, bonds: initBonds(bonds), difficulty, bench, flags: {} };
 }
 
-/** Fills fields added after save v2 so older states keep working. */
+/**
+ * Fills fields added after save v2 so older states keep working.
+ * A mid-chapter save made on an older version of the chapter's map (the maps were redrawn) would put units on
+ * tiles that may now be walls or water, so it restarts that chapter instead: same party (healed), same bonds
+ * and difficulty, same chosen members, everyone back on the new starting tiles.
+ */
 export function upgradeState(s: State): State {
   s.bonds = initBonds(s.bonds);
   s.difficulty = s.difficulty === 'classic' ? 'classic' : 'casual';
   s.bench = Array.isArray(s.bench) ? s.bench : [];
   s.flags = s.flags && typeof s.flags === 'object' ? s.flags : {};
+  const ch = CHAPTERS[s.chapter];
+  if (ch && (!Array.isArray(s.map) || s.map.join('/') !== ch.map.join('/'))) {
+    const party = s.units.filter(u => u.team === 'blue' && !u.guest);
+    const pool = [...party, ...s.bench].map(u => ({ ...clone(u), hp: u.st.hp, done: false, left: false }));
+    return newChapter(s.chapter, pool, s.bonds, s.difficulty, party.map(u => u.id));
+  }
   return s;
 }
 

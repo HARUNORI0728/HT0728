@@ -233,8 +233,8 @@ export function peak(c: C2D, p: Peak, R: () => number) {
   const L: Pt = [x - w, y], Rr: Pt = [x + w, y];
   const crag = !!p.crag;
   if (p.twin) S[0] = x - w * (0.2 + R() * 0.12);
-  const left = ridge(L, S, crag ? 5 : 4, -w * (crag ? 0.1 : 0.16), R);    // bulges up-left
-  let right = ridge(S, Rr, crag ? 5 : 4, -w * (crag ? 0.08 : 0.12), R);
+  const left = ridge(L, S, 5, -w * (crag ? 0.1 : 0.26), R);    // bulges up-left (rounded shoulders)
+  let right = ridge(S, Rr, 5, -w * (crag ? 0.08 : 0.2), R);
   if (p.twin) {
     const S2: Pt = [x + w * (0.25 + R() * 0.12), y - h * (0.72 + R() * 0.12)], sad: Pt = [(S[0] + S2[0]) / 2 + (R() - 0.5) * w * 0.08, y - h * (0.58 + R() * 0.06)];
     right = [S, lerp(S, sad, 0.5).map((v, i) => v + (i ? -h * 0.03 : 0)) as Pt, sad, lerp(sad, S2, 0.55).map((v, i) => v + (i ? -h * 0.04 : 0)) as Pt, ...ridge(S2, Rr, 3, -w * 0.1, R)];
@@ -302,6 +302,12 @@ export function peak(c: C2D, p: Peak, R: () => number) {
   // ridge line highlight / crease
   c.beginPath(); c.moveTo(...mid[0]); for (const q of mid) c.lineTo(...q);
   c.strokeStyle = 'rgba(50,38,40,.45)'; c.lineWidth = Math.max(1.2, w * 0.028); c.stroke();
+  // grassy lower slopes on the nearer, lower peaks (sense of altitude: green below, bare rock, then snow)
+  if (p.far < 0.5 && !crag) {
+    const gg = c.createLinearGradient(0, y - h * 0.45, 0, y);
+    gg.addColorStop(0, 'rgba(110,150,70,0)'); gg.addColorStop(0.5, 'rgba(110,150,70,.28)'); gg.addColorStop(1, 'rgba(90,130,60,.5)');
+    c.fillStyle = gg; c.fillRect(x - w, y - h * 0.45, 2 * w, h * 0.45);
+  }
   // dark foot (ambient occlusion)
   const ao = c.createLinearGradient(0, y - h * 0.35, 0, y);
   ao.addColorStop(0, 'rgba(50,45,30,0)'); ao.addColorStop(1, 'rgba(50,45,30,.38)');
@@ -497,14 +503,15 @@ export function fenceTile(c: C2D, x: number, y: number, L: Links, R: () => numbe
   const solo = !L.e && !L.w && !L.n && !L.s;
   const hl = L.w || solo ? x0 + step * 0.5 : cx, hr = L.e || solo ? x1 - step * 0.3 : cx;
   for (let px = hl; px <= hr + 0.1; px += step) posts.push([px, cy]);
-  if (L.n) for (let py = cy - step * 0.8; py > y0; py -= step * 0.8) posts.push([cx, py]);
-  if (L.s) for (let py = cy + step * 0.8; py < y1; py += step * 0.8) posts.push([cx, py]);
+  // vertical runs: stakes staggered left/right so the run reads as a thick palisade, not a single pole line
+  if (L.n) for (let py = cy - step * 0.8, i = 0; py > y0; py -= step * 0.8, i++) posts.push([cx + (i % 2 ? -1 : 1) * T * 0.06, py]);
+  if (L.s) for (let py = cy + step * 0.8, i = 0; py < y1; py += step * 0.8, i++) posts.push([cx + (i % 2 ? 1 : -1) * T * 0.06, py]);
   if (!posts.some(p => p[0] === cx && p[1] === cy)) posts.push([cx, cy]);
   c.save(); c.lineJoin = 'round';
   // trampled strip and shadow
   c.fillStyle = 'rgba(95,70,45,.45)';
   if (hr > hl) { c.beginPath(); c.ellipse((hl + hr) / 2, cy + 2, (hr - hl) / 2 + T * 0.08, T * 0.09, 0, 0, 7); c.fill(); }
-  if (L.n || L.s) { const a = L.n ? y0 : cy, b = L.s ? y1 : cy; c.beginPath(); c.roundRect(cx - T * 0.1, a, T * 0.2, b - a + T * 0.04, T * 0.08); c.fill(); }
+  if (L.n || L.s) { const a = L.n ? y0 : cy, b = L.s ? y1 : cy; c.beginPath(); c.roundRect(cx - T * 0.14, a, T * 0.28, b - a + T * 0.04, T * 0.1); c.fill(); }
   // rails behind the stakes
   c.strokeStyle = '#4a2e18'; c.lineWidth = T * 0.05;
   if (hr > hl) { for (const h of [0.14, 0.26]) { c.beginPath(); c.moveTo(hl, cy - T * h); c.lineTo(hr, cy - T * h); c.stroke(); } }
@@ -519,5 +526,29 @@ export function fenceTile(c: C2D, x: number, y: number, L: Links, R: () => numbe
   }
   // front rope / lashing
   if (hr > hl) { c.strokeStyle = 'rgba(220,200,150,.8)'; c.lineWidth = 1.4; c.beginPath(); c.moveTo(hl, cy - T * 0.2); c.lineTo(hr, cy - T * 0.2); c.stroke(); }
+  c.restore();
+}
+
+export function well(c: C2D, x: number, y: number, s: number) {
+  c.save(); c.translate(x, y); c.scale(s, s); c.lineJoin = 'round';
+  shadowBlob(c, 3, 1, 15, 4.5, 0.28);
+  c.strokeStyle = OUT; c.lineWidth = 1.7;
+  const g = c.createLinearGradient(-12, 0, 12, 0); g.addColorStop(0, '#d6cdbc'); g.addColorStop(1, '#8f8678');
+  c.fillStyle = g; c.beginPath(); c.moveTo(-12, -9); c.lineTo(-12, 0); c.quadraticCurveTo(0, 5, 12, 0); c.lineTo(12, -9); c.fill(); c.stroke();
+  c.fillStyle = '#2c3a4a'; c.beginPath(); c.ellipse(0, -9, 12, 4.5, 0, 0, 7); c.fill(); c.stroke();
+  c.fillStyle = '#5a9ad0'; c.beginPath(); c.ellipse(0, -8.5, 8, 2.6, 0, 0, 7); c.fill();
+  c.strokeStyle = '#6b4426'; c.lineWidth = 2.6; c.beginPath(); c.moveTo(-10, -9); c.lineTo(-10, -28); c.moveTo(10, -9); c.lineTo(10, -28); c.stroke();
+  c.fillStyle = '#9c6a44'; c.strokeStyle = OUT; c.lineWidth = 1.6; c.beginPath(); c.moveTo(-15, -26); c.lineTo(0, -34); c.lineTo(15, -26); c.closePath(); c.fill(); c.stroke();
+  c.strokeStyle = 'rgba(220,200,150,.9)'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(0, -27); c.lineTo(0, -14); c.stroke();
+  c.restore();
+}
+export function haystack(c: C2D, x: number, y: number, s: number) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  shadowBlob(c, 3, 1, 14, 4, 0.28);
+  const g = c.createLinearGradient(-12, -20, 12, 0); g.addColorStop(0, '#f0d58a'); g.addColorStop(1, '#b8913f');
+  c.fillStyle = g; c.strokeStyle = OUT; c.lineWidth = 1.7;
+  c.beginPath(); c.moveTo(-13, 0); c.quadraticCurveTo(-14, -18, 0, -22); c.quadraticCurveTo(14, -18, 13, 0); c.quadraticCurveTo(0, 3, -13, 0); c.fill(); c.stroke();
+  c.strokeStyle = 'rgba(130,95,35,.6)'; c.lineWidth = 1;
+  for (let i = -8; i <= 8; i += 4) { c.beginPath(); c.moveTo(i, -2); c.quadraticCurveTo(i * 0.7, -10, i * 0.4, -18); c.stroke(); }
   c.restore();
 }

@@ -134,10 +134,11 @@ function toPath(loops: [number, number][][]) {
  * Hill-shaded picture of a field (height = field value, light from the north-west), painted coarse and drawn
  * scaled up. Transparent below `th`. `bright` lifts the higher ground.
  */
-function relief(f: Field, th: number, W: number, H: number, dark: number[], light: number[], bright: number, height: (x: number, y: number) => number) {
-  const cell = 6 * (T / 96), lw = Math.ceil(W / cell), lh = Math.ceil(H / cell);
+function relief(f: Field, th: number, W: number, H: number, dark: number[], light: number[], bright: number, height: (x: number, y: number) => number, box: number[]) {
+  const cell = 8 * (T / 96), lw = Math.ceil(W / cell), lh = Math.ceil(H / cell);
   const cv = canvas(lw, lh), g = cv.getContext('2d')!, img = g.createImageData(lw, lh), d = T * 0.08;
-  for (let j = 0; j < lh; j++) for (let i = 0; i < lw; i++) {
+  const [bx0, by0, bx1, by1] = box.map(v => Math.round(v / cell));
+  for (let j = Math.max(0, by0); j < Math.min(lh, by1); j++) for (let i = Math.max(0, bx0); i < Math.min(lw, bx1); i++) {
     const x = (i + 0.5) * cell, y = (j + 0.5) * cell, v = valueAtB(f, x, y);
     if (v < th - 0.05) continue;
     const gx = height(x + d, y) - height(x - d, y), gy = height(x, y + d) - height(x, y - d);
@@ -239,6 +240,14 @@ function roadPath(map: string[], noise: (x: number, y: number) => number) {
   return p;
 }
 
+/** A soft-edged stroke without shadowBlur (slow on big canvases): stacked strokes, wide and faint to narrow. */
+function softStroke(c: C2D, p: Path2D, rgb: string, width: number, spread: number, alpha = 1) {
+  const n = 4;
+  for (let i = 0; i < n; i++) {
+    c.strokeStyle = `rgba(${rgb},${(alpha / n) * (i + 1) * 0.6})`; c.lineWidth = width + spread * (1 - i / (n - 1)); c.stroke(p);
+  }
+  c.strokeStyle = `rgba(${rgb},${alpha})`; c.lineWidth = width; c.stroke(p);
+}
 /** Shift a path by (dx, dy). */
 function moved(p: Path2D, dx: number, dy: number) {
   const q = new Path2D(); q.addPath(p, new DOMMatrix([1, 0, 0, 1, dx, dy])); return q;
@@ -263,7 +272,7 @@ export function drawTerrain(c: C2D, map: string[]) {
 
   // ---- grass: tonal variation from layered noise (painted small, scaled up smoothly), blades, flowers ----
   {
-    const cell = 8 * u, lw = Math.ceil(W / cell) + 2, lh = Math.ceil(H / cell) + 2;
+    const cell = 12 * u, lw = Math.ceil(W / cell) + 2, lh = Math.ceil(H / cell) + 2;
     const small = canvas(lw, lh), sg = small.getContext('2d')!, img = sg.createImageData(lw, lh);
     const stops: [number, [number, number, number]][] = [[-1, [70, 138, 66]], [-0.35, [92, 160, 80]], [0.1, [108, 178, 90]], [0.5, [132, 198, 104]], [1, [150, 196, 104]]];
     const ramp = (v: number) => {
@@ -286,22 +295,51 @@ export function drawTerrain(c: C2D, map: string[]) {
     c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
     c.drawImage(small, 0, 0, lw, lh, -cell / 2, -cell / 2, lw * cell, lh * cell);
   }
-  for (let i = 0; i < 1500 * area; i++) {
-    const x = R() * W, y = R() * H, l = (3 + R() * 5) * blade;
-    c.strokeStyle = R() < 0.5 ? 'rgba(170,230,130,.45)' : 'rgba(45,110,55,.4)'; c.lineWidth = 1.4 * blade;
-    c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + 2 * blade, y - l * 0.6, x + (R() - 0.5) * 4 * blade, y - l); c.stroke();
-  }
-  // flower meadows: clusters of tiny dots where a slow noise is high
-  for (let i = 0; i < 260 * area; i++) {
-    const x = R() * W, y = R() * H;
-    if (noise(x / T * 0.7 + 50, y / T * 0.7 + 50) < 0.2) continue;
-    c.fillStyle = ['#fff6c8', '#ffd0e0', '#e6f0ff', '#ffe27a'][i % 4]; c.beginPath(); c.arc(x, y, 1.7 * blade, 0, 7); c.fill();
+  // blades and flower dots: painted once on a 5×5-tile swatch and laid as a pattern (cheap on big maps;
+  // the noise tones underneath and the decorations hide the repeat)
+  {
+    const PS = Math.round(T * 5), sw0 = canvas(PS, PS), pg = sw0.getContext('2d')!, PR = rng(seed ^ 0x9e37);
+    pg.lineCap = 'round';
+    const bl = [new Path2D(), new Path2D()];
+    for (let i = 0; i < 1100 * 25 / 54; i++) {
+      const x = PR() * PS, y = PR() * PS, l = (3 + PR() * 5) * blade, p = bl[PR() < 0.5 ? 0 : 1];
+      for (const [ox, oy] of [[0, 0], [-PS, 0], [0, -PS], [-PS, -PS]]) if ((ox === 0 || x > PS - 12 * blade) && (oy === 0 || y > PS - 12 * blade)) {
+        p.moveTo(x + ox, y + oy); p.quadraticCurveTo(x + ox + 2 * blade, y + oy - l * 0.6, x + ox + (PR() - 0.5) * 4 * blade, y + oy - l);
+      }
+    }
+    pg.lineWidth = 1.4 * blade;
+    pg.strokeStyle = 'rgba(170,230,130,.45)'; pg.stroke(bl[0]);
+    pg.strokeStyle = 'rgba(45,110,55,.4)'; pg.stroke(bl[1]);
+    c.save(); c.fillStyle = c.createPattern(sw0, 'repeat')!; c.fillRect(0, 0, W, H); c.restore();
+    // flower meadows: clusters of tiny dots where a slow noise is high
+    const fl = [new Path2D(), new Path2D(), new Path2D(), new Path2D()];
+    for (let i = 0; i < 260 * area; i++) {
+      const x = R() * W, y = R() * H;
+      if (noise(x / T * 0.7 + 50, y / T * 0.7 + 50) < 0.2) continue;
+      fl[i % 4].moveTo(x + 1.7 * blade, y); fl[i % 4].arc(x, y, 1.7 * blade, 0, 7);
+    }
+    ['#fff6c8', '#ffd0e0', '#e6f0ff', '#ffe27a'].forEach((col, i) => { c.fillStyle = col; c.fill(fl[i]); });
   }
 
   // ---- soft ground patches: only the blurred shadow of the shape is drawn (shape sits off-canvas) ----
-  const soft = (p: Path2D, col: string, blur: number) => {
-    const off = W + H + 4 * T;
-    c.save(); c.translate(-off, 0); c.fillStyle = '#000'; c.shadowColor = col; c.shadowBlur = blur; c.shadowOffsetX = off; c.fill(p, 'evenodd'); c.restore();
+  // Painted at quarter size and scaled up: the blur is the same to the eye and far cheaper on big maps.
+  const SQ = 4, sw = Math.ceil(W / SQ), sh = Math.ceil(H / SQ), softCv = canvas(sw, sh), sc = softCv.getContext('2d')!;
+  // Several patches can be painted before one `flush` copies them onto the map.
+  // `set` = the tile kinds the shape covers: only their bounding box (plus a margin) is copied back.
+  let dirty: number[] | null = null;
+  const soft = (p: Path2D, col: string, blur: number, set: string, flush = true) => {
+    const b = boxOf(map, set);
+    if (b) {
+      const off = sw + sh + 4 * T;
+      sc.save(); sc.translate(-off, 0); sc.scale(1 / SQ, 1 / SQ); sc.fillStyle = '#000'; sc.shadowColor = col; sc.shadowBlur = blur / SQ; sc.shadowOffsetX = off; sc.fill(p, 'evenodd'); sc.restore();
+      dirty = dirty ? [Math.min(dirty[0], b[0]), Math.min(dirty[1], b[1]), Math.max(dirty[2], b[2]), Math.max(dirty[3], b[3])] : b;
+    }
+    if (flush && dirty) {
+      const x0 = Math.max(0, Math.floor((dirty[0] - 1) * T / SQ)), y0 = Math.max(0, Math.floor((dirty[1] - 1) * T / SQ));
+      const x1 = Math.min(sw, Math.ceil((dirty[2] + 2) * T / SQ)), y1 = Math.min(sh, Math.ceil((dirty[3] + 2) * T / SQ));
+      if (x1 > x0 && y1 > y0) c.drawImage(softCv, x0, y0, x1 - x0, y1 - y0, x0 * SQ, y0 * SQ, (x1 - x0) * SQ, (y1 - y0) * SQ);
+      sc.clearRect(0, 0, sw, sh); dirty = null;
+    }
   };
   const shapeOf = (test: Test, sigma: number, th: number, amp = 0.08, N = 6) => {
     const f = buildField(map, test, N, sigma, { noise, amp });
@@ -309,13 +347,13 @@ export function drawTerrain(c: C2D, map: string[]) {
   };
   // dirt around the camp and the village, trampled ground
   const dirt = shapeOf(ch => ch === 'N' || ch === 'D' || ch === 'U', 0.45, 0.33, 0.12);
-  soft(dirt.p, 'rgba(150,120,72,.42)', T * 0.5);
+  soft(dirt.p, 'rgba(150,120,72,.55)', T * 0.5, 'NDU', false);
   const forest = shapeOf(ch => ch === 'F', 0.3, 0.42);
-  soft(forest.p, 'rgba(28,86,44,.5)', T * 0.3);
+  soft(forest.p, 'rgba(28,86,44,.5)', T * 0.3, 'F', false);
   const bushes = shapeOf(ch => ch === 'Y', 0.3, 0.4);
-  soft(bushes.p, 'rgba(40,100,50,.35)', T * 0.35);
+  soft(bushes.p, 'rgba(40,100,50,.35)', T * 0.35, 'Y', false);
   const mtn = shapeOf(ch => ch === 'M' || ch === 'X', 0.34, 0.32);
-  soft(mtn.p, 'rgba(126,112,84,.85)', T * 0.3);
+  soft(mtn.p, 'rgba(126,112,84,.85)', T * 0.3, 'MX');
   c.save(); c.clip(mtn.p, 'evenodd');
   for (let i = 0; i < 420 * area; i++) {
     const x = R() * W, y = R() * H;
@@ -376,7 +414,7 @@ export function drawTerrain(c: C2D, map: string[]) {
   if (hasAny(map, 'H')) {
     const hf = buildField(map, ch => ch === 'H', 6, 0.3, { noise, amp: 0.07 });
     const hp = toPath(contours(hf, 0.4));
-    soft(moved(hp, T * 0.05, T * 0.1), 'rgba(30,60,30,.5)', T * 0.16);
+    soft(moved(hp, T * 0.05, T * 0.1), 'rgba(30,60,30,.5)', T * 0.16, 'H');
     // height: a dome per hill tile (summed, softly capped) with a little noise, so each hill rounds up
     const hills: [number, number][] = [];
     for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (map[y][x] === 'H') hills.push([(x + 0.5 + noise(x * 3.1, y * 3.1) * 0.15) * T, (y + 0.45 + noise(x * 2.3 + 5, y * 2.3) * 0.12) * T]);
@@ -386,13 +424,17 @@ export function drawTerrain(c: C2D, map: string[]) {
       for (const [hx, hy] of hills) { const dx = px - hx, dy = py - hy; if (Math.abs(dx) < T * 1.6 && Math.abs(dy) < T * 1.6) h += Math.exp(-(dx * dx + dy * dy) / s2); }
       return 1 - Math.exp(-1.6 * h) + noise(px / T * 2, py / T * 2) * 0.04;
     };
-    c.drawImage(relief(hf, 0.4, W, H, [60, 110, 52], [206, 240, 160], 0.3, height), 0, 0, W, H);
+    const hx = hills.map(h => h[0]), hy = hills.map(h => h[1]);
+    const box = [Math.min(...hx) - T * 1.2, Math.min(...hy) - T * 1.2, Math.max(...hx) + T * 1.2, Math.max(...hy) + T * 1.2];
+    const rc = relief(hf, 0.4, W, H, [60, 110, 52], [206, 240, 160], 0.3, height, box), rk = rc.width / W;
+    const bx = Math.max(0, Math.floor(box[0] * rk)), by = Math.max(0, Math.floor(box[1] * rk)), bw = Math.min(rc.width, Math.ceil(box[2] * rk)) - bx, bh = Math.min(rc.height, Math.ceil(box[3] * rk)) - by;
+    if (bw > 0 && bh > 0) c.drawImage(rc, bx, by, bw, bh, bx / rk, by / rk, bw / rk, bh / rk);
     c.save(); c.clip(hp, 'evenodd');
     for (const th of [0.62, 0.8]) { c.strokeStyle = 'rgba(70,120,55,.3)'; c.lineWidth = 1.5 * u; c.stroke(toPath(contours(hf, th))); }
     // hachures: short strokes down the slope; dark on the south-east, light on the north-west
     const gr = (x: number, y: number) => [valueAt(hf, x + 4, y) - valueAt(hf, x - 4, y), valueAt(hf, x, y + 4) - valueAt(hf, x, y - 4)];
-    for (let i = 0; i < 900 * area; i++) {
-      const x = R() * W, y = R() * H, v = valueAt(hf, x, y);
+    for (let i = 0; i < 26 * hills.length; i++) {
+      const x = box[0] + R() * (box[2] - box[0]), y = box[1] + R() * (box[3] - box[1]), v = valueAt(hf, x, y);
       if (v < 0.4 || v > 0.62) continue;
       const [gx, gy] = gr(x, y), m = Math.hypot(gx, gy);
       if (m < 1e-3) continue;
@@ -408,7 +450,7 @@ export function drawTerrain(c: C2D, map: string[]) {
   // ---- ruins ground (廃墟): broken paving with grass in the cracks ----
   if (hasAny(map, 'U')) {
     const up = shapeOf(ch => ch === 'U', 0.3, 0.4, 0.22, 6).p;
-    soft(up, 'rgba(140,128,104,.55)', T * 0.2);
+    soft(up, 'rgba(140,128,104,.55)', T * 0.2, 'U');
     c.save(); c.clip(up, 'evenodd');
     for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
       if (!'UZ'.includes(map[y][x]) && !near(x, y, 'U', N4)) continue;
@@ -431,17 +473,17 @@ export function drawTerrain(c: C2D, map: string[]) {
   c.strokeStyle = 'rgba(60,90,40,.3)'; c.lineWidth = T * 0.8; c.stroke(roadP);
   c.strokeStyle = '#8f7a50'; c.lineWidth = T * 0.7; c.stroke(roadP);
   c.strokeStyle = '#d4b985'; c.lineWidth = T * 0.62; c.stroke(roadP);
-  c.save(); c.strokeStyle = '#e3cc9a'; c.shadowColor = '#e3cc9a'; c.shadowBlur = T * 0.1; c.lineWidth = T * 0.44; c.stroke(roadP); c.restore();
+  softStroke(c, roadP, '227,204,154', T * 0.42, T * 0.12);
   // ruts: a darker band with the middle painted back
   c.save(); c.setLineDash([T * 0.9, T * 0.18, T * 0.5, T * 0.12]);
   c.strokeStyle = 'rgba(150,118,72,.6)'; c.lineWidth = T * 0.4; c.stroke(roadP);
   c.restore();
   c.strokeStyle = '#dcc493'; c.lineWidth = T * 0.33; c.stroke(roadP);
-  c.save(); c.strokeStyle = '#e6d2a4'; c.shadowColor = '#e6d2a4'; c.shadowBlur = T * 0.06; c.lineWidth = T * 0.16; c.stroke(roadP); c.restore();
+  softStroke(c, roadP, '230,210,164', T * 0.14, T * 0.08);
   for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
     if (!isRoad(map[y][x]) || map[y][x] === 'B') continue;
     const r = tileR(x, y, 'road');
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < 7; i++) {
       const px = (x + 0.5 + (r() - 0.5) * 1.0) * T, py = (y + 0.5 + (r() - 0.5) * 1.0) * T;
       c.lineWidth = T * 0.6;
       if (!c.isPointInStroke(roadP, px, py)) continue;
@@ -468,12 +510,12 @@ export function drawTerrain(c: C2D, map: string[]) {
     const deep = N4.filter(([dx, dy]) => isWater(atC(x + dx, y + dy))).length;
     if (deep >= 3) { const g = c.createRadialGradient((x + 0.5) * T, (y + 0.5) * T, 0, (x + 0.5) * T, (y + 0.5) * T, T * 0.8); g.addColorStop(0, 'rgba(30,90,170,.28)'); g.addColorStop(1, 'rgba(30,90,170,0)'); c.fillStyle = g; c.fillRect((x - 0.3) * T, (y - 0.3) * T, T * 1.6, T * 1.6); }
   }
-  c.save(); c.strokeStyle = '#3f93dc'; c.shadowColor = '#3f93dc'; c.shadowBlur = T * 0.14; c.lineWidth = T * 0.8; c.stroke(waterP); c.restore();
-  c.save(); c.strokeStyle = '#2f78c8'; c.shadowColor = '#2f78c8'; c.shadowBlur = T * 0.05; c.lineWidth = T * 0.24; c.stroke(waterP); c.restore();
+  softStroke(c, waterP, '63,147,220', T * 0.7, T * 0.3);
+  softStroke(c, waterP, '47,120,200', T * 0.22, T * 0.08);
   // shallows
   if (hasAny(map, 'P')) {
     const sp = shapeOf(ch => ch === 'P', 0.22, 0.42, 0.06).p;
-    soft(sp, 'rgba(150,220,235,.95)', T * 0.22);
+    soft(sp, 'rgba(150,220,235,.95)', T * 0.22, 'P');
     c.save(); c.clip(sp, 'evenodd');
     for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
       if (map[y][x] !== 'P') continue;
@@ -528,7 +570,7 @@ export function drawTerrain(c: C2D, map: string[]) {
   // ---- cliffs (崖): a raised rocky plateau; the sheer face shows on its south side ----
   if (hasAny(map, 'X')) {
     const xp = shapeOf(ch => ch === 'X', 0.2, 0.45, 0.16, 8).p, fh = T * 0.36;
-    soft(moved(xp, T * 0.08, T * 0.06), 'rgba(20,20,10,.5)', T * 0.12);
+    soft(moved(xp, T * 0.08, T * 0.06), 'rgba(20,20,10,.5)', T * 0.12, 'X');
     const fg = c.createLinearGradient(0, 0, 0, H); fg.addColorStop(0, '#8b7c6c'); fg.addColorStop(1, '#6a5c52');
     c.fillStyle = fg; c.fill(xp, 'evenodd');
     c.save(); c.clip(xp, 'evenodd');
@@ -543,7 +585,7 @@ export function drawTerrain(c: C2D, map: string[]) {
       }
     }
     const topP = moved(xp, 0, -fh);
-    const tg = c.createLinearGradient(0, 0, W * 0.4, H); tg.addColorStop(0, '#b9ad88'); tg.addColorStop(1, '#9a9070');
+    const tg = c.createLinearGradient(0, 0, W * 0.4, H); tg.addColorStop(0, '#b4b880'); tg.addColorStop(1, '#949a68');
     c.fillStyle = tg; c.fill(topP, 'evenodd');
     c.save(); c.clip(topP, 'evenodd');
     for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
@@ -657,7 +699,8 @@ export function drawTerrain(c: C2D, map: string[]) {
     if (near(x, y, 'DUZL')) {
       const q = r();
       const [px, py] = corner();
-      if (q < 0.4) { const s = u * (0.6 + r() * 0.4); put(py, () => O.rock(c, px, py, s, rng(hashStr(`rb${x},${y}`)), 12)); }
+      if (near(x, y, 'D') && q < 0.3) { const s = u * 1.1; put(py, q < 0.12 ? () => O.well(c, px, py, s) : () => O.haystack(c, px, py, s)); }
+      else if (q < 0.4) { const s = u * (0.6 + r() * 0.4); put(py, () => O.rock(c, px, py, s, rng(hashStr(`rb${x},${y}`)), 12)); }
       else if (q < 0.47) { const f = r() < 0.5; put(py, () => O.cart(c, px, py, u * 0.9, true, f)); }
       else if (q < 0.55) { const s = u; put(py, () => O.crate(c, px, py, s)); }
       return;
@@ -683,6 +726,12 @@ export function drawTerrain(c: C2D, map: string[]) {
 }
 
 function hasAny(map: string[], ch: string) { return map.some(r => r.includes(ch)); }
+/** Tile bounding box [x0, y0, x1, y1] (inclusive, in tiles) of the kinds in `set`, or null. */
+function boxOf(map: string[], set: string): number[] | null {
+  let b: number[] | null = null;
+  for (let y = 0; y < map.length; y++) for (let x = 0; x < map[0].length; x++) if (set.includes(map[y][x])) b = b ? [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)] : [x, y, x, y];
+  return b;
+}
 interface Comp { tiles: [number, number][]; minX: number; maxX: number; minY: number; maxY: number }
 /** 4-connected groups of tiles in `set`. */
 function components(map: string[], set: string): Comp[] {
@@ -734,18 +783,18 @@ function buildPeaks(map: string[], seed: number): O.Peak[] {
       const capTop = !inM(x, y - 1) && y > 0; // nothing mountainous above: keep the peak inside its tile
       let h = T * (0.72 + 1.05 * m) * (0.9 + R() * 0.25);
       if (capTop) h = Math.min(h, T * 1.0);
-      const w = T * (0.56 + 0.5 * m) * (0.9 + R() * 0.2);
-      const snow = h > T * 1.08 || (h > T * 0.9 && R() < 0.35);
+      const w = T * (0.64 + 0.55 * m) * (0.9 + R() * 0.2);
+      const snow = h > T * 1.3 || (h > T * 1.05 && far > 0.4 && R() < 0.6);
       // back peak toward the north neighbour (bluer, behind)
       if (inM(x, y - 1) && R() < 0.55) {
         const bh = h * (0.8 + R() * 0.25);
-        out.push({ x: (x + 0.5 + (R() - 0.5) * 0.6) * T, y: (y + 0.42) * T, w: w * 0.9, h: bh, snow: bh > T * 1.0, tone: tone + 8, far: Math.min(1, far + 0.35), seed: R() * 1e9 });
+        out.push({ x: (x + 0.5 + (R() - 0.5) * 0.6) * T, y: (y + 0.42) * T, w: w * 0.9, h: bh, snow: bh > T * 0.95, tone: tone + 8, far: Math.min(1, far + 0.35), seed: R() * 1e9 });
       }
       // ridge peak between this tile and its east neighbour (drawn behind both), so the crest line runs on
       if (inM(x + 1, y)) {
         let rh = h * (0.75 + R() * 0.2);
         if (capTop || !inM(x + 1, y - 1)) rh = Math.min(rh, T * 0.88);
-        out.push({ x: (x + 1 + (R() - 0.5) * 0.2) * T, y: (y + 0.74) * T, w: w * 0.85, h: rh, snow: rh > T * 1.0, tone: tone + 5, far: Math.min(1, far + 0.2), seed: R() * 1e9 });
+        out.push({ x: (x + 1 + (R() - 0.5) * 0.2) * T, y: (y + 0.74) * T, w: w * 0.85, h: rh, snow: rh > T * 1.15, tone: tone + 5, far: Math.min(1, far + 0.2), seed: R() * 1e9 });
       }
       out.push({ x: (x + 0.5 + (R() - 0.5) * 0.2) * T, y: (y + 0.94) * T, w: w * (h > T * 1.2 ? 1.12 : 1), h, snow, tone, far, twin: m > 0.45 && R() < 0.45, seed: R() * 1e9 });
       // foothills and crags where the range meets open ground to the south, east or west

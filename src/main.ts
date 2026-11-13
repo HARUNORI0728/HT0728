@@ -404,7 +404,7 @@ async function tapAt(clientX: number, clientY: number) {
     inspect = u ?? null;
     if (u) { stops = u.ai === 'guard' ? new Set([key(u.x, u.y)]) : stopTiles(S, u); threat = threatTiles(S, u, stops); }
     idle();
-    if (!u) { const t = terrainAt(S, tx, ty); info(`<p class="hint">${t.name}　守備+${t.def}　回避+${t.avo}${t.heal ? '　ターン開始時にHP回復' : ''}</p>`); }
+    if (!u) { const t = terrainAt(S, tx, ty); info(`<p class="hint">${t.name}　守備+${t.def}　回避+${t.avo}${t.heal ? '　ターン開始時にHP回復' : ''}${t.note ? '　' + t.note : ''}</p>`); }
   } else if (mode === 'move') {
     if (!stops.has(key(tx, ty))) return idle();
     mode = 'busy'; await tween(sel!, tx, ty); openMenu();
