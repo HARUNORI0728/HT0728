@@ -1,11 +1,13 @@
-// Map units: vector chibi figures (stand-ins until assets/units/<ID>.png arrive), cached per look.
+// Map units: the delivered sprites (assets/units/<ID>.png, via render/art.ts) or vector chibi figures, cached per look.
 //
 // drawUnit() is the single entry point for putting a unit on the map. It asks figureFor(), which uses a
 // registered picture for the unit (setUnitImage) when one is loaded, and the vector chibi otherwise. Either way
 // the result is rendered once into an offscreen canvas (plus a desaturated copy for units that have acted),
 // so a frame only does drawImage calls.
 import { CLASSES, WEAPONS } from '../data';
-import { OUT, T, canvas, shade, type C2D } from './common';
+import { UNIT_ART } from '../art-manifest';
+import { OUT, RES, T, canvas, shade, type C2D } from './common';
+import { idForName } from './who';
 
 /** What drawUnit needs to know about a unit (a logic Unit fits; so does a CharDef plus team). */
 export interface UnitLike { id: string; name?: string; cls: string; team: string; hair?: string; boss?: boolean; wps?: string[]; uid?: number }
@@ -291,12 +293,16 @@ function drawFigure(c: C2D, o: Look) {
 }
 
 // ---------- cache & images ----------
-/** Pictures registered for a unit key (see imageKey). Hook for assets/units/<ID>.png — not loaded yet. */
+/** Pictures registered for a unit key (see imageKey); render/art.ts loads assets/units/<key> into here. */
 const unitImages = new Map<string, HTMLImageElement>();
 export function setUnitImage(key: string, img: HTMLImageElement) { unitImages.set(key, img); figCache.clear(); }
-/** File key for a unit's picture: the cast id for named units, enemy_<faction>_<role> for generic enemies. */
+/**
+ * File key for a unit's picture: the cast id for allies, the character id for named enemies (bosses, by name),
+ * enemy_<faction>_<role> for generic enemies.
+ */
 export function imageKey(u: UnitLike) {
   if (u.team !== 'red' || !CLASSES[u.id]) return u.id;
+  if (u.boss) { const id = idForName(u.name); if (id && UNIT_ART[id]) return id; }
   const role: Record<string, string> = { soldier: 'soldier', fighter: 'fighter', archer: 'archer', knight: 'knight', myrmidon: 'sword', cavalier: 'cavalier', mage: 'mage', healer: 'healer', mercenary: 'mercenary' };
   if (u.cls === 'mercenary' && !u.name?.startsWith('私兵の')) return 'enemy_mercenary';
   return `enemy_${u.name?.startsWith('私兵の') ? 'guard' : 'bandit'}_${role[u.cls] ?? u.cls}`;
@@ -306,10 +312,34 @@ export function imageKey(u: UnitLike) {
 const FW = Math.ceil(T * 1.8), FH = Math.ceil(T * 1.95), FAX = FW / 2, FAY = Math.ceil(T * 1.65);
 /** Sample units → pixels (the sample used 72px tiles). */
 const K = T / 72;
+/**
+ * Map sprites (square, feet at SPRITE_FEET of the height, head top near SPRITE_TOP) are drawn SPRITE_SIZE wide:
+ * the figure is about 1.26 tiles tall, so the head reaches into the tile above.
+ * Figure canvases are RES times the map size (drawn back at map size, i.e. 1:1 on the main canvas).
+ */
+const SPRITE_SIZE = Math.round(T * 1.4), SPRITE_FEET = 974 / 1024, SPRITE_TOP = 54 / 1024;
 const figCache = new Map<string, HTMLCanvasElement>();
 
+/** Shrinks a picture in halving steps (smooth, no shimmer on thin outlines), returning a canvas of w×h. */
+export function shrinkImage(img: CanvasImageSource & { width: number; height: number }, w: number, h: number): HTMLCanvasElement {
+  let src: CanvasImageSource = img, sw = (img as HTMLImageElement).naturalWidth || img.width, sh = (img as HTMLImageElement).naturalHeight || img.height;
+  while (sw >= w * 2 && sh >= h * 2) {
+    const nw = Math.round(sw / 2), nh = Math.round(sh / 2), step = canvas(nw, nh), c = step.getContext('2d')!;
+    c.imageSmoothingQuality = 'high'; c.drawImage(src, 0, 0, sw, sh, 0, 0, nw, nh);
+    src = step; sw = nw; sh = nh;
+  }
+  const out = canvas(w, h), c = out.getContext('2d')!;
+  c.imageSmoothingQuality = 'high'; c.drawImage(src, 0, 0, sw, sh, 0, 0, w, h);
+  return out;
+}
+
+const GRAY = 'saturate(18%) brightness(78%)';
+let canFilter: boolean | null = null;
 function desaturate(src: HTMLCanvasElement) {
   const out = canvas(src.width, src.height), c = out.getContext('2d')!;
+  // ctx.filter where supported (pictures loaded from file:// taint the canvas, so pixel access may be refused).
+  if (canFilter === null) { c.filter = GRAY; canFilter = c.filter === GRAY; c.filter = 'none'; }
+  if (canFilter) { c.filter = GRAY; c.drawImage(src, 0, 0); c.filter = 'none'; return out; }
   c.drawImage(src, 0, 0);
   try {
     const d = c.getImageData(0, 0, out.width, out.height), p = d.data;
@@ -321,21 +351,27 @@ function desaturate(src: HTMLCanvasElement) {
   } catch { c.globalCompositeOperation = 'source-atop'; c.fillStyle = 'rgba(60,60,80,.55)'; c.fillRect(0, 0, out.width, out.height); }
   return out;
 }
+/** Whether a unit is drawn from its picture (loaded) rather than the vector figure. */
+export function hasUnitImage(u: UnitLike) { const img = unitImages.get(imageKey(u)); return !!img && img.complete && img.naturalWidth > 0; }
 function figureFor(u: UnitLike, gray: boolean): HTMLCanvasElement {
   const img = unitImages.get(imageKey(u));
   const useImg = !!img && img.complete && img.naturalWidth > 0;
-  const look = lookOf(u);
-  const key = (useImg ? 'img:' + imageKey(u) + (u.boss ? ':boss' : '') : JSON.stringify(look));
+  // Pictures face right (lower right); the enemy army faces left.
+  const flip = u.team === 'red';
+  const look = useImg ? null : lookOf(u);
+  const key = useImg ? `img:${imageKey(u)}:${flip ? 'L' : 'R'}${u.boss ? ':boss' : ''}` : JSON.stringify(look);
   let base = figCache.get(key);
   if (!base) {
-    base = canvas(FW, FH);
+    base = canvas(FW * RES, FH * RES);
     const c = base.getContext('2d')!;
-    c.translate(FAX, FAY);
+    c.scale(RES, RES); c.translate(FAX, FAY);
     if (useImg) {
-      const h = T * 1.3, w = h * img!.naturalWidth / img!.naturalHeight;
-      c.drawImage(img!, -w / 2, -h + T * 0.06, w, h);
-      if (look.boss) { c.scale(K, K); crown(c, 0, -h / K - 4); }
-    } else { c.scale(K, K); drawFigure(c, look); }
+      const D = SPRITE_SIZE, pic = shrinkImage(img!, Math.round(D * RES), Math.round(D * RES));
+      c.save(); if (flip) c.scale(-1, 1);
+      c.drawImage(pic, -D / 2, -D * SPRITE_FEET, D, D);
+      c.restore();
+      if (u.boss) { c.scale(K, K); crown(c, 0, -D * (SPRITE_FEET - SPRITE_TOP) / K - 8); }
+    } else { c.scale(K, K); drawFigure(c, look!); }
     figCache.set(key, base);
   }
   if (!gray) return base;
@@ -348,8 +384,9 @@ const ringCache = new Map<string, HTMLCanvasElement>();
 function ring(team: string) {
   let r = ringCache.get(team);
   if (!r) {
-    r = canvas(T * 0.9, T * 0.42);
-    const c = r.getContext('2d')!, cx = r.width / 2, cy = r.height / 2;
+    r = canvas(T * 0.9 * RES, T * 0.42 * RES);
+    const c = r.getContext('2d')!, cx = T * 0.45, cy = T * 0.21;
+    c.scale(RES, RES);
     const col = team === 'red' ? ['#ff6f61', 'rgba(255,90,80,.35)'] : ['#5aa7ff', 'rgba(80,150,255,.35)'];
     c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(cx, cy + 2 * K, 25 * K, 8.5 * K, 0, 0, 7); c.fill();
     c.save(); c.shadowColor = col[0]; c.shadowBlur = 8 * K;
@@ -369,9 +406,9 @@ export function drawUnit(c: C2D, u: UnitLike, px: number, py: number, gray = fal
   const fx = px + T / 2, fy = py + T * FEET;
   const r = ring(u.team);
   c.globalAlpha = gray ? 0.55 : 1;
-  c.drawImage(r, fx - r.width / 2, fy - r.height / 2);
+  c.drawImage(r, fx - T * 0.45, fy - T * 0.21, T * 0.9, T * 0.42);
   c.globalAlpha = 1;
-  c.drawImage(figureFor(u, gray), fx - FAX, fy - FAY);
+  c.drawImage(figureFor(u, gray), fx - FAX, fy - FAY, FW, FH);
   if (hp !== undefined) hpBar(c, fx, fy + 7 * K, hp, u.team);
 }
 export function hpBar(c: C2D, cx: number, y: number, frac: number, team: string) {
@@ -397,5 +434,5 @@ export function drawPortrait(cv: HTMLCanvasElement, u: UnitLike) {
 export function drawIcon(cv: HTMLCanvasElement, u: UnitLike) {
   const c = cv.getContext('2d')!, f = figureFor(u, false), side = T * 1.22, sx = FAX - side / 2, sy = FAY - side + T * 0.1;
   c.clearRect(0, 0, cv.width, cv.height);
-  c.drawImage(f, sx, sy, side, side, 0, 0, cv.width, cv.height);
+  c.drawImage(f, sx * RES, sy * RES, side * RES, side * RES, 0, 0, cv.width, cv.height);
 }

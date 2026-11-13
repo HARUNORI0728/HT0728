@@ -18,7 +18,8 @@ export interface ClassDef {
   name: string; mov: number; mtype: MoveType; sprite: string;
   tier?: 1 | 2; wtypes: WType[]; bonus?: Partial<Stats>; crit?: number; gift?: string; desc?: string;
 }
-export interface Terrain { name: string; def: number; avo: number; heal?: boolean }
+/** note = 情報欄に添える移動の説明（通行不可・移動しにくい など）。 */
+export interface Terrain { name: string; def: number; avo: number; heal?: boolean; note?: string }
 
 export const STAT_KEYS: (keyof Stats)[] = ['hp', 'str', 'mag', 'skl', 'spd', 'lck', 'def', 'res'];
 export const STAT_NAMES: Record<keyof Stats, string> = { hp: 'HP', str: '力', mag: '魔力', skl: '技', spd: '速さ', lck: '幸運', def: '守備', res: '魔防' };
@@ -147,22 +148,42 @@ export const PROMOS: Record<string, Promo[]> = {
   spellblade: P('swordSaint', 'archmage'),
 };
 
+/**
+ * 地形。記号は各章の map: の1文字。V（村の訪問）と T（宝箱）は systems.md §6 で予約済みなので使わない。
+ * 移動コストは moveCost()。効果は控えめに：遮蔽は守備+1・回避+10〜20、通れない地形は飛行のみ。
+ */
 export const TERRAIN: Record<string, Terrain> = {
   G: { name: '平地', def: 0, avo: 0 },
   R: { name: '道', def: 0, avo: 0 },
   B: { name: '橋', def: 0, avo: 0 },
-  F: { name: '森', def: 1, avo: 20 },
-  M: { name: '山', def: 2, avo: 30 },
-  W: { name: '川', def: 0, avo: 0 },
+  F: { name: '森', def: 1, avo: 20, note: '移動コスト2（騎馬3）' },
+  M: { name: '山', def: 2, avo: 30, note: '歩兵のみ・移動コスト4' },
+  W: { name: '川', def: 0, avo: 0, note: '通行不可' },
   C: { name: '砦', def: 2, avo: 20, heal: true },
+  H: { name: '丘', def: 1, avo: 10, note: '移動コスト2' },
+  X: { name: '崖', def: 0, avo: 0, note: '通行不可' },
+  A: { name: '畑', def: 0, avo: 5, note: '騎馬・重装は移動コスト2' },
+  D: { name: '家屋', def: 1, avo: 20 },
+  N: { name: '天幕', def: 0, avo: 10 },
+  Y: { name: '茂み', def: 0, avo: 10, note: '騎馬は移動コスト2' },
+  U: { name: '廃墟', def: 1, avo: 15, note: '移動コスト2（騎馬3）' },
+  Z: { name: '城壁', def: 0, avo: 0, note: '通行不可' },
+  L: { name: '柵', def: 0, avo: 0, note: '通行不可' },
+  P: { name: '浅瀬', def: 0, avo: 0, note: '移動コスト3（重装4）' },
 };
 
 export function moveCost(t: string, m: MoveType): number {
   if (m === 'fly') return 1;
-  if (t === 'W') return Infinity;
-  if (t === 'M') return m === 'foot' ? 4 : Infinity;
-  if (t === 'F') return m === 'horse' ? 3 : 2;
-  return 1;
+  switch (t) {
+    case 'W': case 'X': case 'Z': case 'L': return Infinity;
+    case 'M': return m === 'foot' ? 4 : Infinity;
+    case 'F': case 'U': return m === 'horse' ? 3 : 2;
+    case 'H': return 2;
+    case 'A': return m === 'foot' ? 1 : 2;
+    case 'Y': return m === 'horse' ? 2 : 1;
+    case 'P': return m === 'armor' ? 4 : 3;
+    default: return 1;
+  }
 }
 
 export interface CharDef { id: string; name: string; cls: string; lv: number; st: Stats; gr: Stats; wps: string[]; hair: string }
@@ -205,7 +226,21 @@ export const CHARS: Record<string, CharDef> = {
 
 /** prefix = 一般兵の名前の頭（省略時「野盗の」。例：「私兵の」→「私兵の槍兵」）。 */
 export interface EnemyDef { cls: string; lv: number; x: number; y: number; wps: string[]; ai: 'charge' | 'hold' | 'guard'; boss?: string; prefix?: string }
-export interface Line { who: string; text: string }
+/**
+ * One line of a conversation. face = 立ち絵の表情（省略時 normal。その表情の絵が無ければ normal）。
+ * pos = 立ち絵を出す側（省略時は自動：すでに出ていればその側、なければ空いている側）。
+ */
+export interface Line { who: string; text: string; face?: 'normal' | 'smile' | 'angry' | 'sad' | 'dere'; pos?: 'left' | 'right' }
+/**
+ * 話者名・ユニット名 → 立ち絵とマップ用絵の ID（assets/portraits/<ID>_<表情>.png, assets/units/<ID>.png）。
+ * 仲間（CHARS / CAST の名前）は自動で引けるので、ここには名前のある敵・ゲスト・NPC を足す。
+ * 完全一致のあと「名前の末尾」で照合するので、肩書きつき（「野盗頭ガズ」）は短い名前だけでよい。
+ */
+export const SPEAKER_IDS: Record<string, string> = {
+  'ガズ': 'gaz', 'ドルガン': 'dolgan', 'ロッタ': 'lotta',
+  'オーベール': 'auber', 'ガル・ファリオン': 'gall', 'ダリウス': 'darius', 'オルステッド': 'orsted',
+  '傭兵団長': 'mercboss', '使徒': 'apostle', '迷宮の主': 'labyrinth',
+};
 export type Tile = [number, number];
 /**
  * 勝利条件（systems.md §7）。rout = 全滅、boss = boss フラグの敵をすべて撃破、seize = ルーデウスが tiles で制圧、
@@ -251,17 +286,19 @@ export const CHAPTERS: Chapter[] = [
   {
     title: '第1章　帰郷',
     win: { type: 'rout' }, lose: { units: ['rudeus', 'eris'] },
+    // 16×11。北東の山脈に野盗の砦、中央を北から南へ川（橋と浅瀬）、西にロアの崩れた城壁と廃墟、南西に難民キャンプ、南東に畑の跡。
     map: [
-      'GGGFFGGGGMMMGGG',
-      'GGFFGGRRRGMMGGC',
-      'GGFGGGRGGGGMGGG',
-      'WWGGGGRGGFGGGGG',
-      'WWWBWWRWWWGGFGG',
-      'GWWWWGRGWWWGFFG',
-      'GGGGGGRGGGWWGGG',
-      'GGFGGGRRRGGWWGG',
-      'GFFGGGGGRGGGGGG',
-      'GGGGGGGGRRRGGGG',
+      'FFFYGUGGGWMMMMMM',
+      'FFGGHHGUGWMMMMMM',
+      'FYGGHGGUGWGMMCMM',
+      'GUGGGGGGGWGGGRGM',
+      'ZZUZZUZRRBRRRRGG',
+      'GYGGGGGRGWGHHGFF',
+      'GNGNGGGRGWWGGYFF',
+      'NGNGNGGRGGWGAAAF',
+      'GNGGGGGRRRPRAAAG',
+      'NGGGNGGGGGWRAAGG',
+      'GGYGGGGGYGWRGGYG',
     ],
     players: [
       { id: 'rudeus', x: 4, y: 8 }, { id: 'ghislaine', x: 3, y: 9 },
@@ -269,57 +306,59 @@ export const CHAPTERS: Chapter[] = [
     ],
     enemies: [
       { cls: 'soldier', lv: 1, x: 6, y: 5, wps: ['ironLance'], ai: 'charge' },
-      { cls: 'fighter', lv: 1, x: 9, y: 6, wps: ['ironAxe'], ai: 'charge' },
+      { cls: 'fighter', lv: 1, x: 8, y: 6, wps: ['ironAxe'], ai: 'charge' },
       { cls: 'archer', lv: 1, x: 7, y: 3, wps: ['ironBow'], ai: 'charge' },
       { cls: 'fighter', lv: 2, x: 3, y: 3, wps: ['ironAxe'], ai: 'charge' },
       { cls: 'soldier', lv: 2, x: 5, y: 2, wps: ['ironLance'], ai: 'charge' },
       { cls: 'soldier', lv: 2, x: 11, y: 3, wps: ['ironLance'], ai: 'hold' },
       { cls: 'fighter', lv: 3, x: 12, y: 3, wps: ['ironAxe'], ai: 'hold' },
-      { cls: 'archer', lv: 2, x: 12, y: 1, wps: ['ironBow'], ai: 'guard' },
-      { cls: 'knight', lv: 5, x: 14, y: 1, wps: ['javelin'], ai: 'guard', boss: '野盗頭ガズ' },
+      { cls: 'archer', lv: 2, x: 14, y: 3, wps: ['ironBow'], ai: 'guard' },
+      { cls: 'knight', lv: 5, x: 13, y: 2, wps: ['javelin'], ai: 'guard', boss: '野盗頭ガズ' },
     ],
     intro: [
       { who: '', text: '魔大陸から歩きつづけて、三年。' },
       { who: '', text: 'ようやく帰りついた故郷フィットア領は、見わたすかぎりの草原になっていた。' },
-      { who: 'ルーデウス', text: '……何も、ない。ロアの城壁も、ブエナ村も。' },
-      { who: 'エリス', text: 'ふん。だったら建て直せばいいじゃない！ ……建て直すのよ。絶対に。' },
+      { who: 'ルーデウス', text: '……何も、ない。ロアの城壁も、ブエナ村も。', face: 'sad' },
+      { who: 'エリス', text: 'ふん。だったら建て直せばいいじゃない！ ……建て直すのよ。絶対に。', face: 'angry' },
       { who: 'ルイジェルド', text: '待て。難民キャンプのほうから煙が上がっている。……武器の音だ。' },
-      { who: 'ギレーヌ', text: 'お嬢様！ ルーデウス！ 生きていたか。話は後だ、野盗どもが復興の物資を狙ってきている。' },
-      { who: 'エリス', text: 'ギレーヌ！ ちょうどいいわ、三年分の修行の成果、見せてあげる！' },
-      { who: 'ルーデウス', text: '（前の人生なら、布団をかぶって震えていただろうな）' },
-      { who: 'ルーデウス', text: '（でも今は違う。帰る場所は、自分で守る）――いきます。援護は任せてください。' },
+      { who: 'ギレーヌ', text: 'お嬢様！ ルーデウス！ 生きていたか。話は後だ、野盗どもが復興の物資を狙ってきている。', face: 'smile' },
+      { who: 'エリス', text: 'ギレーヌ！ ちょうどいいわ、三年分の修行の成果、見せてあげる！', face: 'smile' },
+      { who: 'ルーデウス', text: '（前の人生なら、布団をかぶって震えていただろうな）', face: 'sad' },
+      { who: 'ルーデウス', text: '（でも今は違う。帰る場所は、自分で守る）――いきます。援護は任せてください。', face: 'angry' },
     ],
     outro: [
-      { who: 'ギレーヌ', text: '見事だ。二人とも、強くなったな。' },
-      { who: 'エリス', text: '当然でしょ！ ……ねえギレーヌ。お祖父様と、お父様たちは？' },
-      { who: 'ギレーヌ', text: '…………。それも、後で話す。' },
+      { who: 'ギレーヌ', text: '見事だ。二人とも、強くなったな。', face: 'smile' },
+      { who: 'エリス', text: '当然でしょ！ ……ねえギレーヌ。お祖父様と、お父様たちは？', face: 'sad' },
+      { who: 'ギレーヌ', text: '…………。それも、後で話す。', face: 'sad' },
       { who: 'ルイジェルド', text: 'ルーデウス。野盗にしては装備が揃いすぎていた。後ろに誰かいるぞ。' },
-      { who: 'ルーデウス', text: 'ええ。この土地を欲しがっている誰かが。……父さまたち捜索団にも、知らせないと。' },
+      { who: 'ルーデウス', text: 'ええ。この土地を欲しがっている誰かが。……父さまたち捜索団にも、知らせないと。', face: 'angry' },
       { who: 'ルーデウス', text: '（家族を探す。故郷を取り戻す。やることは山ほどある）' },
-      { who: 'ルーデウス', text: '（上等だ。今度の人生は、本気で生きると決めたんだから）' },
+      { who: 'ルーデウス', text: '（上等だ。今度の人生は、本気で生きると決めたんだから）', face: 'smile' },
       { who: '', text: '第1章　クリア。' },
     ],
   },
   {
     // 2章（systems.md §6・§7）：ターン耐久8・捜索団員ロッタをゲストとして護衛。出撃5（ゲスト除く）、最初の敵11＋増援4。
-    // マップは依頼により 20×14（§6 の表は 15×10）。敵の約半数は hold / guard。川の東は橋2本でしか渡れない。
+    // マップは依頼により 20×14（§6 の表は 15×10）。敵の約半数は hold / guard。川の東は橋2本と浅瀬1か所で渡る。
     title: '第2章　捜索団の灯',
     win: { type: 'survive', turns: 8 }, lose: { units: ['rudeus', 'paul'] },
+    // 20×14。廃村を柵が囲み、門は北・南・西・東の4か所（南の柵は一部崩れている）。中央の砦跡にロッタとパウロ。
+    // 北の森と南の林から野盗、東の川（橋2本と浅瀬）を渡って私兵が来る。北東の砦に傭兵隊長。
     map: [
-      'MMFFFGGGFFFGGWGGGFMM',
-      'MFFGGGGGGFFGGWGGGGFM',
-      'FFGGGFFGGGGGGWGGRRRC',
-      'FGGGGFFGGGGGGWGGRGGG',
-      'GGGGGGGGGGFGGBRRRGGG',
-      'GGGFGGGGGFFGGWGGGFFG',
-      'GGFFGGGGRRRGGWWGGFFG',
-      'RRRRRRRRRCRGGGWGGGGG',
-      'GGGGGGGFRRRGGGWGGGFF',
-      'GGFFGGGFFGGGGGBRRRRR',
-      'GGFGGGGGGGGFGGWGGGGG',
-      'GGGGGFFGGGGFFGWGGMMG',
-      'GGGGGFGGGGGGGGWGGMMM',
-      'GGGGGGGGGGGGGWWGGGMM',
+      'MMFFFGFGFFFGGGGWXXMM',
+      'MFFHGGGFGFFYGGGWGGXM',
+      'FFHHGFFGGGGGGGGWGRRC',
+      'FGHGGFFGYGRRRRRBRRGG',
+      'GGGGGGLLLGRLLLGWGGGG',
+      'GGGYGGLDDGRGDLGWGGFF',
+      'GGGGGGLGGGRGGLGWWGFF',
+      'RRRRRRRRRCRRRRRRBRRR',
+      'GGGGGGLGGGGGGLGGWGGG',
+      'GGFGGGLDDGGUDLGGPGGG',
+      'AAAGGGLLLGLGLLGGWGGG',
+      'AAAGGFFGGGGFFGGWWGMM',
+      'GAAGGFFFGGGFFGGWGGMM',
+      'GGGGFFFGGGGGFGGWGMMM',
     ],
     players: [
       { id: 'rudeus', x: 1, y: 7 }, { id: 'paul', x: 10, y: 7 }, { id: 'lotta', x: 9, y: 7, guest: true },
@@ -331,14 +370,14 @@ export const CHAPTERS: Chapter[] = [
       { cls: 'fighter', lv: 3, x: 7, y: 1, wps: ['ironAxe'], ai: 'charge' },
       { cls: 'fighter', lv: 2, x: 11, y: 1, wps: ['ironAxe'], ai: 'charge' },
       { cls: 'soldier', lv: 2, x: 4, y: 2, wps: ['ironLance'], ai: 'charge' },
-      { cls: 'archer', lv: 3, x: 9, y: 3, wps: ['ironBow'], ai: 'hold' },
+      { cls: 'archer', lv: 3, x: 9, y: 2, wps: ['ironBow'], ai: 'hold' },
       // 南の林から野盗
       { cls: 'fighter', lv: 2, x: 7, y: 12, wps: ['ironAxe'], ai: 'charge' },
       { cls: 'soldier', lv: 3, x: 11, y: 12, wps: ['ironLance'], ai: 'hold' },
       // 川の東から貴族の私兵
-      { cls: 'soldier', lv: 3, x: 16, y: 4, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
+      { cls: 'soldier', lv: 3, x: 17, y: 4, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
       { cls: 'cavalier', lv: 3, x: 17, y: 7, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
-      { cls: 'myrmidon', lv: 4, x: 16, y: 9, wps: ['ironSword'], ai: 'hold', prefix: '私兵の' },
+      { cls: 'myrmidon', lv: 4, x: 17, y: 9, wps: ['ironSword'], ai: 'hold', prefix: '私兵の' },
       { cls: 'archer', lv: 3, x: 18, y: 10, wps: ['ironBow'], ai: 'hold', prefix: '私兵の' },
       { cls: 'mercenary', lv: 7, x: 19, y: 2, wps: ['steelSword'], ai: 'guard', boss: '傭兵隊長ドルガン' },
     ],
@@ -354,36 +393,36 @@ export const CHAPTERS: Chapter[] = [
     ],
     intro: [
       { who: '', text: 'ギレーヌの案内で、捜索団が拠点にしている村跡へ向かう途中。丘の向こうで角笛が鳴った。' },
-      { who: 'ルイジェルド', text: '村跡が囲まれている。野盗と……揃いの鎧を着た兵だ。' },
+      { who: 'ルイジェルド', text: '村跡が囲まれている。野盗と……揃いの鎧を着た兵だ。', face: 'angry' },
       { who: 'ギレーヌ', text: 'あの旗は捜索団のものだ。砦にいるのは――' },
-      { who: 'パウロ', text: 'ロッタ、砦から出るな！ 怪我人の手当てを続けろ！ ……くそ、きりがねえ。' },
+      { who: 'パウロ', text: 'ロッタ、砦から出るな！ 怪我人の手当てを続けろ！ ……くそ、きりがねえ。', face: 'angry' },
       { who: 'ルーデウス', text: '……父さま？' },
       { who: 'パウロ', text: 'あ？ なんだお前……いや、その目つき。……ルディ、なのか？' },
-      { who: 'ルーデウス', text: 'ええ。三年ぶりです、父さま。' },
-      { who: 'パウロ', text: '三年だぞ！ 三年も便りひとつよこさないで、どこをほっつき歩いてた！' },
-      { who: 'ルーデウス', text: '魔大陸から歩いて帰ってきたんです！ そっちこそ、捜索団ごと袋のねずみじゃないですか！' },
-      { who: 'エリス', text: '親子げんかは後にしなさい！ 敵が来るわよ！' },
-      { who: '傭兵隊長ドルガン', text: '涙の再会か、結構なこった。まとめて片づけろ！ この土地は伯爵さまがお買い上げだ！' },
-      { who: 'パウロ', text: '……ちっ。ルディ、話は終わってねえからな。日が沈むまで粘れば、あいつらは引く。' },
-      { who: 'ルーデウス', text: '望むところです。ロッタさんと怪我人は、僕たちが守ります。' },
-      { who: 'ルーデウス', text: '（言いたいことは山ほどある。でも、死なせたら一言も言えなくなる）' },
+      { who: 'ルーデウス', text: 'ええ。三年ぶりです、父さま。', face: 'smile' },
+      { who: 'パウロ', text: '三年だぞ！ 三年も便りひとつよこさないで、どこをほっつき歩いてた！', face: 'angry' },
+      { who: 'ルーデウス', text: '魔大陸から歩いて帰ってきたんです！ そっちこそ、捜索団ごと袋のねずみじゃないですか！', face: 'angry' },
+      { who: 'エリス', text: '親子げんかは後にしなさい！ 敵が来るわよ！', face: 'angry' },
+      { who: '傭兵隊長ドルガン', text: '涙の再会か、結構なこった。まとめて片づけろ！ この土地は伯爵さまがお買い上げだ！', face: 'angry' },
+      { who: 'パウロ', text: '……ちっ。ルディ、話は終わってねえからな。日が沈むまで粘れば、あいつらは引く。', face: 'angry' },
+      { who: 'ルーデウス', text: '望むところです。ロッタさんと怪我人は、僕たちが守ります。', face: 'smile' },
+      { who: 'ルーデウス', text: '（言いたいことは山ほどある。でも、死なせたら一言も言えなくなる）', face: 'sad' },
     ],
     outro: [
       { who: '', text: '日が傾くころ、傭兵たちは旗を巻いて引きあげていった。' },
       { who: 'ロッタ', text: '団長、怪我人は全員無事です。……あの魔術師さんたちのおかげですね。' },
-      { who: 'パウロ', text: 'さっきの岩の魔術。俺の背中を狙った槍を、きっちり弾いてたな。' },
-      { who: 'ルーデウス', text: '父さまこそ。僕の前に出た剣士を、二人まとめて。腕はなまってないんですね。' },
-      { who: 'パウロ', text: '当たり前だ。……なあルディ。三年ぶん、言うことを考えてたんだ。説教も、謝るのも。' },
-      { who: 'パウロ', text: '……お前の顔を見たら、全部忘れた。' },
-      { who: 'ルーデウス', text: '奇遇ですね。僕も道中ずっと練習してたんですけど、きれいに飛びました。' },
+      { who: 'パウロ', text: 'さっきの岩の魔術。俺の背中を狙った槍を、きっちり弾いてたな。', face: 'smile' },
+      { who: 'ルーデウス', text: '父さまこそ。僕の前に出た剣士を、二人まとめて。腕はなまってないんですね。', face: 'smile' },
+      { who: 'パウロ', text: '当たり前だ。……なあルディ。三年ぶん、言うことを考えてたんだ。説教も、謝るのも。', face: 'sad' },
+      { who: 'パウロ', text: '……お前の顔を見たら、全部忘れた。', face: 'sad' },
+      { who: 'ルーデウス', text: '奇遇ですね。僕も道中ずっと練習してたんですけど、きれいに飛びました。', face: 'smile' },
       { who: '', text: '二人の声が、ぴたりと重なった。「――ごめん」' },
-      { who: 'パウロ', text: '……おい。今のは俺が先だったろ。' },
-      { who: 'ルーデウス', text: 'いえ、僕のほうが半拍早かったです。' },
-      { who: 'エリス', text: 'どっちでもいいわよ！ ……もう、そういうところがそっくりなんだから。' },
-      { who: 'ギレーヌ', text: '三年たっても変わらんな、この親子は。' },
-      { who: 'パウロ', text: 'よし、今夜は飲むぞ。三年ぶんだ。' },
-      { who: 'ルーデウス', text: '僕は水でいいです。……でも、隣には座りますよ。' },
-      { who: 'ルイジェルド', text: '捕らえた傭兵が吐いた。雇い主はアスラの貴族、この一帯を丸ごと狙っているそうだ。' },
+      { who: 'パウロ', text: '……おい。今のは俺が先だったろ。', face: 'angry' },
+      { who: 'ルーデウス', text: 'いえ、僕のほうが半拍早かったです。', face: 'smile' },
+      { who: 'エリス', text: 'どっちでもいいわよ！ ……もう、そういうところがそっくりなんだから。', face: 'smile' },
+      { who: 'ギレーヌ', text: '三年たっても変わらんな、この親子は。', face: 'smile' },
+      { who: 'パウロ', text: 'よし、今夜は飲むぞ。三年ぶんだ。', face: 'smile' },
+      { who: 'ルーデウス', text: '僕は水でいいです。……でも、隣には座りますよ。', face: 'smile' },
+      { who: 'ルイジェルド', text: '捕らえた傭兵が吐いた。雇い主はアスラの貴族、この一帯を丸ごと狙っているそうだ。', face: 'angry' },
       { who: '', text: '第2章　クリア。' },
     ],
   },
@@ -440,54 +479,54 @@ const pair = (a: string, b: string, max: 'A' | 'S', tag = '', talks: Partial<Rec
 const TALK_RUDEUS_ERIS_C: Line[] = [
   { who: '', text: '夜。難民キャンプの外れで、エリスがひとり剣を振っている。' },
   { who: 'ルーデウス', text: 'まだ起きてたんですか。今日はもう十分戦ったでしょう。' },
-  { who: 'エリス', text: '十分じゃないわ。あの斧の男、一撃で倒せなかった。' },
-  { who: 'ルーデウス', text: '倒せてましたよ。二撃で。' },
-  { who: 'エリス', text: 'それじゃだめなの！ 一撃で倒せてたら、あんたが前に出なくてすんだのよ。' },
-  { who: 'ルーデウス', text: '……ああ。俺をかばおうとして、無理してたんですね。' },
-  { who: 'エリス', text: 'ち、違うわよ！ 魔術師は後ろにいるものなの。そういう決まりなの！' },
-  { who: 'ルーデウス', text: 'じゃあ明日は、決まりどおり後ろから援護します。エリスが一撃で決められるように。' },
-  { who: 'エリス', text: '……ふん。外したら承知しないんだから。' },
+  { who: 'エリス', text: '十分じゃないわ。あの斧の男、一撃で倒せなかった。', face: 'angry' },
+  { who: 'ルーデウス', text: '倒せてましたよ。二撃で。', face: 'smile' },
+  { who: 'エリス', text: 'それじゃだめなの！ 一撃で倒せてたら、あんたが前に出なくてすんだのよ。', face: 'angry' },
+  { who: 'ルーデウス', text: '……ああ。俺をかばおうとして、無理してたんですね。', face: 'smile' },
+  { who: 'エリス', text: 'ち、違うわよ！ 魔術師は後ろにいるものなの。そういう決まりなの！', face: 'angry' },
+  { who: 'ルーデウス', text: 'じゃあ明日は、決まりどおり後ろから援護します。エリスが一撃で決められるように。', face: 'smile' },
+  { who: 'エリス', text: '……ふん。外したら承知しないんだから。', face: 'smile' },
 ];
 const TALK_RUDEUS_RUIJERD_C: Line[] = [
   { who: 'ルイジェルド', text: 'ルーデウス。キャンプの子どもたちに水を配っていたな。' },
-  { who: 'ルーデウス', text: '魔術で出せば井戸を掘るまでのつなぎになりますから。見てたんですか。' },
+  { who: 'ルーデウス', text: '魔術で出せば井戸を掘るまでのつなぎになりますから。見てたんですか。', face: 'smile' },
   { who: 'ルイジェルド', text: '子どもが列に割り込んでも、お前は叱らなかった。' },
-  { who: 'ルーデウス', text: '喉が渇いてる子を叱っても、水は増えませんからね。' },
-  { who: 'ルイジェルド', text: 'そうだ。だが、後ろに並んでいた小さい子が泣いていた。' },
-  { who: 'ルーデウス', text: '……気づきませんでした。明日は列の後ろから配ります。' },
-  { who: 'ルイジェルド', text: 'それでいい。戦士は強い者より、先に弱い者を見るものだ。' },
-  { who: 'ルーデウス', text: '旅の間にさんざん教わったのに、まだまだですね、俺。' },
-  { who: 'ルイジェルド', text: '気づけば直せる。お前はいつもそうしてきた。' },
+  { who: 'ルーデウス', text: '喉が渇いてる子を叱っても、水は増えませんからね。', face: 'smile' },
+  { who: 'ルイジェルド', text: 'そうだ。だが、後ろに並んでいた小さい子が泣いていた。', face: 'sad' },
+  { who: 'ルーデウス', text: '……気づきませんでした。明日は列の後ろから配ります。', face: 'sad' },
+  { who: 'ルイジェルド', text: 'それでいい。戦士は強い者より、先に弱い者を見るものだ。', face: 'smile' },
+  { who: 'ルーデウス', text: '旅の間にさんざん教わったのに、まだまだですね、俺。', face: 'sad' },
+  { who: 'ルイジェルド', text: '気づけば直せる。お前はいつもそうしてきた。', face: 'smile' },
 ];
 const TALK_RUDEUS_GHISLAINE_C: Line[] = [
   { who: 'ギレーヌ', text: 'ルーデウス。字を教えてくれ。……いや、思い出させてくれ、か。' },
   { who: 'ルーデウス', text: '昔、一緒に練習しましたよね。読めなくなったんですか？' },
-  { who: 'ギレーヌ', text: '三年、剣しか握っていなかった。物資の帳簿が読めんのだ。' },
-  { who: 'ルーデウス', text: 'なるほど。じゃあ今夜から、帳簿を教科書にしましょう。' },
-  { who: 'ギレーヌ', text: '助かる。数字はまだ覚えている。……たぶんな。' },
-  { who: 'ルーデウス', text: '「小麦　十二袋」。はい、読んでみてください。' },
-  { who: 'ギレーヌ', text: 'こむぎ……じゅうに、ふくろ。……ふん。剣より手強いな。' },
-  { who: 'ルーデウス', text: '剣王が言うと説得力がありますね。でも、ちゃんと読めてますよ。' },
+  { who: 'ギレーヌ', text: '三年、剣しか握っていなかった。物資の帳簿が読めんのだ。', face: 'sad' },
+  { who: 'ルーデウス', text: 'なるほど。じゃあ今夜から、帳簿を教科書にしましょう。', face: 'smile' },
+  { who: 'ギレーヌ', text: '助かる。数字はまだ覚えている。……たぶんな。', face: 'smile' },
+  { who: 'ルーデウス', text: '「小麦　十二袋」。はい、読んでみてください。', face: 'smile' },
+  { who: 'ギレーヌ', text: 'こむぎ……じゅうに、ふくろ。……ふん。剣より手強いな。', face: 'angry' },
+  { who: 'ルーデウス', text: '剣王が言うと説得力がありますね。でも、ちゃんと読めてますよ。', face: 'smile' },
 ];
 const TALK_ERIS_GHISLAINE_C: Line[] = [
-  { who: 'エリス', text: 'ギレーヌ、稽古をつけて！ 今すぐ！' },
+  { who: 'エリス', text: 'ギレーヌ、稽古をつけて！ 今すぐ！', face: 'angry' },
   { who: 'ギレーヌ', text: '今日はもう二度相手をしたぞ、お嬢様。' },
-  { who: 'エリス', text: '二度とも負けたから三度目なの！ それと、お嬢様はやめて。' },
+  { who: 'エリス', text: '二度とも負けたから三度目なの！ それと、お嬢様はやめて。', face: 'angry' },
   { who: 'ギレーヌ', text: '……では、エリス。踏み込みが半歩早い。焦っているな。' },
-  { who: 'エリス', text: '焦ってないわ。早く強くならなきゃいけないだけよ。' },
-  { who: 'ギレーヌ', text: 'それを焦りと言う。サウロス様も、よくそう言われていた。' },
-  { who: 'エリス', text: '……お祖父様が？' },
-  { who: 'ギレーヌ', text: 'ああ。座れ。稽古の前に、少し昔の話をしてやろう。' },
+  { who: 'エリス', text: '焦ってないわ。早く強くならなきゃいけないだけよ。', face: 'angry' },
+  { who: 'ギレーヌ', text: 'それを焦りと言う。サウロス様も、よくそう言われていた。', face: 'sad' },
+  { who: 'エリス', text: '……お祖父様が？', face: 'sad' },
+  { who: 'ギレーヌ', text: 'ああ。座れ。稽古の前に、少し昔の話をしてやろう。', face: 'smile' },
 ];
 const TALK_ERIS_RUIJERD_C: Line[] = [
   { who: 'エリス', text: 'ルイジェルド！ その槍、ちょっと貸しなさいよ。' },
   { who: 'ルイジェルド', text: '断る。お前には長すぎる。' },
   { who: 'エリス', text: '使いたいんじゃないわ。どうしてあんなに速く突けるのか知りたいの。' },
   { who: 'ルイジェルド', text: '速く突こうとは思っていない。無駄を削っているだけだ。' },
-  { who: 'エリス', text: '無駄……。あたしの剣、そんなに無駄が多い？' },
-  { who: 'ルイジェルド', text: '多い。だが、旅を始めたころの半分になった。' },
-  { who: 'エリス', text: '半分！？ ……ふ、ふん。じゃあ、あと半分削ればいいのね。' },
-  { who: 'ルイジェルド', text: 'そうだ。焦らずにな。' },
+  { who: 'エリス', text: '無駄……。あたしの剣、そんなに無駄が多い？', face: 'sad' },
+  { who: 'ルイジェルド', text: '多い。だが、旅を始めたころの半分になった。', face: 'smile' },
+  { who: 'エリス', text: '半分！？ ……ふ、ふん。じゃあ、あと半分削ればいいのね。', face: 'smile' },
+  { who: 'ルイジェルド', text: 'そうだ。焦らずにな。', face: 'smile' },
 ];
 
 /** world.md §4 — 全43組（S 9・A 34）。並び順 = 章クリア後に支援会話を再生する順。 */

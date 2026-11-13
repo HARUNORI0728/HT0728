@@ -6,10 +6,11 @@ import {
   rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
   type Bonds, type Difficulty, type SortiePlan, type State, type Unit,
 } from './logic';
-import { T } from './render/common';
+import { RES, T } from './render/common';
 import { FLOAT_LIFE, drawCursor, drawEdgeMarks, drawFloat, drawTile, drawVignette, type Float } from './render/fx';
 import { drawTerrain } from './render/terrain';
 import { drawIcon, drawPortrait, drawUnit } from './render/units';
+import { faceHtml, idForName, idForUnit, loadUnitArt, portraitFailed, portraitUrl, preloadPortrait, spriteUrl, type Face } from './render/art';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const cv = $<HTMLCanvasElement>('cv'), ctx = cv.getContext('2d')!;
@@ -28,23 +29,35 @@ const shownHp = new Map<number, number>();
 const floats: Float[] = [];
 
 // ---------- camera ----------
-// The canvas shows 15×10 tiles; larger maps scroll. `cam` is the top-left of the view in map pixels.
+// The canvas shows 12×8 tiles; larger maps scroll. `cam` is the top-left of the view in map pixels.
+// Figures stand taller than a tile, so the view may scroll TOP_PAD above row 0 to keep the top row's heads on screen.
 const cam = { x: 0, y: 0 };
-const VIEW_W = cv.width / T, VIEW_H = cv.height / T;
+/** The view in map pixels (12×8 tiles). The canvas backing store is RES times larger so sprites stay sharp. */
+const VW = 12 * T, VH = 8 * T;
+cv.width = VW * RES; cv.height = VH * RES;
+const VIEW_W = VW / T, VIEW_H = VH / T;
+const TOP_PAD = Math.round(T * 0.45);
 const cols = () => S.map[0].length, rows = () => S.map.length;
-const scrolls = () => !!S && (cols() > VIEW_W || rows() > VIEW_H);
+/** Camera limits in map pixels (a map smaller than the view is centred). */
+function camBounds() {
+  const maxX = cols() * T - VW, maxY = rows() * T - VH;
+  return { minX: maxX < 0 ? maxX / 2 : 0, maxX: maxX < 0 ? maxX / 2 : maxX, minY: maxY < -TOP_PAD ? maxY / 2 : -TOP_PAD, maxY: maxY < -TOP_PAD ? maxY / 2 : maxY };
+}
+const scrolls = () => { if (!S) return false; const b = camBounds(); return b.maxX > b.minX || b.maxY > b.minY; };
 function clampCam() {
-  cam.x = Math.round(Math.max(0, Math.min(cols() * T - cv.width, cam.x)));
-  cam.y = Math.round(Math.max(0, Math.min(rows() * T - cv.height, cam.y)));
+  const b = camBounds();
+  cam.x = Math.round(Math.max(b.minX, Math.min(b.maxX, cam.x)));
+  cam.y = Math.round(Math.max(b.minY, Math.min(b.maxY, cam.y)));
 }
 /** Whether a tile is on screen, keeping one tile of margin except where the view already touches the map edge. */
 function inView(x: number, y: number, margin = 1) {
-  const l = cam.x / T, t = cam.y / T, r = l + VIEW_W - 1, b = t + VIEW_H - 1;
-  const ml = l > 0 ? margin : 0, mr = r < cols() - 1 ? margin : 0, mt = t > 0 ? margin : 0, mb = b < rows() - 1 ? margin : 0;
-  return x >= l + ml && x <= r - mr && y >= t + mt && y <= b - mb;
+  const b = camBounds();
+  const l = cam.x / T, t = cam.y / T, r = (cam.x + VW) / T - 1, bt = (cam.y + VH) / T - 1;
+  const ml = cam.x > b.minX ? margin : 0, mr = cam.x < b.maxX ? margin : 0, mt = cam.y > b.minY ? margin : 0, mb = cam.y < b.maxY ? margin : 0;
+  return x >= Math.max(0, l) + ml - 1e-6 && x <= r - mr + 1e-6 && y >= Math.max(0, t) + mt - 1e-6 && y <= bt - mb + 1e-6;
 }
 /** Centers the view on a tile (clamped to the map). */
-function centerOn(x: number, y: number) { cam.x = x * T + T / 2 - cv.width / 2; cam.y = y * T + T / 2 - cv.height / 2; clampCam(); }
+function centerOn(x: number, y: number) { cam.x = x * T + T / 2 - VW / 2; cam.y = y * T + T / 2 - VH / 2; clampCam(); }
 /** Scrolls smoothly to the given camera position. */
 async function panTo(x: number, y: number) {
   const sx = cam.x, sy = cam.y, steps = fast() ? 1 : 10;
@@ -105,11 +118,14 @@ function load(): SaveData | null {
 // ---------- rendering ----------
 function render(now = performance.now()) {
   if (S) {
-    const W = cv.width, H = cv.height, sec = now / 1000;
+    const W = VW, H = VH, sec = now / 1000;
+    ctx.setTransform(RES, 0, 0, RES, 0, 0);
     ctx.fillStyle = '#14121c'; ctx.fillRect(0, 0, W, H);
-    // the terrain was drawn once at chapter start; copy just the visible part
-    const sw = Math.min(W, terrain.width - cam.x), sh = Math.min(H, terrain.height - cam.y);
-    if (sw > 0 && sh > 0) ctx.drawImage(terrain, cam.x, cam.y, sw, sh, 0, 0, sw, sh);
+    // the terrain was drawn once at chapter start; copy just the visible part (plus the strip above the map)
+    const sx = Math.max(0, cam.x), sy = Math.max(0, cam.y);
+    const sw = Math.min(W - (sx - cam.x), terrain.width - sx), sh = Math.min(H - (sy - cam.y), terrain.height - sy);
+    if (sw > 0 && sh > 0) ctx.drawImage(terrain, sx, sy, sw, sh, sx - cam.x, sy - cam.y, sw, sh);
+    if (cam.y < 0 && topPad) ctx.drawImage(topPad, cam.x, 0, W, topPad.height, 0, -cam.y - topPad.height, W, topPad.height);
     ctx.save(); ctx.translate(-cam.x, -cam.y);
     const tile = (k: string, kind: Parameters<typeof drawTile>[1], a = 1) => { const [x, y] = k.split(',').map(Number); drawTile(ctx, kind, x, y, a); };
     if (mode === 'move' || (mode === 'idle' && inspect)) {
@@ -138,8 +154,21 @@ function render(now = performance.now()) {
 }
 /** Small arrows on the screen edges where the map continues. */
 function edgeMarks() {
-  const W = cv.width, H = cv.height;
-  drawEdgeMarks(ctx, W, H, cam.x > 0, cam.x < cols() * T - W, cam.y > 0, cam.y < rows() * T - H);
+  const b = camBounds();
+  drawEdgeMarks(ctx, VW, VH, cam.x > b.minX, cam.x < b.maxX, cam.y > Math.min(0, b.maxY), cam.y < b.maxY);
+}
+/**
+ * The strip above row 0 (where the top row's heads stand): the first rows of the terrain mirrored and fading
+ * into the night, so the map seems to go on rather than end at a hard edge.
+ */
+let topPad: HTMLCanvasElement | null = null;
+function makeTopPad() {
+  const h = TOP_PAD, c = document.createElement('canvas'); c.width = terrain.width; c.height = h;
+  const g = c.getContext('2d')!;
+  g.save(); g.translate(0, h); g.scale(1, -1); g.drawImage(terrain, 0, 0, terrain.width, h, 0, 0, terrain.width, h); g.restore();
+  const fade = g.createLinearGradient(0, 0, 0, h); fade.addColorStop(0, 'rgba(20,18,28,1)'); fade.addColorStop(0.35, 'rgba(20,18,28,.7)'); fade.addColorStop(1, 'rgba(20,18,28,.12)');
+  g.fillStyle = fade; g.fillRect(0, 0, c.width, h);
+  return c;
 }
 function float(u: Unit, text: string, color: string) { floats.push({ x: u.x * T + T / 2, y: u.y * T + T * 0.12, text, color, t: FLOAT_LIFE }); }
 async function tween(u: Unit, x: number, y: number) {
@@ -170,8 +199,9 @@ function unitHtml(u: Unit) {
   const st = STAT_KEYS.filter(k => k !== 'hp').map(k => `<div><span>${STAT_NAMES[k]}</span>${u.st[k]}</div>`).join('');
   const wps = wpsText(u);
   const t = terrainAt(S, u.x, u.y);
-  return `<div class="uhead"><b class="${u.team}">${u.name}</b><span>${CLASSES[u.cls].name}　Lv ${u.lv}${u.gr ? `　EXP ${u.exp}` : ''}</span></div>
-    <div class="hp">HP ${u.hp} / ${u.st.hp}<div class="bar"><i style="width:${100 * u.hp / u.st.hp}%;background:${u.team === 'blue' ? '#5aa7ff' : '#ff6f61'}"></i></div></div>
+  const face = faceHtml(u, 'big');
+  return `<div class="ucard${face ? '' : ' noface'}">${face}<div class="ubody"><div class="uhead"><b class="${u.team}">${u.name}</b><span>${CLASSES[u.cls].name}　Lv ${u.lv}${u.gr ? `　EXP ${u.exp}` : ''}</span></div>
+    <div class="hp">HP ${u.hp} / ${u.st.hp}<div class="bar"><i style="width:${100 * u.hp / u.st.hp}%;background:${u.team === 'blue' ? '#5aa7ff' : '#ff6f61'}"></i></div></div></div></div>
     <div class="stats">${st}</div><div class="wps">${wps}　／　${t.name}（守備+${t.def} 回避+${t.avo}）</div>${u.team === 'blue' ? bondLine(u) : ''}`;
 }
 /** One-line summary of a unit's supports with allies on this map. */
@@ -196,16 +226,51 @@ function menu(items: [string, () => void, string?][]) {
 }
 
 // ---------- dialogue ----------
+// Visual-novel layout: the line box at the bottom, up to two portraits standing behind it (left / right).
+// The speaker is lit, the listener dimmed. Speakers without a portrait (一般兵, narration) show just a name.
+type Side = 'left' | 'right';
+interface Stand { id: string; face: Face; last: number }
+const isFoe = (id: string) => !CHARS[id] && !CAST[id];
 function play(lines: Line[]): Promise<void> {
   return new Promise(done => {
-    const d = $('dlg'), face = $<HTMLCanvasElement>('dlgFace'), fx = face.getContext('2d')!;
+    const d = $('dlg'), face = $<HTMLCanvasElement>('dlgFace'), box = $('dlgBox'), name = $('dlgName');
+    const slot = (s: Side) => d.querySelector<HTMLElement>(`.dlgSlot.${s}`)!;
+    const stands: Record<Side, Stand | null> = { left: null, right: null };
+    for (const l of lines) preloadPortrait(idForName(l.who), l.face ?? 'normal');
+    for (const s of ['left', 'right'] as Side[]) { const e = slot(s); e.className = `dlgSlot ${s} empty`; e.querySelector('img')!.removeAttribute('src'); }
     let i = 0;
+    const put = (s: Side, st: Stand) => {
+      const e = slot(s), img = e.querySelector('img')!, url = portraitUrl(st.id, st.face)!;
+      const entering = stands[s]?.id !== st.id;
+      stands[s] = st;
+      if (img.getAttribute('src') !== url) img.src = url;
+      img.onerror = () => { e.classList.add('empty'); };
+      if (entering) { e.classList.add('empty'); void e.offsetWidth; } // restart the slide-in
+      e.classList.remove('empty');
+    };
     const show = () => {
       if (i >= lines.length) { d.hidden = true; d.onclick = null; done(); return; }
-      const l = lines[i++], c = Object.values(CHARS).find(v => v.name === l.who);
-      $('dlgBox').classList.toggle('narr', !l.who);
-      $('dlgName').hidden = !l.who; $('dlgName').textContent = l.who;
-      face.hidden = !c; fx.clearRect(0, 0, face.width, face.height);
+      const n = i, l = lines[i++], id = idForName(l.who);
+      const f: Face = l.face && !portraitFailed(id, l.face) ? l.face : 'normal'; // a missing expression falls back to normal
+      let side: Side | null = null;
+      if (id && portraitUrl(id, f) && !portraitFailed(id, f)) {
+        side = l.pos ?? (stands.left?.id === id ? 'left' : stands.right?.id === id ? 'right' : null);
+        if (!side) {
+          const pref: Side = isFoe(id) ? 'right' : 'left', other: Side = pref === 'left' ? 'right' : 'left';
+          side = !stands[pref] ? pref : !stands[other] ? other : (stands.left!.last <= stands.right!.last ? 'left' : 'right');
+        }
+        const away: Side = side === 'left' ? 'right' : 'left';
+        if (stands[away]?.id === id) { stands[away] = null; slot(away).classList.add('empty'); } // moved sides
+        put(side, { id, face: f, last: n });
+      }
+      for (const s of ['left', 'right'] as Side[]) slot(s).classList.toggle('on', s === side);
+      box.classList.toggle('narr', !l.who);
+      box.classList.toggle('foe', !!id && isFoe(id) && id !== 'lotta');
+      box.dataset.side = side ?? '';
+      name.hidden = !l.who; name.textContent = l.who;
+      // No portrait drawn (none delivered, or it failed): the old vector face inside the box, for the cast.
+      const c = !side ? Object.values(CHARS).find(v => v.name === l.who) : undefined;
+      face.hidden = !c;
       if (c) drawPortrait(face, { ...c, team: 'blue' });
       $('dlgText').textContent = l.text;
       if (fast()) show();
@@ -255,7 +320,8 @@ function pickTarget(t: Unit) {
   const u = sel!, f = forecast(S, u, curW, t);
   picked = t;
   const row = (k: string, a: string, d: string) => `<div class="n blue">${a}</div><div class="k">${k}</div><div class="n red">${d}</div>`;
-  info(`<div class="fc">${row('', u.name, t.name)}${row('HP', `${u.hp}`, `${t.hp}`)}
+  const who = `<div class="n blue fcwho">${faceHtml(u, 'fcface', 'angry')}<span>${u.name}</span></div><div class="k vs">VS</div><div class="n red fcwho">${faceHtml(t, 'fcface')}<span>${t.name}</span></div>`;
+  info(`<div class="fc">${who}${row('HP', `${u.hp}`, `${t.hp}`)}
     ${row('威力', f.a.dmg + (f.a.double ? ' ×2' : ''), f.d ? f.d.dmg + (f.d.double ? ' ×2' : '') : '—')}
     ${row('命中', f.a.hit + '%', f.d ? f.d.hit + '%' : '—')}${row('必殺', f.a.crit + '%', f.d ? f.d.crit + '%' : '—')}
     ${row('武器', weaponLabel(u, curW), f.d ? (f.d.w.type === 'fang' ? weaponLabel(t, 'fang') : f.d.w.name) : '反撃不可')}</div>${supRow(f.a.sup.from)}`);
@@ -269,7 +335,7 @@ function chooseHeal(sid: string, ts: Unit[]) {
 function pickHeal(t: Unit) {
   const u = sel!, amt = healAmount(u, curW, t);
   picked = t;
-  info(`<div class="fc"><div class="n blue">${u.name}</div><div class="k">杖</div><div class="n blue">${t.name}</div>
+  info(`<div class="fc"><div class="n blue fcwho">${faceHtml(u, 'fcface')}<span>${u.name}</span></div><div class="k">杖</div><div class="n blue fcwho">${faceHtml(t, 'fcface')}<span>${t.name}</span></div>
     <div class="n">${WEAPONS[curW].name}</div><div class="k">回復</div><div class="n heal">+${amt}</div>
     <div class="n"></div><div class="k">HP</div><div class="n">${t.hp} → ${t.hp + amt} / ${t.st.hp}</div></div>
     <p class="fcsup heal">経験値 +${healExp(amt)}</p>`);
@@ -311,7 +377,7 @@ cv.addEventListener('pointermove', e => {
     drag.moved = true;
     try { cv.setPointerCapture(e.pointerId); } catch { /* pointer already gone */ }
   }
-  const k = cv.width / cv.getBoundingClientRect().width;
+  const k = VW / cv.getBoundingClientRect().width;
   cam.x = drag.cx - dx * k; cam.y = drag.cy - dy * k; clampCam();
 });
 cv.addEventListener('pointerup', e => {
@@ -330,7 +396,7 @@ cv.addEventListener('click', e => {
 async function tapAt(clientX: number, clientY: number) {
   if (mode === 'busy' || !S) return;
   const r = cv.getBoundingClientRect();
-  const tx = Math.floor(((clientX - r.left) / r.width * cv.width + cam.x) / T), ty = Math.floor(((clientY - r.top) / r.height * cv.height + cam.y) / T);
+  const tx = Math.floor(((clientX - r.left) / r.width * VW + cam.x) / T), ty = Math.floor(((clientY - r.top) / r.height * VH + cam.y) / T);
   if (tx < 0 || ty < 0 || ty >= S.map.length || tx >= S.map[0].length) return;
   const u = unitAt(S, tx, ty);
   if (mode === 'idle') {
@@ -353,10 +419,43 @@ async function tapAt(clientX: number, clientY: number) {
 }
 
 // ---------- combat presentation ----------
+/** Picture for a cut-in: the portrait (angry when striking), or the map sprite for generic enemies. */
+function cutinArt(u: Unit, striking: boolean) {
+  const url = portraitUrl(idForUnit(u), striking ? 'angry' : 'normal');
+  return url ? { url, sprite: false } : { url: spriteUrl(u), sprite: true };
+}
+/**
+ * A short cut-in over the map: the two fighters slide in from their own sides (allies left, enemies right),
+ * the attacker lit. `crit` = a critical strike: only the striker, larger, with a flash. Skipped with __fast.
+ */
+async function cutin(att: Unit, def: Unit, crit = false) {
+  if (fast()) return;
+  const el = $('cutin');
+  const sides = { l: att.team === 'blue' ? att : def, r: att.team === 'blue' ? def : att };
+  let any = false;
+  for (const k of ['l', 'r'] as const) {
+    const u = sides[k], box = el.querySelector<HTMLElement>(`.ci.${k}`)!, img = box.querySelector('img')!;
+    const show = !crit || u === att, art = show ? cutinArt(u, u === att) : null;
+    box.hidden = !art?.url;
+    box.classList.toggle('att', u === att); box.classList.toggle('sprite', !!art?.sprite);
+    if (art?.url) { img.src = art.url; img.onerror = () => { box.hidden = true; }; any = true; }
+  }
+  if (!any) return;
+  el.classList.toggle('crit', crit); el.dataset.att = sides.l === att ? 'l' : 'r';
+  el.classList.remove('go'); el.hidden = false; void el.offsetWidth; el.classList.add('go');
+  await sleep(crit ? 720 : 560);
+  el.hidden = true; el.classList.remove('go');
+}
+/** Loads the portraits this chapter's fights and talks will use, so the first cut-in does not pop in late. */
+function preloadChapterArt() {
+  for (const u of S.units) { const id = idForUnit(u); if (id) { preloadPortrait(id); preloadPortrait(id, 'angry'); } }
+}
 async function battle(att: Unit, wid: string, def: Unit) {
   shownHp.set(att.uid, att.hp); shownHp.set(def.uid, def.hp);
   const strikes = fight(S, att, wid, def);
+  await cutin(att, def);
   for (const k of strikes) {
+    if (k.crit && k.hit) await cutin(k.from, k.to, true);
     const dx = Math.sign(k.to.x - k.from.x) * T / 4, dy = Math.sign(k.to.y - k.from.y) * T / 4;
     offs.set(k.from.uid, { dx, dy }); await sleep(110); offs.delete(k.from.uid);
     float(k.to, k.hit ? (k.crit ? `必殺！${k.dmg}` : `${k.dmg}`) : 'ミス', k.hit ? (k.crit ? '#ffe36a' : '#ffffff') : '#a79fb8');
@@ -495,8 +594,9 @@ function unitCard(u: Unit) {
   const wps = wpsText(u, false);
   const card = el('div', 'card' + (u.out ? ' out' : ''), `<div class="uhead"><b class="blue">${esc(u.name)}</b><span>${c.name}${tierOf(u.cls) === 2 ? '（上級職）' : ''}　Lv ${u.lv}　EXP ${u.exp}　移動 ${c.mov}</span>${u.out ? '<em class="outTag">戦線離脱（療養中）・出撃不可</em>' : ''}</div>
     <div class="stats">${st}</div><div class="wps">武器：${wps}　／　使える武器種：${c.wtypes.map(t => WTYPE_NAMES[t]).join('・')}</div>`);
-  const icon = document.createElement('canvas'); icon.width = icon.height = 112; icon.className = 'uicon' + (u.out ? ' out' : '');
-  drawIcon(icon, u); card.querySelector('.uhead')!.prepend(icon);
+  const head = card.querySelector('.uhead')!, face = faceHtml(u, 'card' + (u.out ? ' out' : ''));
+  if (face) head.insertAdjacentHTML('afterbegin', face);
+  else { const icon = document.createElement('canvas'); icon.width = icon.height = 112; icon.className = 'uicon' + (u.out ? ' out' : ''); drawIcon(icon, u); head.prepend(icon); }
   return card;
 }
 function renderUnits() {
@@ -552,7 +652,8 @@ function bondRow(p: SupportPair, bonds: Bonds) {
   const pct = need === null ? 100 : Math.max(0, Math.min(100, 100 * (bd.pts - prev) / Math.max(1, need - prev)));
   const out = camp?.roster.some(u => u.out && (u.id === p.a || u.id === p.b));
   const label = (st === 'ready' ? '会話待ち（章クリア後）' : st === 'sBlocked' ? 'S枠なし' : need === null ? '最大ランク' : `${bd.pts} / ${need}`) + (out && st !== 'ready' ? '　療養中（絆は増えない）' : '');
-  return el('div', 'card bond', `<div class="bhead"><span>${castName(p.a)} × ${castName(p.b)}${p.tag ? `<small>（${p.tag}）</small>` : ''}</span><b class="rank">${rankName(bd.rank)}</b></div>
+  const pf = (id: string) => faceHtml({ id, name: castName(id), cls: CAST[id]?.cls ?? '', team: 'blue' }, 'pair');
+  return el('div', 'card bond', `<div class="bhead"><span class="bpair">${pf(p.a)}${pf(p.b)}</span><span class="bnames">${castName(p.a)} × ${castName(p.b)}${p.tag ? `<small>（${p.tag}）</small>` : ''}</span><b class="rank">${rankName(bd.rank)}</b></div>
     <div class="hp"><div class="bar"><i style="width:${pct}%;background:var(--rose)"></i></div><span>${label}</span></div>
     <div class="wps">上限 ${p.max}${p.max === 'S' ? '（恋愛）' : ''}　次：${bd.rank < maxRank(p) ? RANKS[bd.rank] : '—'}</div>`);
 }
@@ -581,7 +682,7 @@ function renderPrep() {
   body.appendChild(el('h3', 'prepHead', '必ず出撃'));
   for (const f of plan.fixed) {
     const tag = f.guest ? 'ゲスト（護衛対象）' : f.recruit ? '新たに加入' : '固定';
-    body.appendChild(el('div', 'pick fixed', `<span class="pname"><b>${esc(f.unit.name)}</b><span>${CLASSES[f.unit.cls].name}　Lv ${f.unit.lv}</span></span><small>${shortStats(f.unit)}</small><em>${tag}</em>`));
+    body.appendChild(el('div', 'pick fixed', `<span class="pname">${faceHtml(f.unit, 'pick')}<b>${esc(f.unit.name)}</b><span>${CLASSES[f.unit.cls].name}　Lv ${f.unit.lv}</span></span><small>${shortStats(f.unit)}</small><em>${tag}</em>`));
   }
   for (const u of plan.fixedOut) body.appendChild(el('div', 'pick fixed out', `<span class="pname"><b>${esc(u.name)}</b><span>${CLASSES[u.cls].name}　Lv ${u.lv}</span></span><small>戦線離脱（療養中）</small><em>出撃不可</em>`));
   body.appendChild(el('h3', 'prepHead', `出撃メンバーを選ぶ（残り${plan.free}枠）`));
@@ -590,7 +691,7 @@ function renderPrep() {
     const b = document.createElement('button');
     b.className = 'pick' + (u.out ? ' out' : '');
     b.setAttribute('aria-pressed', String(on)); b.disabled = !!u.out; b.dataset.id = u.id;
-    b.innerHTML = `<span class="pname"><b>${esc(u.name)}</b><span>${CLASSES[u.cls].name}　Lv ${u.lv}</span></span><small>${u.out ? '戦線離脱（療養中）' : shortStats(u)}</small><em>${u.out ? '出撃不可' : on ? '出撃' : '待機'}</em>`;
+    b.innerHTML = `<span class="pname">${faceHtml(u, 'pick' + (u.out ? ' out' : ''))}<b>${esc(u.name)}</b><span>${CLASSES[u.cls].name}　Lv ${u.lv}</span></span><small>${u.out ? '戦線離脱（療養中）' : shortStats(u)}</small><em>${u.out ? '出撃不可' : on ? '出撃' : '待機'}</em>`;
     b.onclick = () => {
       if (on) p.picks = p.picks.filter(id => id !== u.id);
       else if (p.picks.length >= plan.free) { campMsg('出撃枠がいっぱいです。先にだれかを待機にしてください。'); return; }
@@ -620,12 +721,14 @@ async function start(state: State, intro: boolean) {
   $('camp').hidden = true;
   terrain = document.createElement('canvas'); terrain.width = cols() * T; terrain.height = rows() * T;
   drawTerrain(terrain.getContext('2d')!, S.map);
+  topPad = makeTopPad();
   // Scrolling maps take over touch drags on the canvas; 15×10 maps keep the page's normal touch behaviour.
   cv.style.touchAction = scrolls() ? 'none' : 'manipulation';
-  drag = null; cam.x = cam.y = 0;
+  drag = null; cam.x = 0; cam.y = -TOP_PAD;
   const lead = S.units.find(u => u.id === 'rudeus' && u.hp > 0) ?? alive(S, 'blue')[0];
   if (lead) centerOn(lead.x, lead.y); else clampCam();
   $('title').hidden = true; hud(); info(''); menu([]);
+  preloadChapterArt();
   if (intro) await play(CHAPTERS[S.chapter].intro);
   save();
   await banner(S.phase === 'blue' ? '自軍フェイズ' : '敵軍フェイズ');
@@ -650,8 +753,11 @@ $('btnNext').onclick = goNext;
 $('btnToTitle').onclick = () => showTitle();
 for (const b of document.querySelectorAll<HTMLButtonElement>('#campTabs button')) b.onclick = () => { campTab = b.dataset.tab as 'units' | 'bonds'; campMsg(''); renderCamp(); };
 showTitle();
+loadUnitArt();
 requestAnimationFrame(render);
 (window as any).__game = {
+  /** Test helper: the face badge HTML used by the panels. */
+  faceHtml,
   get state() { return S; }, get mode() { return mode; }, get stops() { return [...stops]; },
   get camp() { return camp; }, get screen() { return !$('camp').hidden ? 'camp' : !$('title').hidden ? 'title' : 'battle'; },
   /** Test helpers: put a cast member (blue) or a generic enemy (red) on the current map. */

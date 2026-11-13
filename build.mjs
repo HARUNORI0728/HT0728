@@ -1,6 +1,12 @@
 // Bundles src/main.ts and inlines it into a single self-contained play/index.html.
 import { build } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+
+// Character art: shrink assets/ into play/assets/ (skips outputs newer than their source) and refresh
+// src/art-manifest.ts. Without Python/Pillow the committed play/assets and manifest are used as they are.
+const art = spawnSync(process.env.PYTHON || 'python3', ['tools/optimize_art.py'], { stdio: 'inherit' });
+if (art.error || art.status !== 0) console.warn('optimize_art skipped:', art.error?.message ?? `exit ${art.status}`);
 
 const out = await build({ entryPoints: ['src/main.ts'], bundle: true, minify: true, format: 'iife', target: 'es2020', write: false });
 const js = out.outputFiles[0].text.replace(/<\/script/g, '<\\/script');

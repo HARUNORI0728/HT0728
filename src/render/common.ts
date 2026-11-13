@@ -1,7 +1,12 @@
 // Shared drawing constants and small helpers for the illustrated renderer.
 
-/** Internal pixels per map tile. The canvas shows 15×10 tiles (1440×960), sharp on high-DPI phones. */
+/** Internal pixels per map tile. The canvas shows 12×8 tiles (1152×768), sharp on high-DPI phones. */
 export const T = 96;
+/**
+ * Backing-store pixels per map pixel for the main canvas and the cached unit figures (1440×960 for the 12×8 view),
+ * so figures are drawn 1:1 on a 2× phone screen instead of being stretched.
+ */
+export const RES = 1.25;
 /** Ink colour for outlines (the sample's warm near-black). */
 export const OUT = '#2a1d26';
 
