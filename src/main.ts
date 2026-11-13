@@ -6,10 +6,12 @@ import {
   rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
   type Bonds, type Difficulty, type SortiePlan, type State, type Unit,
 } from './logic';
-import { drawSprite, drawTerrain } from './sprites';
+import { T } from './render/common';
+import { FLOAT_LIFE, drawCursor, drawEdgeMarks, drawFloat, drawTile, drawVignette, type Float } from './render/fx';
+import { drawTerrain } from './render/terrain';
+import { drawIcon, drawPortrait, drawUnit } from './render/units';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-const T = 48, SC = 3;
 const cv = $<HTMLCanvasElement>('cv'), ctx = cv.getContext('2d')!;
 const fast = () => !!(window as any).__fast;
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, fast() ? 0 : ms));
@@ -23,7 +25,7 @@ let stops = new Set<string>(), threat = new Set<string>();
 let origin = { x: 0, y: 0 }, targets: Unit[] = [], curW = '';
 const offs = new Map<number, { dx: number; dy: number }>();
 const shownHp = new Map<number, number>();
-const floats: { x: number; y: number; text: string; color: string; t: number }[] = [];
+const floats: Float[] = [];
 
 // ---------- camera ----------
 // The canvas shows 15×10 tiles; larger maps scroll. `cam` is the top-left of the view in map pixels.
@@ -101,57 +103,45 @@ function load(): SaveData | null {
 }
 
 // ---------- rendering ----------
-function render() {
+function render(now = performance.now()) {
   if (S) {
-    ctx.fillStyle = '#14121c'; ctx.fillRect(0, 0, cv.width, cv.height);
+    const W = cv.width, H = cv.height, sec = now / 1000;
+    ctx.fillStyle = '#14121c'; ctx.fillRect(0, 0, W, H);
+    // the terrain was drawn once at chapter start; copy just the visible part
+    const sw = Math.min(W, terrain.width - cam.x), sh = Math.min(H, terrain.height - cam.y);
+    if (sw > 0 && sh > 0) ctx.drawImage(terrain, cam.x, cam.y, sw, sh, 0, 0, sw, sh);
     ctx.save(); ctx.translate(-cam.x, -cam.y);
-    ctx.drawImage(terrain, 0, 0);
-    const fill = (k: string, col: string) => { const [x, y] = k.split(',').map(Number); ctx.fillStyle = col; ctx.fillRect(x * T + 1, y * T + 1, T - 2, T - 2); };
+    const tile = (k: string, kind: Parameters<typeof drawTile>[1], a = 1) => { const [x, y] = k.split(',').map(Number); drawTile(ctx, kind, x, y, a); };
     if (mode === 'move' || (mode === 'idle' && inspect)) {
-      for (const k of threat) if (!stops.has(k)) fill(k, 'rgba(255,70,60,.34)');
-      for (const k of stops) fill(k, 'rgba(70,130,255,.42)');
+      for (const k of threat) if (!stops.has(k)) tile(k, 'attack');
+      for (const k of stops) tile(k, 'move');
     }
-    if (mode === 'target') for (const t of targets) fill(key(t.x, t.y), 'rgba(255,70,60,.55)');
-    if (mode === 'heal') for (const t of targets) fill(key(t.x, t.y), 'rgba(90,220,130,.5)');
-    for (const u of S.units) {
-      const hp = shownHp.get(u.uid) ?? u.hp;
-      if (hp <= 0 || u.left) continue;
-      const o = offs.get(u.uid), px = u.x * T + (o?.dx ?? 0), py = u.y * T + (o?.dy ?? 0);
-      ctx.fillStyle = 'rgba(0,0,0,.28)'; ctx.fillRect(px + 9, py + 41, 30, 5);
-      drawSprite(ctx, CLASSES[u.cls].sprite, u.done && S.phase === 'blue' ? 'gray' : u.team, px, py - 4, SC, u.hair);
-      if (u.boss) { ctx.fillStyle = '#e8c56a'; ctx.fillRect(px + 2, py + 2, 9, 3); for (const i of [0, 3, 6]) ctx.fillRect(px + 2 + i, py - 1, 3, 3); }
-      ctx.fillStyle = '#17131f'; ctx.fillRect(px + 8, py + 43, 32, 4);
-      ctx.fillStyle = u.team === 'blue' ? '#5aa7ff' : '#ff6f61'; ctx.fillRect(px + 9, py + 44, Math.round(30 * hp / u.st.hp), 2);
-    }
+    const pulse = 0.78 + 0.22 * Math.sin(sec * 5);
+    if (mode === 'target') for (const t of targets) tile(key(t.x, t.y), 'target', t === picked ? 1 : pulse);
+    if (mode === 'heal') for (const t of targets) tile(key(t.x, t.y), 'heal', t === picked ? 1 : pulse);
+    // units, back to front
+    const shown = S.units.filter(u => (shownHp.get(u.uid) ?? u.hp) > 0 && !u.left)
+      .map(u => { const o = offs.get(u.uid); return { u, px: u.x * T + (o?.dx ?? 0), py: u.y * T + (o?.dy ?? 0) }; })
+      .sort((a, b) => a.py - b.py);
+    for (const { u, px, py } of shown) drawUnit(ctx, u, px, py, u.done && S.phase === 'blue', (shownHp.get(u.uid) ?? u.hp) / u.st.hp);
     const cur = picked ?? sel ?? inspect;
-    if (cur && cur.hp > 0) {
-      ctx.strokeStyle = '#fff3b0'; ctx.lineWidth = 3;
-      const cx = cur.x * T, cy = cur.y * T;
-      for (const [a, b, u, v] of [[0, 0, 1, 1], [T, 0, -1, 1], [0, T, 1, -1], [T, T, -1, -1]]) { ctx.beginPath(); ctx.moveTo(cx + a + u * 14, cy + b); ctx.lineTo(cx + a, cy + b); ctx.lineTo(cx + a, cy + b + v * 14); ctx.stroke(); }
-    }
-    ctx.font = '20px DotGothic16, IPAGothic, monospace'; ctx.textAlign = 'center';
+    if (cur && cur.hp > 0) drawCursor(ctx, cur.x, cur.y, sec);
     for (let i = floats.length - 1; i >= 0; i--) {
-      const f = floats[i];
-      ctx.lineWidth = 4; ctx.strokeStyle = '#17131f'; ctx.strokeText(f.text, f.x, f.y - (40 - f.t) * 0.5);
-      ctx.fillStyle = f.color; ctx.fillText(f.text, f.x, f.y - (40 - f.t) * 0.5);
-      if (--f.t <= 0) floats.splice(i, 1);
+      drawFloat(ctx, floats[i]);
+      if (--floats[i].t <= 0) floats.splice(i, 1);
     }
     ctx.restore();
+    drawVignette(ctx, W, H);
     if (scrolls()) edgeMarks();
   }
   requestAnimationFrame(render);
 }
 /** Small arrows on the screen edges where the map continues. */
 function edgeMarks() {
-  ctx.fillStyle = 'rgba(232,197,106,.85)';
-  const W = cv.width, H = cv.height, a = 9;
-  const tri = (pts: number[]) => { ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); ctx.lineTo(pts[2], pts[3]); ctx.lineTo(pts[4], pts[5]); ctx.closePath(); ctx.fill(); };
-  if (cam.x > 0) tri([4, H / 2, 4 + a, H / 2 - a, 4 + a, H / 2 + a]);
-  if (cam.x < cols() * T - W) tri([W - 4, H / 2, W - 4 - a, H / 2 - a, W - 4 - a, H / 2 + a]);
-  if (cam.y > 0) tri([W / 2, 4, W / 2 - a, 4 + a, W / 2 + a, 4 + a]);
-  if (cam.y < rows() * T - H) tri([W / 2, H - 4, W / 2 - a, H - 4 - a, W / 2 + a, H - 4 - a]);
+  const W = cv.width, H = cv.height;
+  drawEdgeMarks(ctx, W, H, cam.x > 0, cam.x < cols() * T - W, cam.y > 0, cam.y < rows() * T - H);
 }
-function float(u: Unit, text: string, color: string) { floats.push({ x: u.x * T + T / 2, y: u.y * T + 6, text, color, t: 40 }); }
+function float(u: Unit, text: string, color: string) { floats.push({ x: u.x * T + T / 2, y: u.y * T + T * 0.12, text, color, t: FLOAT_LIFE }); }
 async function tween(u: Unit, x: number, y: number) {
   const o = { dx: (u.x - x) * T, dy: (u.y - y) * T };
   u.x = x; u.y = y;
@@ -215,8 +205,8 @@ function play(lines: Line[]): Promise<void> {
       const l = lines[i++], c = Object.values(CHARS).find(v => v.name === l.who);
       $('dlgBox').classList.toggle('narr', !l.who);
       $('dlgName').hidden = !l.who; $('dlgName').textContent = l.who;
-      face.hidden = !c; fx.clearRect(0, 0, 96, 96);
-      if (c) drawSprite(fx, CLASSES[c.cls].sprite, 'blue', 0, 0, 6, c.hair);
+      face.hidden = !c; fx.clearRect(0, 0, face.width, face.height);
+      if (c) drawPortrait(face, { ...c, team: 'blue' });
       $('dlgText').textContent = l.text;
       if (fast()) show();
     };
@@ -367,7 +357,7 @@ async function battle(att: Unit, wid: string, def: Unit) {
   shownHp.set(att.uid, att.hp); shownHp.set(def.uid, def.hp);
   const strikes = fight(S, att, wid, def);
   for (const k of strikes) {
-    const dx = Math.sign(k.to.x - k.from.x) * 12, dy = Math.sign(k.to.y - k.from.y) * 12;
+    const dx = Math.sign(k.to.x - k.from.x) * T / 4, dy = Math.sign(k.to.y - k.from.y) * T / 4;
     offs.set(k.from.uid, { dx, dy }); await sleep(110); offs.delete(k.from.uid);
     float(k.to, k.hit ? (k.crit ? `必殺！${k.dmg}` : `${k.dmg}`) : 'ミス', k.hit ? (k.crit ? '#ffe36a' : '#ffffff') : '#a79fb8');
     shownHp.set(k.to.uid, (shownHp.get(k.to.uid) ?? 0) - k.dmg);
@@ -503,8 +493,11 @@ function unitCard(u: Unit) {
   const c = CLASSES[u.cls];
   const st = STAT_KEYS.map(k => `<div><span>${STAT_NAMES[k]}</span>${u.st[k]}</div>`).join('');
   const wps = wpsText(u, false);
-  return el('div', 'card' + (u.out ? ' out' : ''), `<div class="uhead"><b class="blue">${esc(u.name)}</b><span>${c.name}${tierOf(u.cls) === 2 ? '（上級職）' : ''}　Lv ${u.lv}　EXP ${u.exp}　移動 ${c.mov}</span>${u.out ? '<em class="outTag">戦線離脱（療養中）・出撃不可</em>' : ''}</div>
+  const card = el('div', 'card' + (u.out ? ' out' : ''), `<div class="uhead"><b class="blue">${esc(u.name)}</b><span>${c.name}${tierOf(u.cls) === 2 ? '（上級職）' : ''}　Lv ${u.lv}　EXP ${u.exp}　移動 ${c.mov}</span>${u.out ? '<em class="outTag">戦線離脱（療養中）・出撃不可</em>' : ''}</div>
     <div class="stats">${st}</div><div class="wps">武器：${wps}　／　使える武器種：${c.wtypes.map(t => WTYPE_NAMES[t]).join('・')}</div>`);
+  const icon = document.createElement('canvas'); icon.width = icon.height = 112; icon.className = 'uicon' + (u.out ? ' out' : '');
+  drawIcon(icon, u); card.querySelector('.uhead')!.prepend(icon);
+  return card;
 }
 function renderUnits() {
   const body = $('campBody');
@@ -626,7 +619,7 @@ async function start(state: State, intro: boolean) {
   S = state; mode = 'busy'; inspect = sel = picked = null; inBattle = true;
   $('camp').hidden = true;
   terrain = document.createElement('canvas'); terrain.width = cols() * T; terrain.height = rows() * T;
-  drawTerrain(terrain.getContext('2d')!, S.map, SC);
+  drawTerrain(terrain.getContext('2d')!, S.map);
   // Scrolling maps take over touch drags on the canvas; 15×10 maps keep the page's normal touch behaviour.
   cv.style.touchAction = scrolls() ? 'none' : 'manipulation';
   drag = null; cam.x = cam.y = 0;
@@ -670,7 +663,9 @@ requestAnimationFrame(render);
   plan(u: Unit) { return planEnemy(S, u); },
   spawnEnemy(e: EnemyDef) { if (!S) return null; const u = makeEnemy(e, Math.max(...S.units.map(v => v.uid)) + 1); S.units.push(u); return u; },
   /** Camera (map pixels of the view's top-left), the view size in tiles, and the enemy-follow log. */
-  get cam() { return { ...cam, w: VIEW_W, h: VIEW_H }; }, followLog,
+  get cam() { return { ...cam, w: VIEW_W, h: VIEW_H, t: T }; }, followLog,
+  /** Test helper: the pre-drawn terrain layer (to check that tiles read as their terrain). */
+  get terrain() { return terrain; },
   /** Test helper: center the view on a tile right away if it is off screen. */
   reveal(x: number, y: number) { if (S && !inView(x, y, 0)) centerOn(x, y); return { ...cam }; },
   /** Test helper: add a cast member to the camp roster (to try the sortie screen). */
