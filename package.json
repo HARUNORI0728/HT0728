@@ -5,7 +5,7 @@
   "scripts": {
     "build": "node build.mjs",
     "script": "node tools/build-script.mjs",
-    "check": "node tools/build-script.mjs && tsc --noEmit"
+    "check": "node tools/build-script.mjs && node tools/build-audio.mjs && tsc --noEmit"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",

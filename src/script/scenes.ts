@@ -2,8 +2,12 @@
 // change the screenplay and run `npm run build` (or `npm run check`).
 import type { Line } from '../data';
 
-/** One scene of the screenplay. chapter 0 = 序章. cond = the screenplay's 条件 (for reference; triggers live in data.ts). */
-export interface Scene { title: string; chapter: number; cond: string; lines: Line[] }
+/**
+ * One scene of the screenplay. chapter 0 = 序章. cond = the screenplay's 条件 (for reference; triggers live in data.ts).
+ * bgm = the track the scene starts with ('none' = silence; absent = keep what is playing). Lines with `bgm` and no
+ * text are music cues in the middle of the scene.
+ */
+export interface Scene { title: string; chapter: number; cond: string; bgm?: string; lines: Line[] }
 export type SceneId =
   | "prologue"
   | "ch1.intro"
@@ -32,7 +36,7 @@ export const SCENE_ORDER: SceneId[] = ["prologue", "ch1.intro", "ch1.battle1", "
 export const SCENES: Record<SceneId, Scene> = {
   "prologue": {
     title: "序章「ふたたびの産声」", chapter: 0,
-    cond: "ニューゲーム開始時（第1章の開幕会話の前）。戦闘なし",
+    cond: "ニューゲーム開始時（第1章の開幕会話の前）。戦闘なし", bgm: "prologue",
     lines: [
       {"who":"","text":"雨の音がしていた。"},
       {"who":"","text":"古い家の二階、カーテンを閉めきった部屋。ひとりの男が、そこで二十年近くを過ごしていた。"},
@@ -42,6 +46,7 @@ export const SCENES: Record<SceneId, Scene> = {
       {"who":"","text":"そして家を追われ、行くあてもなく歩いた雨の夜。道の先で、学生たちに大きな車が迫るのが見えた。"},
       {"who":"ルーデウス","text":"（体が勝手に動いたのは、たぶん人生で初めてだった。……そして、それが最後になった）","face":"sad"},
       {"who":"ルーデウス","text":"（もしも、もう一度だけやり直せるなら。今度は――）","face":"sad"},
+      {"who":"","text":"","bgm":"family"},
       {"who":"","text":"――そして、産声が上がった。"},
       {"who":"","text":"アスラ王国フィットア領、ブエナ村。剣士の父と治癒術師の母のもとに、男の子が生まれた。名はルーデウス。"},
       {"who":"ルーデウス","text":"（記憶を抱えたまま、赤ん坊からやり直し。理由は分からないが、二度目をもらえたらしい）","face":"smile"},
@@ -49,12 +54,14 @@ export const SCENES: Record<SceneId, Scene> = {
       {"who":"","text":"少年は魔術を学び、毎朝父の木剣に転がされ、村の丘の大きな木の下で、友だちをひとりつくった。"},
       {"who":"","text":"やがて家を出て、城塞都市ロアで、気の強いお嬢様の家庭教師になった。"},
       {"who":"ルーデウス","text":"（殴られた回数は数えていない。数えたら心が折れるので）","face":"smile"},
+      {"who":"","text":"","bgm":"mystery"},
       {"who":"","text":"十五の年。空が、白く光った。"},
       {"who":"","text":"光はフィットア領のすべてを呑みこみ、人も家も畑も、根こそぎどこかへ運び去った。"},
       {"who":"","text":"のちに「フィットア領転移事件」と呼ばれる災厄である。"},
       {"who":"","text":"ルーデウスが目を覚ましたのは、海の向こうの魔大陸だった。隣には、教え子のエリスが倒れていた。"},
       {"who":"","text":"二人を拾ったのは、人々に恐れられるスペルド族の戦士、ルイジェルド。三人の長い帰り道が始まった。"},
       {"who":"ルーデウス","text":"（父さまは。母さまは。家族は。村のみんなは。……答えを知るのが、怖かった）","face":"sad"},
+      {"who":"","text":"","bgm":"resolve"},
       {"who":"ルーデウス","text":"（前の俺なら、きっとここで足を止めた。怖いものから目をそらして、部屋にこもった）","face":"sad"},
       {"who":"ルーデウス","text":"（でも、もう決めたんだ。今度は逃げない。何が待っていても、帰って、この目で確かめる）","face":"normal"},
       {"who":"","text":"それから、三年。いくつもの海と山を越えて――"},
@@ -63,7 +70,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch1.intro": {
     title: "第1章　開幕", chapter: 1,
-    cond: "第1章の開始時（出撃前）",
+    cond: "第1章の開始時（出撃前）", bgm: "sad",
     lines: [
       {"who":"","text":"魔大陸を発って、三年。ルーデウスたちは、ようやくフィットア領の境にたどりついた。"},
       {"who":"","text":"丘を越えた先に、町はなかった。麦畑も街道の宿場も消え、ロアの城壁は崩れた石の列になっていた。"},
@@ -76,12 +83,14 @@ export const SCENES: Record<SceneId, Scene> = {
       {"who":"エリス","text":"ルーデウス！ 何ぼーっとしてるのよ！","face":"angry"},
       {"who":"エリス","text":"何もないなら、建て直せばいいじゃない！ ……建て直すのよ。絶対に。","face":"angry"},
       {"who":"ルーデウス","text":"……そうですね。エリスの言うとおりです。","face":"normal"},
+      {"who":"","text":"","bgm":"crisis"},
       {"who":"ルイジェルド","text":"二人とも、伏せろ。西に煙だ。天幕が並んでいる。……剣の音もする。","face":"normal"},
       {"who":"ルーデウス","text":"難民キャンプ……？ 生き残った人たちが、いるんですか。","face":"normal"},
       {"who":"ルイジェルド","text":"襲われている。数は十前後。野盗にしては、動きに統率がある。","face":"angry"},
       {"who":"ルーデウス","text":"（十人。こっちは三人で、旅の疲れもある。まずは様子を見て、それから――）","face":"sad"},
       {"who":"ルーデウス","text":"……一度、林まで下がりましょう。状況が分かるまでは――","face":"sad"},
       {"who":"","text":"そのとき、天幕のほうから子どもの泣き声が聞こえた。"},
+      {"who":"","text":"","bgm":"resolve"},
       {"who":"ルーデウス","text":"（――また、ドアを閉めるのか。俺は）","face":"sad"},
       {"who":"ルーデウス","text":"……いえ、今のは取り消します。下がりません。行きましょう。","face":"angry"},
       {"who":"エリス","text":"最初からそう言いなさいよ！","face":"smile"},
@@ -126,7 +135,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch1.battle4": {
     title: "第1章　戦闘中④", chapter: 1,
-    cond: "2ターン目・自軍フェイズ開始時",
+    cond: "2ターン目・自軍フェイズ開始時", bgm: "mystery",
     lines: [
       {"who":"ルイジェルド","text":"ルーデウス。倒した野盗の槍を見ろ。刃こぼれひとつない、新しい鉄だ。","face":"normal"},
       {"who":"ルーデウス","text":"鎧も揃いですね。食うに困った野盗にしては、身なりが良すぎる。","face":"normal"},
@@ -136,7 +145,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch1.battle5": {
     title: "第1章　戦闘中⑤", chapter: 1,
-    cond: "3ターン目・自軍フェイズ開始時",
+    cond: "3ターン目・自軍フェイズ開始時", bgm: "daily",
     lines: [
       {"who":"","text":"天幕の陰で、炊き出しの鍋を抱えた女が、子どもたちを背に隠していた。"},
       {"who":"ハンナ","text":"ほら坊やたち、頭を下げてな！ 大丈夫、あの人たちが来てくれたからね！","art":false},
@@ -147,7 +156,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch1.battle6": {
     title: "第1章　戦闘中⑥", chapter: 1,
-    cond: "ボス（ガズ）と初めて戦闘になるとき（どちらが仕掛けても、戦闘画面の前に一度だけ）",
+    cond: "ボス（ガズ）と初めて戦闘になるとき（どちらが仕掛けても、戦闘画面の前に一度だけ）", bgm: "boss",
     lines: [
       {"who":"ガズ","text":"来やがったか、正義の味方気取りが。……この土地に戻ってきて、何になる？","face":"angry"},
       {"who":"ガズ","text":"俺も転移で全部なくした口だ。畑も、家も、女房もな。国は何をしてくれた？ 何もだ！","face":"angry"},
@@ -159,7 +168,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch1.battle7": {
     title: "第1章　戦闘中⑦", chapter: 1,
-    cond: "ボス（ガズ）を撃破したとき（撃破の演出の直後）",
+    cond: "ボス（ガズ）を撃破したとき（撃破の演出の直後）", bgm: "sad",
     lines: [
       {"who":"ガズ","text":"ぐっ……こんな、ガキどもに……","face":"angry"},
       {"who":"ガズ","text":"……殺せよ。どうせ、拾った命だ。","face":"normal"},
@@ -168,11 +177,12 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch1.outro": {
     title: "第1章　終幕", chapter: 1,
-    cond: "第1章の勝利後",
+    cond: "第1章の勝利後", bgm: "family",
     lines: [
       {"who":"","text":"野盗たちは散りぢりに逃げ去り、砦には縛られたガズだけが残された。"},
       {"who":"","text":"キャンプから、ひとり、またひとりと人が出てきて、遠巻きに四人を見つめていた。"},
       {"who":"ギレーヌ","text":"見事だった。二人とも、ずいぶん強くなったな。","face":"smile"},
+      {"who":"","text":"","bgm":"sad"},
       {"who":"エリス","text":"当然でしょ！ ……ねえ、ギレーヌ。お祖父様は？ お父様と、お母様は？","face":"smile"},
       {"who":"ギレーヌ","text":"…………。","face":"sad"},
       {"who":"ギレーヌ","text":"まだ、分からん。……分からんことのほうが、多いのだ。","face":"sad"},
@@ -180,6 +190,7 @@ export const SCENES: Record<SceneId, Scene> = {
       {"who":"エリス","text":"じゃあ、今は聞かないわ。分かったら、ちゃんと教えて。約束よ。","face":"normal"},
       {"who":"ギレーヌ","text":"……ああ。約束する。","face":"sad"},
       {"who":"ルーデウス","text":"（ギレーヌの耳が、伏せたまま戻らない。何かを知っている顔だ。……エリスも、たぶん気づいている）","face":"sad"},
+      {"who":"","text":"","bgm":"mystery"},
       {"who":"ルイジェルド","text":"ルーデウス。こいつが話す気になったそうだ。","face":"normal"},
       {"who":"ガズ","text":"……金と装備をくれた奴がいた。キャンプを潰して人を追っ払えば、もっと出すってな。","face":"normal"},
       {"who":"ガズ","text":"空いた土地は、どこぞのお貴族さまが買い取る手はずだと。俺たちはその露払いよ。","face":"normal"},
@@ -190,9 +201,11 @@ export const SCENES: Record<SceneId, Scene> = {
       {"who":"ガズ","text":"前金はこれだ。持ってけ。どうせ俺には、もう使い道がねえ。","face":"normal"},
       {"who":"","text":"放られた袋から、アスラ金貨がこぼれた。どの金貨の縁にも、欠けた輪のような小さな刻印が打たれている。"},
       {"who":"ルーデウス","text":"（両替商の印……じゃない。こんな刻印、見たことがない）","face":"normal"},
+      {"who":"","text":"","bgm":"family"},
       {"who":"ギレーヌ","text":"こいつは捜索団に引き渡す。パウロなら、悪いようにはせん。","face":"normal"},
       {"who":"ルーデウス","text":"父さまの名前を、久しぶりに聞きました。……生きてるんですね。","face":"smile"},
       {"who":"ギレーヌ","text":"ああ。うるさいほどにな。","face":"smile"},
+      {"who":"","text":"","bgm":"resolve"},
       {"who":"ルーデウス","text":"（家族を探す。故郷を取り戻す。この刻印の主も、いずれ突き止める）","face":"normal"},
       {"who":"ルーデウス","text":"（やることは山ほどある。……上等だ。今度の人生は、本気で生きると決めたんだから）","face":"normal"},
       {"who":"","text":"第1章　クリア"},
@@ -200,7 +213,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch1.interlude": {
     title: "第1章　幕間「草原の炊き出し」", chapter: 1,
-    cond: "第1章の終幕のあと、拠点画面に入る前",
+    cond: "第1章の終幕のあと、拠点画面に入る前", bgm: "comedy",
     lines: [
       {"who":"","text":"その夜。キャンプの真ん中で、大鍋がぐつぐつと煮えていた。"},
       {"who":"ハンナ","text":"さあさあ、並んどくれ！ 今夜は奮発して、干し肉をひとかけ入れたよ！","art":false},
@@ -208,6 +221,7 @@ export const SCENES: Record<SceneId, Scene> = {
       {"who":"ハンナ","text":"ちょいと、お嬢ちゃん！ それは剣の振り方だよ！ 鍋の底が抜けちまう！","art":false},
       {"who":"エリス","text":"う、うるさいわね！ 力加減が難しいのよ！","face":"angry"},
       {"who":"ルーデウス","text":"（あの鍋、魔大陸の魔物より手強そうだな……）","face":"smile"},
+      {"who":"","text":"","bgm":"family"},
       {"who":"","text":"少し離れた焚き火のそばでは、ルイジェルドのまわりに子どもたちが集まっていた。"},
       {"who":"トト","text":"おじちゃん、ほんとに悪魔じゃないの？ 母ちゃんがそう言ってた。","art":false},
       {"who":"ルイジェルド","text":"悪魔に見えるか。","face":"smile"},
@@ -225,7 +239,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch2.intro": {
     title: "第2章　開幕", chapter: 2,
-    cond: "第2章の開始時（出撃前）",
+    cond: "第2章の開始時（出撃前）", bgm: "crisis",
     lines: [
       {"who":"","text":"翌日。ギレーヌの案内で北へ向かう途中、丘の向こうで角笛が三度鳴った。"},
       {"who":"ギレーヌ","text":"捜索団の救援の合図だ。……急ぐぞ。","face":"angry"},
@@ -235,15 +249,18 @@ export const SCENES: Record<SceneId, Scene> = {
       {"who":"パウロ","text":"ロッタ、砦から出るな！ 手当てを続けろ！ ……くそ、次から次へと。","face":"angry"},
       {"who":"ロッタ","text":"団長こそ、肩の傷が開いてます！ 少しは下がってください！","face":"angry"},
       {"who":"パウロ","text":"下がったら怪我人が斬られるだろうが！","face":"angry"},
+      {"who":"","text":"","bgm":"family"},
       {"who":"ルーデウス","text":"…………父さま。","face":"sad"},
       {"who":"パウロ","text":"あ？ 誰だ、お前……いや、その目つき。その、妙に落ち着いた喋り方……","face":"normal"},
       {"who":"パウロ","text":"……ルディ、なのか？","face":"sad"},
       {"who":"ルーデウス","text":"はい。……ただいま、父さま。","face":"smile"},
       {"who":"","text":"一瞬、パウロの顔がくしゃりと歪んだ。けれど次に出てきたのは、怒鳴り声だった。"},
+      {"who":"","text":"","bgm":"comedy"},
       {"who":"パウロ","text":"三年だぞ！ 三年も便りひとつよこさねえで、どこをほっつき歩いてた！","face":"angry"},
       {"who":"ルーデウス","text":"手紙なら何通も出しました！ 魔大陸から届かなかっただけです！","face":"angry"},
       {"who":"パウロ","text":"届かなきゃ意味ねえだろうが！ こっちは、お前が死んだかと……！","face":"angry"},
       {"who":"エリス","text":"親子げんかは後にしなさい！ 来るわよ！","face":"angry"},
+      {"who":"","text":"","bgm":"crisis"},
       {"who":"ドルガン","text":"感動の再会か。悪いが、こっちは日当で動いてる。手早く済ませるぞ。","face":"normal"},
       {"who":"ドルガン","text":"伯爵さまのご命令だ。この村跡から、捜索団とやらを一人残らず追い出せ！","face":"angry"},
       {"who":"パウロ","text":"……ちっ。ルディ、話は終わってねえからな。","face":"angry"},
@@ -265,7 +282,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch2.battle2": {
     title: "第2章　戦闘中②", chapter: 2,
-    cond: "2ターン目・自軍フェイズ開始時",
+    cond: "2ターン目・自軍フェイズ開始時", bgm: "sad",
     lines: [
       {"who":"パウロ","text":"ルディ、前に出すぎだ！ 魔術師なら後ろにいろ！ お前は昔から、一人で何でも背負いこむ。","face":"angry"},
       {"who":"ルーデウス","text":"父さまに言われたくありません。","face":"angry"},
@@ -296,7 +313,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch2.battle5": {
     title: "第2章　戦闘中⑤", chapter: 2,
-    cond: "5ターン目・敵軍フェイズ開始時、東に私兵の増援が出現した直後",
+    cond: "5ターン目・敵軍フェイズ開始時、東に私兵の増援が出現した直後", bgm: "resolve",
     lines: [
       {"who":"ルイジェルド","text":"東からも騎兵だ。挟まれるぞ。","face":"angry"},
       {"who":"パウロ","text":"ルディ、ロッタと怪我人を連れて西へ抜けろ。ここは俺ひとりで引き受ける。","face":"normal"},
@@ -308,7 +325,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch2.battle6": {
     title: "第2章　戦闘中⑥", chapter: 2,
-    cond: "ボス（ドルガン）と初めて戦闘になるとき（どちらが仕掛けても、戦闘画面の前に一度だけ）",
+    cond: "ボス（ドルガン）と初めて戦闘になるとき（どちらが仕掛けても、戦闘画面の前に一度だけ）", bgm: "boss",
     lines: [
       {"who":"ドルガン","text":"ほう、ここまで来たか。言っておくが、恨みはない。これは仕事だ。","face":"normal"},
       {"who":"パウロ","text":"仕事なら、怪我人を斬ってもいいってのかよ。","face":"angry"},
@@ -319,7 +336,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch2.battle7": {
     title: "第2章　戦闘中⑦", chapter: 2,
-    cond: "ボス（ドルガン）を撃破したとき（任意。撃破しなくても章はクリアできる）",
+    cond: "ボス（ドルガン）を撃破したとき（任意。撃破しなくても章はクリアできる）", bgm: "mystery",
     lines: [
       {"who":"ドルガン","text":"……ちっ、割に合わん。ここまでだ。","face":"angry"},
       {"who":"ドルガン","text":"ひとつ忠告してやる、魔術師。この件の金は、伯爵の懐から出たもんじゃない。もっと奥だ。","face":"normal"},
@@ -328,7 +345,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch2.battle8": {
     title: "第2章　戦闘中⑧", chapter: 2,
-    cond: "7ターン目・自軍フェイズ開始時",
+    cond: "7ターン目・自軍フェイズ開始時", bgm: "resolve",
     lines: [
       {"who":"","text":"西の空が、赤く染まりはじめた。"},
       {"who":"パウロ","text":"……ルディ。さっきの岩の魔術、俺の背中を狙った槍を弾いたろ。","face":"normal"},
@@ -338,7 +355,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch2.outro": {
     title: "第2章　終幕", chapter: 2,
-    cond: "第2章の勝利後（8ターン目の敵軍フェイズ終了後）",
+    cond: "第2章の勝利後（8ターン目の敵軍フェイズ終了後）", bgm: "daily",
     lines: [
       {"who":"","text":"日が山の端に沈むと、傭兵たちは旗を巻き、川の向こうへ引きあげていった。"},
       {"who":"ロッタ","text":"団長、怪我人は全員無事です！ 一人も欠けてません！","face":"smile"},
@@ -346,12 +363,14 @@ export const SCENES: Record<SceneId, Scene> = {
       {"who":"ギレーヌ","text":"パウロ。相変わらず無茶な戦い方だ。","face":"normal"},
       {"who":"パウロ","text":"ギレーヌ！ お前、お嬢様と一緒だったのか。相変わらずおっかねえ顔……いてっ！","face":"smile"},
       {"who":"ギレーヌ","text":"挨拶だ。","face":"normal"},
+      {"who":"","text":"","bgm":"family"},
       {"who":"","text":"ひとしきり笑いが起きたあと、砦の前には、ルーデウスとパウロだけが残った。"},
       {"who":"ルーデウス","text":"……父さま。さっきは、ひどいことを言いました。","face":"sad"},
       {"who":"ルーデウス","text":"母さまのこと。父さまがどれだけ探してきたか、何も知らないのに。","face":"sad"},
       {"who":"パウロ","text":"いや。……お前の言うとおりだ。三年かけて、まだ見つけられてねえ。母さんも、リーリャたちも。","face":"sad"},
       {"who":"パウロ","text":"お前に何て言うか、ずっと考えてたんだ。説教か、謝るか。……顔を見たら、全部飛んだ。","face":"sad"},
       {"who":"ルーデウス","text":"奇遇ですね。僕も道中ずっと練習してたのに、きれいに飛びました。","face":"smile"},
+      {"who":"","text":"","bgm":"comedy"},
       {"who":"","text":"二人は同時に息を吸い、同時に言った。「――ごめん」"},
       {"who":"パウロ","text":"……おい、今のは俺が先だ。こういうのは親が先に謝るもんだ。","face":"angry"},
       {"who":"ルーデウス","text":"いえ、僕です。ひどいことを言ったのは僕なので。","face":"normal"},
@@ -359,6 +378,7 @@ export const SCENES: Record<SceneId, Scene> = {
       {"who":"","text":"「――ごめん」。また、ぴったりと重なった。"},
       {"who":"エリス","text":"何回やるのよ！ ……もう、そういうところ、ほんとにそっくりなんだから。","face":"angry"},
       {"who":"ルイジェルド","text":"良い親子だ。","face":"smile"},
+      {"who":"","text":"","bgm":"mystery"},
       {"who":"ルイジェルド","text":"ルーデウス。捕らえた私兵が、これを持っていた。","face":"normal"},
       {"who":"","text":"差し出された金貨の縁に、欠けた輪の刻印。ガズの袋にあったものと、同じ印だった。"},
       {"who":"ルーデウス","text":"……野盗と伯爵の私兵が、同じ財布から金をもらっている。","face":"normal"},
@@ -369,7 +389,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch2.interlude": {
     title: "第2章　幕間「ふたつの鍋」", chapter: 2,
-    cond: "第2章の終幕のあと、拠点画面に入る前",
+    cond: "第2章の終幕のあと、拠点画面に入る前", bgm: "daily",
     lines: [
       {"who":"","text":"捜索団は、難民キャンプに合流することになった。その夜、焚き火を囲んで、ささやかな宴が開かれた。"},
       {"who":"パウロ","text":"よし、今夜は飲むぞ！ 三年ぶんだ！ ルディ、お前も一杯――","face":"smile"},
@@ -379,12 +399,14 @@ export const SCENES: Record<SceneId, Scene> = {
       {"who":"ルーデウス","text":"（捜索団が三年もったのは、ロッタさんのおかげかもしれない）","face":"smile"},
       {"who":"ハンナ","text":"ほら、団長さんもお食べ！ 人が増えたからね、鍋も二つにしたんだ。","art":false},
       {"who":"ベルト","text":"坊主が今朝掘った井戸から、もう水が出とる。……村ができるのも、遠い話じゃないかもしれんの。","art":false},
+      {"who":"","text":"","bgm":"mystery"},
       {"who":"パウロ","text":"……そういや、ルディ。南から来た行商が、妙な話をしてた。","face":"normal"},
       {"who":"パウロ","text":"アスラの王都から身分の高そうな使いが、ロアの跡を見に来たらしい。白い髪の護衛を連れてな。","face":"normal"},
       {"who":"ルーデウス","text":"王都から……？ こんな、何もない土地に。","face":"normal"},
       {"who":"ロッタ","text":"私も聞きました。東の森で、青い髪の小柄な魔術師さんが、魔物を調べているって。","face":"normal"},
       {"who":"ルーデウス","text":"（青い髪の、小柄な魔術師。……まさか、ですよね）","face":"smile"},
       {"who":"ギレーヌ","text":"東の森か。近ごろ、見たことのない魔物が出る。転移の光が残した何かのせいだとも聞く。","face":"normal"},
+      {"who":"","text":"","bgm":"resolve"},
       {"who":"ルーデウス","text":"……行ってみましょう。魔物も、刻印の主も、待ってはくれませんから。","face":"normal"},
       {"who":"パウロ","text":"ほう、言うようになったな。……ま、父さまも一緒に行ってやるよ。","face":"smile"},
       {"who":"ルーデウス","text":"頼んでません。……でも、心強いです。","face":"smile"},

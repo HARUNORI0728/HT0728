@@ -12,6 +12,10 @@ if (script.status !== 0) process.exit(script.status ?? 1);
 const art = spawnSync(process.env.PYTHON || 'python3', ['tools/optimize_art.py'], { stdio: 'inherit' });
 if (art.error || art.status !== 0) console.warn('optimize_art skipped:', art.error?.message ?? `exit ${art.status}`);
 
+// Music: copy delivered tracks into play/assets/audio/bgm and refresh src/audio-manifest.ts (placeholder synth otherwise).
+const music = spawnSync(process.execPath, ['tools/build-audio.mjs'], { stdio: 'inherit' });
+if (music.status !== 0) process.exit(music.status ?? 1);
+
 const out = await build({ entryPoints: ['src/main.ts'], bundle: true, minify: true, format: 'iife', target: 'es2020', write: false });
 const js = out.outputFiles[0].text.replace(/<\/script/g, '<\\/script');
 const html = readFileSync('src/index.html', 'utf8').replace('<!--SCRIPT-->', () => `<script>${js}</script>`);

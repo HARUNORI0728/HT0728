@@ -235,7 +235,8 @@ export interface EnemyDef { cls: string; lv: number; x: number; y: number; wps: 
  * pos = 立ち絵を出す側（省略時は自動：すでに出ていればその側、なければ空いている側）。
  * art = false：立ち絵を出さない（脚本の表情「-」。立ち絵のない脇役・一般兵）。
  */
-export interface Line { who: string; text: string; face?: 'normal' | 'smile' | 'angry' | 'sad' | 'dere'; pos?: 'left' | 'right'; art?: false }
+/** One line of dialogue. bgm (with empty text) = a music cue in the middle of a conversation, not shown. */
+export interface Line { who: string; text: string; face?: 'normal' | 'smile' | 'angry' | 'sad' | 'dere'; pos?: 'left' | 'right'; art?: false; bgm?: string }
 /**
  * 話者名・ユニット名 → 立ち絵とマップ用絵の ID（assets/portraits/<ID>_<表情>.png, assets/units/<ID>.png）。
  * 仲間（CHARS / CAST の名前）は自動で引けるので、ここには名前のある敵・ゲスト・NPC を足す。
@@ -297,6 +298,11 @@ export interface Chapter {
   prologue?: SceneId; intro: SceneId; outro: SceneId; interlude?: SceneId;
   /** 戦闘中の会話。 */
   talks?: TalkEvent[];
+  /**
+   * マップの曲（design/asset-orders.md §1 のファイル名）。省略時は自軍フェイズ＝章に応じて map_dawn（1〜3章）／
+   * map_resolve（4〜7章）／map_final（8〜10章）、敵軍フェイズ＝map_enemy。耐久・防衛の章は blue: 'crisis' など。
+   */
+  bgm?: { blue?: string; red?: string };
 }
 
 /** Base stats for generic enemies at level 1, plus per-level gains. */
@@ -411,6 +417,7 @@ export const CHAPTERS: Chapter[] = [
       ] },
     ],
     intro: 'ch2.intro', outro: 'ch2.outro', interlude: 'ch2.interlude',
+    bgm: { blue: 'crisis' }, // 耐久戦：自軍フェイズも追い詰められた曲
     talks: [
       { scene: 'ch2.battle1', when: { type: 'firstFight', unit: 'paul' } },
       { scene: 'ch2.battle2', when: { type: 'turn', turn: 2, phase: 'blue' } },
