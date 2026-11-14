@@ -238,6 +238,27 @@ async function tween(u: Unit, x: number, y: number) {
 }
 async function banner(text: string, ms = 900) { const b = $('banner'); b.textContent = text; b.hidden = false; await sleep(ms); b.hidden = true; }
 
+/** Outcome music finishes before dialogue; tapping or pressing Enter/Space fades it out. */
+async function outcomeBanner(win: boolean) {
+  const b = $('banner'), skip = new AbortController();
+  const advance = (e: Event) => {
+    if (e instanceof KeyboardEvent && (e.repeat || !['Enter', ' '].includes(e.key))) return;
+    e.preventDefault(); e.stopImmediatePropagation(); skip.abort();
+  };
+  b.textContent = (win ? '勝利！' : '敗北……') + '　タップで次へ'; b.hidden = false;
+  window.addEventListener('pointerdown', advance, true);
+  window.addEventListener('keydown', advance, true);
+  try {
+    audio.jingle(win ? 'victory' : 'defeat', { stop: true });
+    await audio.waitForJingle(skip.signal, win ? 1300 : 1500);
+    if (!win) await sleep(500);
+  } finally {
+    window.removeEventListener('pointerdown', advance, true);
+    window.removeEventListener('keydown', advance, true);
+    b.hidden = true;
+  }
+}
+
 // ---------- panel ----------
 function hud() {
   const ch = chapterDef(S.chapter);
@@ -567,8 +588,7 @@ async function checkEnd(): Promise<boolean> {
   mode = 'busy'; hud();
   if (o === 'stage') { await stageChange(); return outcome(S) ? checkEnd() : false; }
   if (o === 'win') {
-    audio.jingle('victory', { stop: true });
-    await banner('勝利！', 1300);
+    await outcomeBanner(true);
     const ch = chapterDef(S.chapter);
     // The camp is saved first (with the closing scenes marked seen), so closing the page mid-scene loses nothing:
     // they can be watched again from the camp's 記録.
@@ -582,8 +602,7 @@ async function checkEnd(): Promise<boolean> {
     const lost = camp.roster.filter(u => u.out && !S.bench.some(b => b.id === u.id)).map(u => u.name);
     showCamp(chapterDef(camp.cleared - 1).title.replace(/\s+/g, '　') + '　クリア！' + (lost.length ? `　${lost.join('、')}は戦線離脱した。` : ''));
   } else {
-    audio.jingle('defeat', { stop: true });
-    await banner('敗北……', 1500);
+    await outcomeBanner(false);
     showDefeat();
   }
   return true;
