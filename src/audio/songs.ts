@@ -48,7 +48,7 @@ export const SONGS: Record<string, SongDef> = {
 
   // 序章：A minor, sparse piano with a faint string pad and rain; ends on Cadd9 (unresolved but hopeful).
   prologue: {
-    bpm: 66, grid: 2, bar: 8, gain: 1.15,
+    bpm: 66, grid: 2, bar: 8, gain: 1.27,
     chords: 'Am | Fmaj7 | C | G | Am | Fmaj7 | Dm7 | Esus4 E | F | G | Em7 | Am | Dm7 | G | Fmaj7 G | Cadd9',
     tracks: [
       { inst: 'piano', notes: bars('E5:3 D5:1 C5:4', 'A4:2 C5:2 E5:4', 'G5:3 F5:1 E5:4', 'D5:6 .:2', 'E5:3 D5:1 C5:2 E5:2', 'A5:4 G5:2 F5:2', 'F5:3 E5:1 D5:2 C5:2', 'A4:4 G#4:4',
@@ -66,7 +66,7 @@ export const SONGS: Record<string, SongDef> = {
     const mel = bars('D5:2 B4:1 C5:1 D5:2 G5:2', 'E5:3 D5:1 C5:2 E5:2', 'D5:2 B4:2 G4:2 B4:2', 'A4:4 F#4:2 A4:2', 'D5:2 B4:1 C5:1 D5:2 G5:2', 'E5:2 G5:2 E5:2 C5:2', 'C5:2 E5:2 D5:2 C5:1 A4:1', 'G4:6 .:2',
       'E5:3 F5:1 G5:2 E5:2', 'D5:3 E5:1 D5:2 B4:2', 'B4:2 E5:2 G5:2 E5:2', 'F#5:4 E5:2 D5:2', 'E5:2 C5:2 E5:2 G5:2', 'D5:3 B4:1 G4:2 B4:2', 'C5:2 E5:2 A4:2 C5:2', 'D5:4 C5:2 A4:2');
     return {
-      bpm: 96, grid: 2, bar: 8, gain: 1.0, swing: 0.12,
+      bpm: 96, grid: 2, bar: 8, gain: 1.08, swing: 0.12,
       chords: `${ch} | ${ch}`,
       tracks: [
         { inst: 'guitar', low: 52, stab: 'x . x x . x x .', strum: 0.05, vol: 0.55, pan: -0.3, rev: 0.3 },
@@ -205,7 +205,7 @@ export const SONGS: Record<string, SongDef> = {
 
   // 明るい会話：F major 110, light swing. Pizzicato, clarinet, glockenspiel.
   daily: {
-    bpm: 110, grid: 2, bar: 8, gain: 1.05, swing: 0.16,
+    bpm: 110, grid: 2, bar: 8, gain: 1.42, swing: 0.16,
     chords: 'F | Dm | Gm7 | C7 | F | Dm | Bb C7 | F | Bb | C | Am | Dm | Gm7 | C7 | F D7 | Gm7 C7',
     tracks: [
       { inst: 'clarinet', notes: bars('C5:1 .:1 A4:1 C5:1 F5:2 A4:2', 'D5:1 .:1 F5:1 D5:1 A4:4', 'Bb4:1 .:1 D5:1 F5:1 G5:2 F5:2', 'E5:2 D5:1 E5:1 G5:2 .:2', 'C5:1 .:1 A4:1 C5:1 F5:2 A5:2', 'A5:1 F5:1 E5:1 F5:1 D5:4', 'D5:2 F5:2 E5:2 G5:2', 'F5:2 C5:1 A4:1 F4:2 .:2',
@@ -219,7 +219,7 @@ export const SONGS: Record<string, SongDef> = {
 
   // コメディ：C major oom-pah. Tuba, xylophone, sliding clarinet, stops for the punchlines.
   comedy: {
-    bpm: 116, grid: 2, bar: 8, gain: 1.0,
+    bpm: 116, grid: 2, bar: 8, gain: 1.12,
     chords: 'C | G7 | C | G7 | F | C | D7 G7 | C | F | C | G7 | C | F | Fm | C G7 | C',
     tracks: [
       { inst: 'xylo', notes: bars('E5:1 G5:1 E5:1 C5:1 .:4', 'D5:1 F5:1 D5:1 B4:1 .:4', 'E5:1 F5:1 G5:1 A5:1 G5:1 E5:1 C5:2', 'B4:2 .:1 B4:1 G4:2 .:2', 'A4:1 C5:1 F5:1 A5:1 .:2 G5:1 F5:1', 'E5:2 C5:2 G4:2 .:2', 'F#5:1 A5:1 F#5:1 D5:1 F5:1 D5:1 B4:1 G4:1', 'C5:2 .:2 C4:1 .:3'), vol: 0.9, pan: 0.2, rev: 0.25 },
@@ -233,7 +233,7 @@ export const SONGS: Record<string, SongDef> = {
 
   // 悲しい場面：D minor 60. Solo cello over slow piano chords; a single D major chord near the end.
   sad: {
-    bpm: 60, grid: 2, bar: 8, gain: 1.15,
+    bpm: 60, grid: 2, bar: 8, gain: 1.27,
     chords: 'Dm | Bb | Gm | A | Dm | F | Gm | A | Bb | F/A | Gm | Dm/F | Em7b5 | A | D | A',
     tracks: [
       { inst: 'cello', notes: bars('A3:4 D4:4', 'F4:6 D4:2', 'D4:3 C4:1 Bb3:4', 'C#4:6 E4:2', 'F4:4 E4:2 D4:2', 'A4:6 G4:2', 'G4:3 F4:1 D4:4', 'E4:8',
@@ -246,7 +246,7 @@ export const SONGS: Record<string, SongDef> = {
 
   // 決意：the motif, fragile on piano, then strings join and climb to a climax, settling back for the loop.
   resolve: {
-    bpm: 76, grid: 2, bar: 8, gain: 1.0,
+    bpm: 76, grid: 2, bar: 8, gain: 1.2,
     chords: [MOTIF_44_CH, MOTIF_44_CH, 'G | A | F#m | Bm | Em | A7 | D/F# G | Asus4 A'].join(' | '),
     tracks: [
       { inst: 'piano', notes: [MOTIF_44E, MOTIF_44E].join(' | '), vol: 0.9, pan: 0.1, rev: 0.5 },
@@ -263,7 +263,7 @@ export const SONGS: Record<string, SongDef> = {
 
   // 謎：E minor, slow. Sparse celesta, low strings, an E pedal under Fmaj7 for the unease, reversed shimmers.
   mystery: {
-    bpm: 60, grid: 2, bar: 8, gain: 1.15,
+    bpm: 60, grid: 2, bar: 8, gain: 1.65,
     chords: 'Em | Fmaj7/E | Em | Fmaj7/E | Amadd9 | Cmaj7 | Bsus4 | B | Cmaj7 | Bm | Am | Fmaj7/E | Em | Fmaj7/E | Bsus4 | B7',
     tracks: [
       { inst: 'celesta', notes: bars('B5:4 .:2 E6:2', 'C6:4 .:2 A5:2', 'G5:6 .:2', 'F5:2 E5:2 .:4', 'C6:2 B5:2 E6:4', 'G5:4 .:2 B5:2', 'E6:4 F#5:4', 'D#6:6 .:2',
@@ -280,7 +280,7 @@ export const SONGS: Record<string, SongDef> = {
     const mel = bars('C#5:4 E5:2', 'B4:4 G#4:2', 'A4:2 C#5:2 F#5:2', 'E5:4 G#4:2', 'F#5:3 E5:1 D5:2', 'C#5:3 B4:1 A4:2', 'B4:2 D5:2 A5:2', 'G#5:4 E5:2');
     const mel2 = bars('E5:4 A5:2', 'G#5:3 F#5:1 E5:2', 'C#6:4 A5:2', 'A5:3 F#5:1 D5:2', 'D5:2 F#5:2 A5:2', 'G#5:4 B5:2', 'A5:3 F5:3', 'B4:3 G#4:3');
     return {
-      bpm: 72, grid: 2, bar: 6, gain: 1.05,
+      bpm: 72, grid: 2, bar: 6, gain: 1.32,
       chords: 'A | E/G# | F#m | C#m/E | D | A/C# | Bm7 | E | A | E/G# | F#m | D | Bm7 | E | D Dm | Esus4 E',
       tracks: [
         { inst: 'piano', notes: mel, vol: 0.85, pan: 0.05, rev: 0.5 },
@@ -307,7 +307,7 @@ export const SONGS: Record<string, SongDef> = {
 
   // オルステッド：C minor, very slow. Low brass, a sub drone, heavy drum, cold high harmonics.
   orsted: {
-    bpm: 50, grid: 2, bar: 8, gain: 1.1,
+    bpm: 50, grid: 2, bar: 8, gain: 0.68,
     chords: 'Cm | Db/C | Cm | Ab | Fm | Db | Cm | G',
     tracks: [
       { inst: 'horn', notes: bars('G3:6 Ab3:2', 'Ab3:8', 'G3:4 Eb3:4', 'C4:8', 'Ab3:6 G3:2', 'F3:8', 'Eb3:4 D3:2 C3:2', 'B2:8'), vol: 1.1, pan: 0, rev: 0.45 },
@@ -385,7 +385,7 @@ export const SONGS: Record<string, SongDef> = {
     ],
   },
   levelup: {
-    bpm: 150, grid: 4, bar: 16, gain: 1.0, loop: false,
+    bpm: 150, grid: 4, bar: 16, gain: 1.45, loop: false,
     chords: 'C',
     tracks: [
       { inst: 'harp', notes: 'C5:1 E5:1 G5:1 C6:1 E6:1 G6:1 C7:10', vol: 0.9, rev: 0.5 },
@@ -407,7 +407,7 @@ export const SONGS: Record<string, SongDef> = {
     ],
   },
   support: {
-    bpm: 90, grid: 2, bar: 6, gain: 1.0, loop: false,
+    bpm: 90, grid: 2, bar: 6, gain: 1.6, loop: false,
     chords: 'C | F C',
     tracks: [
       { inst: 'celesta', notes: bars('E5:1 G5:1 C6:2 B5:1 G5:1', 'A5:2 F5:1 .:1 E5:2'), vol: 1.0, rev: 0.55 },
