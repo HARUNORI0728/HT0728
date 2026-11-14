@@ -681,7 +681,8 @@ export function goalText(ch: Chapter, stage = 0): string {
   const lc = loseCond(ch, stage);
   const guests = [...ch.players.filter(p => p.guest).map(p => p.id), ...(ch.stages ?? []).slice(0, stage).flatMap(st => (st.allies ?? []).filter(a => a.guest).map(a => a.id))];
   const who = [...lc.units, ...guests.filter(id => !lc.units.includes(id))]; // guests always count
-  const tileWho = lc.tileBy ? `${nameOf(lc.tileBy)}の` : '敵の';
+  const tileBoss = lc.tileBy && [...ch.enemies, ...(ch.stages ?? []).flatMap(st => st.enemies ?? [])].find(e => e.boss && idForName(e.boss) === lc.tileBy)?.boss;
+  const tileWho = lc.tileBy ? `${tileBoss ?? nameOf(lc.tileBy)}の` : '敵の';
   const lose = (who.length <= 2 ? who.map(nameOf).join('または') + 'の敗走' : who.map(nameOf).join('、') + 'のいずれかの敗走') + (guardTiles(lc).length ? `、または${tileWho}防衛地点（赤の枠）への侵入` : '');
   const n = stageCount(ch);
   return `${n > 1 ? `【${stage === 0 ? '前半' : n === 2 ? '後半' : `第${stage + 1}段`}】` : ''}勝利条件：${win}　／　敗北条件：${lose}`;

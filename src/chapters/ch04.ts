@@ -50,7 +50,7 @@ export const ch04: Chapter = {
     { cls: 'archer', lv: 5, x: 14, y: 2, wps: ['ironBow'], ai: 'hold', prefix: P },
     { cls: 'archer', lv: 5, x: 17, y: 5, wps: ['ironBow'], ai: 'guard', prefix: P },
     { cls: 'myrmidon', lv: 11, x: 13, y: 3, wps: ['ironSword'], ai: 'guard', boss: '北帝オーベール', retreatAt: 0.5, defeat: 'retreat',
-      aiFrom: { turn: 3, ai: 'charge' } },
+      aiFrom: { turn: 2, ai: 'charge' } },
   ],
   reinforce: [
     { turn: 3, units: [ // 礼拝堂の裏（地下の抜け道の出口＝南東の林）から
