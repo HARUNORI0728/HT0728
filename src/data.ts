@@ -289,6 +289,8 @@ export const SPEAKER_IDS: Record<string, string> = {
   'ナナホシ': 'nanahoshi', // 仲間にはせず会話パートだけに出る（第3章以降）
   'オーベール': 'auber', 'ガル・ファリオン': 'gall', 'ダリウス': 'darius', 'オルステッド': 'orsted',
   '傭兵団長': 'mercboss', '使徒': 'apostle', '迷宮の主': 'labyrinth',
+  '残光の大熊': 'residue_bear', // 3章のボス（魔物）
+  '森の主': 'forest_lord', // 5章のボス（魔物。苔の大鹿）
   'ヴェラ': 'mercboss', 'バラク': 'barak', 'ウォルド': 'apostle', // 使徒の素顔（10章終幕から。それまでは表情「-」で立ち絵なし）
 };
 export type Tile = [number, number];
