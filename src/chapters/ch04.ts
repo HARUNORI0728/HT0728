@@ -19,7 +19,7 @@ export const ch04: Chapter = {
     'GGGGGUGGGGRGGUGYGHGG',
     'RRRRRRRRRRRRRRRRRRRR',
     'GGGGUGDGGUGGDGZZZZZG',
-    'FGYLDLGGDGULDGZGDGZG',
+    'FGYLDLGGDGULDGZZDZZG',
     'FGGGGGYGGGGGGGUGGGUG',
     'AAAAGAAAGYAAGYZNGYZF',
     'AAAAGAAAGGAAYFZZZZZF',
@@ -27,7 +27,7 @@ export const ch04: Chapter = {
   ],
   players: [
     { id: 'rudeus', x: 1, y: 7 },
-    { id: 'ariel', x: 16, y: 9 }, { id: 'sylphiette', x: 15, y: 9 }, { id: 'luke', x: 17, y: 9 },
+    { id: 'ariel', x: 16, y: 9 }, { id: 'sylphiette', x: 15, y: 10 }, { id: 'luke', x: 17, y: 10 },
   ],
   slots: [{ x: 1, y: 6 }, { x: 1, y: 8 }, { x: 2, y: 7 }, { x: 0, y: 6 }],
   sortie: 7,
@@ -36,24 +36,26 @@ export const ch04: Chapter = {
     { cls: 'knight', lv: 7, x: 10, y: 1, wps: ['javelin'], ai: 'guard', prefix: P },
     { cls: 'archer', lv: 6, x: 9, y: 2, wps: ['ironBow'], ai: 'guard', prefix: P },
     { cls: 'healer', lv: 6, x: 11, y: 2, wps: ['healStaff'], ai: 'hold', prefix: P },
-    { cls: 'mercenary', lv: 7, x: 10, y: 4, wps: ['steelSword'], ai: 'guard', prefix: '刺客の' },
-    { cls: 'mage', lv: 6, x: 12, y: 4, wps: ['fire'], ai: 'guard', prefix: P },
+    { cls: 'mercenary', lv: 6, x: 10, y: 4, wps: ['steelSword'], ai: 'guard', prefix: '刺客の' },
+    { cls: 'mage', lv: 5, x: 12, y: 4, wps: ['fire'], ai: 'guard', prefix: P },
     // 宿場町の西側（本隊を迎え撃つ）
     sw(5, 8, 5, 'hold'),
     { cls: 'mercenary', lv: 6, x: 9, y: 8, wps: ['ironSword'], ai: 'guard', prefix: '刺客の' },
     { cls: 'mage', lv: 5, x: 6, y: 9, wps: ['fire'], ai: 'hold', prefix: P },
     // 礼拝堂へ向かう刺客
-    sw(5, 11, 6, 'charge'), sw(5, 10, 10, 'charge'), sw(6, 12, 9, 'guard', 'steelSword'), sw(5, 13, 6, 'guard'),
+    sw(5, 11, 6, 'charge'), sw(5, 10, 10, 'charge'),
+    // 町の辻を見張る刺客
+    sw(5, 9, 4, 'guard'), sw(5, 5, 10, 'guard'),
     // 北東の丘の弓兵
     { cls: 'archer', lv: 5, x: 14, y: 2, wps: ['ironBow'], ai: 'hold', prefix: P },
-    { cls: 'archer', lv: 6, x: 17, y: 5, wps: ['ironBow'], ai: 'guard', prefix: P },
-    { cls: 'myrmidon', lv: 11, x: 13, y: 3, wps: ['steelSword'], ai: 'guard', boss: '北帝オーベール', retreatAt: 0.5, defeat: 'retreat',
+    { cls: 'archer', lv: 5, x: 17, y: 5, wps: ['ironBow'], ai: 'guard', prefix: P },
+    { cls: 'myrmidon', lv: 11, x: 13, y: 3, wps: ['ironSword'], ai: 'guard', boss: '北帝オーベール', retreatAt: 0.5, defeat: 'retreat',
       aiFrom: { turn: 2, ai: 'charge' } },
   ],
   reinforce: [
-    { turn: 3, units: [ // 礼拝堂の裏（地下の抜け道）から
-      sw(5, 19, 9, 'charge'), sw(5, 19, 11, 'charge'),
-      { cls: 'mercenary', lv: 5, x: 19, y: 10, wps: ['ironSword'], ai: 'charge', prefix: '刺客の' },
+    { turn: 3, units: [ // 礼拝堂の裏（地下の抜け道の出口＝南東の林）から
+      sw(5, 17, 13, 'charge'), sw(5, 19, 13, 'charge'),
+      { cls: 'mercenary', lv: 5, x: 18, y: 13, wps: ['ironSword'], ai: 'charge', prefix: '刺客の' },
     ] },
     { turn: 6, units: [ // 北の丘から騎馬
       { cls: 'horseKnight', lv: 6, x: 15, y: 1, wps: ['ironLance'], ai: 'charge', prefix: P },
