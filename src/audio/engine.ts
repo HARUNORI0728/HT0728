@@ -77,6 +77,11 @@ export class SongPlayer {
     g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(0, now + Math.max(0.02, fade));
     setTimeout(() => { try { this.out.disconnect(); } catch { /* already gone */ } }, (fade + 3) * 1000);
   }
+  dispose() {
+    this.done = true;
+    this.out.disconnect();
+    for (const bus of this.buses) bus.disconnect();
+  }
 }
 
 /** A delivered recording, played by an <audio> element with a JS-driven fade. */
@@ -106,7 +111,7 @@ class FilePlayer {
   kill() { this.dead = true; try { this.el.pause(); this.el.removeAttribute('src'); this.el.load(); } catch { /* ignore */ } }
 }
 
-type Live = { name: string; synth?: SongPlayer; file?: FilePlayer };
+type Live = { name: string; synth?: SongPlayer; file?: FilePlayer; closing?: boolean };
 
 export class Engine {
   settings: AudioSettings = { ...DEFAULT_SETTINGS };
@@ -230,6 +235,7 @@ export class Engine {
   }
   /** A delivered file could not be played: use the placeholder from now on. */
   private fileFailed(name: string, l: Live, jingle: boolean) {
+    if (l.closing) return;
     if (this.failed.has(name) && !l.file) return;
     this.failed.add(name);
     console.warn(`audio: ${name} のファイルを再生できないため、仮の曲で代用します`);
@@ -260,6 +266,42 @@ export class Engine {
     this.duck = 1;
   }
 
+  /** Wait for this jingle only; a gesture skips it with a short fade. */
+  async waitForJingle(signal: AbortSignal, fallbackMs = 1300, timeoutMs = 30000) {
+    const jingle = this.jing;
+    let elapsed = 0, stalled = 0, previous = performance.now(), position = -1;
+    const audible = () => !!jingle && !this.settings.mute && this.settings.bgm > 0;
+    while (!fast() && !signal.aborted) {
+      const now = performance.now();
+      const dt = Math.min(now - previous, TICK_MS * 2);
+      if (!this.hidden) elapsed += dt;
+      previous = now;
+      if (jingle && this.jing !== jingle) return;
+      if (audible() && !this.hidden) {
+        const at = jingle!.file?.el.currentTime ?? (jingle!.synth ? this.ac?.currentTime : undefined);
+        stalled = at !== undefined && at > position ? 0 : stalled + dt;
+        position = at ?? -1;
+        if (stalled >= 2000) break;
+      }
+      if (audible() ? elapsed >= timeoutMs : elapsed >= fallbackMs) break;
+      await new Promise<void>(resolve => setTimeout(resolve, TICK_MS));
+    }
+    // A stalled recording, blocked playback, or an unavailable audio context must never block the game.
+    if (jingle && this.jing === jingle) {
+      jingle.closing = true;
+      const fade = signal.aborted && audible() && !fast() ? 0.5 : 0;
+      jingle.synth?.stop(fade);
+      jingle.file?.stop(fade);
+      const start = performance.now();
+      while (performance.now() - start < fade * 1000 && !fast() && !this.hidden && this.ac?.state === 'running') {
+        await new Promise<void>(resolve => setTimeout(resolve, 20));
+      }
+      jingle.file?.kill();
+      jingle.synth?.dispose();
+      if (this.jing === jingle) { this.jing = null; this.unduck(); }
+    }
+  }
+
   // ---------- sound effects ----------
   sfx(name: Sfx) {
     if (!this.ready || !this.mix || !this.ac || this.settings.mute) return;
@@ -284,8 +326,9 @@ export class Engine {
     if (this.jing) {
       this.jing.synth?.tick(horizon);
       this.jing.file?.step(dt, lvl);
-      if ((this.jing.file && this.jing.file.ended) || (!this.jing.file && now > this.jing.end - 0.9)) {
+      if ((this.jing.file && this.jing.file.ended) || (!this.jing.file && now > this.jing.end)) {
         if (this.jing.file) this.jing.file.kill();
+        this.jing.synth?.dispose();
         this.jing = null; this.unduck();
       }
     }
