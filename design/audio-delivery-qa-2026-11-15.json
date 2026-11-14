@@ -1,0 +1,53 @@
+[
+  {
+    "name": "family",
+    "duration": 120.0,
+    "frames": 5292000,
+    "channels": 2,
+    "sample_rate": 44100,
+    "loop": true,
+    "bpm": 80,
+    "lufs": -19.96,
+    "true_peak_dbtp": -9.17,
+    "gain_db": 20.090000000000003,
+    "peak": 0.3467997908592224,
+    "boundary_delta": 0.000648121815174818,
+    "stereo_difference_rms": 0.031863413751125336,
+    "sha256": "dcfb7eab50e38623f98c7851aa4b65abd334a52efd49e565045bf7c0c08c0036",
+    "soundfont_sha256": "9575028c7a1f589f5770fccc8cff2734566af40cd26ed836944e9a5152688cfe"
+  },
+  {
+    "name": "resolve",
+    "duration": 120.0,
+    "frames": 5292000,
+    "channels": 2,
+    "sample_rate": 44100,
+    "loop": true,
+    "bpm": 80,
+    "lufs": -19.99,
+    "true_peak_dbtp": -5.8,
+    "gain_db": 22.060000000000002,
+    "peak": 0.5110102891921997,
+    "boundary_delta": 0.0003409693017601967,
+    "stereo_difference_rms": 0.039489779621362686,
+    "sha256": "8075b4ca17ecb85ca0f7e11fd5d9b3d30cbae4303cdf89ae9d92e9617adf1bf4",
+    "soundfont_sha256": "9575028c7a1f589f5770fccc8cff2734566af40cd26ed836944e9a5152688cfe"
+  },
+  {
+    "name": "mystery",
+    "duration": 90.0,
+    "frames": 3969000,
+    "channels": 2,
+    "sample_rate": 44100,
+    "loop": true,
+    "bpm": 64,
+    "lufs": -19.99,
+    "true_peak_dbtp": -4.31,
+    "gain_db": 26.259999999999998,
+    "peak": 0.6071234345436096,
+    "boundary_delta": 0.0004699424607679248,
+    "stereo_difference_rms": 0.0535808727145195,
+    "sha256": "f3a907ca5bb35248dd9623d72629274834267e4863d2d4042d10e9ca4da2c4bb",
+    "soundfont_sha256": "9575028c7a1f589f5770fccc8cff2734566af40cd26ed836944e9a5152688cfe"
+  }
+]

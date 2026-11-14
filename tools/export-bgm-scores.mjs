@@ -1,16 +1,10 @@
 // Expand the game's existing score into full-length, reproducible arrangements.
-// Usage: node tools/export-bgm-scores.mjs <output-directory>
+// Usage: node tools/export-bgm-scores.mjs <output-directory> [track ...]
 import { stripTypeScriptTypes } from 'node:module';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const out = resolve(process.argv[2] ?? '../music-runtime/scores');
-mkdirSync(out, { recursive: true });
-for (const part of ['songs','theory']) {
-  writeFileSync(join(out, part+'.mjs'), stripTypeScriptTypes(readFileSync(`src/audio/${part}.ts`,'utf8')));
-}
-const { SONGS } = await import(pathToFileURL(join(out, 'songs.mjs')));
-const { compile } = await import(pathToFileURL(join(out, 'theory.mjs')));
 // Sections are [source start bar, source end bar, expression]. Cadences are kept intact.
 const forms = {
   title: [120, [[0,26,.83],[2,18,.90],[10,26,1]]],
@@ -23,8 +17,24 @@ const forms = {
   daily: [90, [[0,16,.94],[0,16,1],[8,16,.90]]],
   victory: [8, [[0,3,1]]],
   defeat: [8, [[0,3,.86]]],
+  family: [120, [[0,8,.80],[8,16,.90],[0,8,.92],[8,16,1],[8,16,.82]]],
+  resolve: [120, [[0,8,.74],[0,8,.82],[8,16,.89],[8,16,.95],[16,23,1],[23,24,.72]]],
+  mystery: [90, [[0,8,.78],[0,8,.86],[8,16,.94]]],
 };
-for (const [name, [duration, sections]] of Object.entries(forms)) {
+const requested = process.argv.slice(3);
+const names = requested.length ? [...new Set(requested)] : Object.keys(forms);
+for (const name of names) {
+  if (!Object.hasOwn(forms, name)) throw Error(`Unknown BGM track: ${name}`);
+}
+
+mkdirSync(out, { recursive: true });
+for (const part of ['songs','theory']) {
+  writeFileSync(join(out, part+'.mjs'), stripTypeScriptTypes(readFileSync(`src/audio/${part}.ts`,'utf8')));
+}
+const { SONGS } = await import(pathToFileURL(join(out, 'songs.mjs')));
+const { compile } = await import(pathToFileURL(join(out, 'theory.mjs')));
+for (const name of names) {
+  const [duration, sections] = forms[name];
   const def = SONGS[name], score = compile(def), loop = def.loop !== false;
   const bars = sections.reduce((n, s) => n + s[1] - s[0], 0);
   const musicDuration = loop ? duration : name === 'victory' ? 6 : 6.4;
