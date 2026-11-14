@@ -7,8 +7,11 @@ export type WType = 'sword' | 'lance' | 'axe' | 'bow' | 'anima' | 'light' | 'dar
 export type MoveType = 'foot' | 'armor' | 'horse' | 'fly';
 export type Team = 'blue' | 'red';
 
-/** heal = 杖の回復値（staff のみ）。 */
-export interface Weapon { name: string; type: WType; mt: number; hit: number; crit: number; rng: [number, number]; heal?: number }
+/**
+ * heal = 杖の回復値（staff のみ）。eff = 特効（systems.md §2）：相手がその種類なら威力2倍。
+ * 弓は書かなくても fly 特効、光魔術は monster 特効（logic.ts effective()）。
+ */
+export interface Weapon { name: string; type: WType; mt: number; hit: number; crit: number; rng: [number, number]; heal?: number; eff?: ('fly' | 'armor' | 'horse' | 'monster')[] }
 /**
  * tier 1 = base class, tier 2 = promoted. wtypes = weapon types the class may use.
  * bonus = stats added on promotion into this class; crit = class crit bonus; gift = weapon granted on promotion
@@ -18,6 +21,8 @@ export interface ClassDef {
   /** sprite = 見た目の型（render/units.ts）。騎馬（mtype horse）は自動で馬に乗せる。 */
   name: string; mov: number; mtype: MoveType; sprite: string;
   tier?: 1 | 2; wtypes: WType[]; bonus?: Partial<Stats>; crit?: number; gift?: string; desc?: string;
+  /** 魔物（M4）。光魔術の特効を受ける。マップ用絵は assets/units/enemy_monster_<職ID>。 */
+  monster?: true;
 }
 /** note = 情報欄に添える移動の説明（通行不可・移動しにくい など）。 */
 export interface Terrain { name: string; def: number; avo: number; heal?: boolean; note?: string }
@@ -47,6 +52,15 @@ export const WEAPONS: Record<string, Weapon> = {
   healStaff: { name: '初級治癒の杖', type: 'staff', mt: 0, hit: 0, crit: 0, rng: [1, 1], heal: 10 },
   midHealStaff: { name: '中級治癒の杖', type: 'staff', mt: 0, hit: 0, crit: 0, rng: [1, 1], heal: 18 },
   farHealStaff: { name: '遠隔治癒の杖', type: 'staff', mt: 0, hit: 0, crit: 0, rng: [1, 3], heal: 10 },
+  // ---- 魔物の武器（M4。牙爪型＝三すくみ外。Lv による上乗せはない。数値は仮） ----
+  wolfFang: { name: '牙', type: 'fang', mt: 5, hit: 85, crit: 5, rng: [1, 1] },
+  golemFist: { name: '岩の拳', type: 'fang', mt: 9, hit: 70, crit: 0, rng: [1, 1] },
+  birdTalon: { name: '鉤爪', type: 'fang', mt: 4, hit: 90, crit: 5, rng: [1, 1] },
+  bearClaw: { name: '剛爪', type: 'fang', mt: 11, hit: 80, crit: 5, rng: [1, 1] },
+  // 残滓の影の理魔術（M4）。
+  shadeBolt: { name: '残滓の礫', type: 'anima', mt: 5, hit: 85, crit: 0, rng: [1, 2] },
+  // オルステッド（10章。前半は敵、後半はゲスト）の仮の武器。数値は仮（ルーデウスを一撃で倒さない程度は章データ側で能力値を調整）。
+  dragonPalm: { name: '龍神の掌打', type: 'fang', mt: 10, hit: 95, crit: 0, rng: [1, 1] },
 };
 export const MAGIC: WType[] = ['anima', 'light', 'dark'];
 /** key beats value */
@@ -112,6 +126,15 @@ export const CLASSES: Record<string, ClassDef> = {
   fierceFang: { name: '猛牙', mov: 7, mtype: 'foot', sprite: 'fang', tier: 2, wtypes: ['fang'], bonus: B(5, 3, 0, 1, 2, 0, 2, 0), desc: '攻めに徹する牙爪の使い手。力とHPが伸びる。' },
   // ペルギウス専用。最初から上級職でクラスチェンジなし（PROMOS に載せない）。
   summoner: { name: '召喚術師', mov: 5, mtype: 'foot', sprite: 'summoner', tier: 2, wtypes: ['anima'], desc: '使い魔を呼ぶ甲龍王の術。上級職固定。' },
+  // ---- 魔物・残滓（M4。敵用。移動力・能力値は仮） ----
+  wolf: { name: '狼', mov: 6, mtype: 'foot', sprite: 'beast', wtypes: ['fang'], monster: true },
+  golem: { name: '岩人形', mov: 4, mtype: 'armor', sprite: 'brute', wtypes: ['fang'], monster: true },
+  bird: { name: '怪鳥', mov: 7, mtype: 'fly', sprite: 'beast', wtypes: ['fang'], monster: true },
+  bear: { name: '大熊', mov: 5, mtype: 'foot', sprite: 'brute', wtypes: ['fang'], monster: true },
+  shade: { name: '残滓の影', mov: 5, mtype: 'foot', sprite: 'mage', wtypes: ['anima'], monster: true },
+  crystal: { name: '残滓の結晶', mov: 0, mtype: 'armor', sprite: 'armor', wtypes: [], monster: true },
+  // オルステッド専用（10章）。
+  dragonGod: { name: '龍神', mov: 6, mtype: 'foot', sprite: 'sword', tier: 2, wtypes: ['fang', 'anima'], desc: '龍神。仮の職。' },
   general: { name: '将軍', mov: 5, mtype: 'armor', sprite: 'armor', tier: 2, wtypes: ['lance', 'sword', 'axe'], bonus: B(5, 2, 0, 1, 1, 0, 3, 3), gift: 'ironSword', desc: '重騎士の上級職。' },
 };
 
@@ -171,12 +194,15 @@ export const TERRAIN: Record<string, Terrain> = {
   Z: { name: '城壁', def: 0, avo: 0, note: '通行不可' },
   L: { name: '柵', def: 0, avo: 0, note: '通行不可' },
   P: { name: '浅瀬', def: 0, avo: 0, note: '移動コスト3（重装4）' },
+  // 8章の迷宮用（M9）。見た目は今のところ道と崖で代用（main.ts paintTerrain）。
+  K: { name: '石床', def: 0, avo: 0 },
+  Q: { name: '岩壁', def: 0, avo: 0, note: '通行不可' },
 };
 
 export function moveCost(t: string, m: MoveType): number {
   if (m === 'fly') return 1;
   switch (t) {
-    case 'W': case 'X': case 'Z': case 'L': return Infinity;
+    case 'W': case 'X': case 'Z': case 'L': case 'Q': return Infinity;
     case 'M': return m === 'foot' ? 4 : Infinity;
     case 'F': case 'U': return m === 'horse' ? 3 : 2;
     case 'H': return 2;
@@ -222,21 +248,37 @@ export const CHARS: Record<string, CharDef> = {
   perugius: { id: 'perugius', name: 'ペルギウス', cls: 'summoner', lv: 4, st: S(38, 8, 20, 18, 14, 12, 12, 18), gr: S(35, 15, 30, 25, 20, 20, 20, 30), wps: ['summon'], hair: '#d8dce4' },
   // ---- ゲスト（章ごとの護衛対象。名簿には残らない。CAST・支援には入れない） ----
   // 2章：捜索団の治療師（本作オリジナル）。杖しか持たないので攻撃できない。能力値は仮。
+  // 10章後半のゲスト。前半は敵（EnemyDef の cls: 'dragonGod', boss: 'オルステッド', unkillable）。能力値は仮。
+  orsted: { id: 'orsted', name: 'オルステッド', cls: 'dragonGod', lv: 10, st: S(60, 22, 18, 25, 22, 10, 18, 16), gr: S(0, 0, 0, 0, 0, 0, 0, 0), wps: ['dragonPalm', 'stoneCannon'], hair: '#c8ccd8' },
   lotta: { id: 'lotta', name: 'ロッタ', cls: 'healer', lv: 3, st: S(22, 1, 6, 5, 6, 6, 4, 6), gr: S(50, 5, 45, 40, 40, 40, 20, 40), wps: ['healStaff'], hair: '#a0643c' },
 };
 
+/** 敵のAI。charge = 常に前進、hold = 攻撃できるときだけ動く、guard = その場から動かない、target = goal のマスへ向かう。 */
+export type EnemyAI = 'charge' | 'hold' | 'guard' | 'target';
 /**
  * prefix = 一般兵の名前の頭（省略時「野盗の」。例：「私兵の」→「私兵の槍兵」）。
  * defeat = 倒されたときの扱い（表示だけ。盤面から消えるのは同じ）：captured = 捕縛、retreat = 撤退。省略時は通常の撃破。
+ * goal = ai 'target' の目標マス（M2）。aiFrom = turn ターン目の敵軍フェイズからAIを ai に変える（goal も変えられる）。
+ * retreatAt = HP がこの割合以下になった時点で撤退（盤面から消え、bossDefeat の会話を再生。M3）。
+ * unkillable = HP が 1 未満にならない（撃破不可。全滅・ボス撃破の勝利条件からも外す。M3）。
+ * tag = 印（増援の発生源 Reinforce.from で使う。M6）。st = 能力値をこの値で固定する（名前のある敵用。省略時は ENEMY_BASE＋Lv）。
  */
-export interface EnemyDef { cls: string; lv: number; x: number; y: number; wps: string[]; ai: 'charge' | 'hold' | 'guard'; boss?: string; prefix?: string; defeat?: 'captured' | 'retreat' }
+export interface EnemyDef {
+  cls: string; lv: number; x: number; y: number; wps: string[]; ai: EnemyAI; boss?: string; prefix?: string; defeat?: 'captured' | 'retreat';
+  goal?: Tile; aiFrom?: { turn: number; ai: EnemyAI; goal?: Tile };
+  retreatAt?: number; unkillable?: true; tag?: string; st?: Stats;
+}
 /**
  * One line of a conversation. face = 立ち絵の表情（省略時 normal。その表情の絵が無ければ normal）。
  * pos = 立ち絵を出す側（省略時は自動：すでに出ていればその側、なければ空いている側）。
  * art = false：立ち絵を出さない（脚本の表情「-」。立ち絵のない脇役・一般兵）。
  */
-/** One line of dialogue. bgm (with empty text) = a music cue in the middle of a conversation, not shown. */
-export interface Line { who: string; text: string; face?: 'normal' | 'smile' | 'angry' | 'sad' | 'dere'; pos?: 'left' | 'right'; art?: false; bgm?: string }
+/**
+ * One line of dialogue. Lines with empty text are cues, not shown: bgm = change the music, bg = change the background
+ * ('none' = no background: the conversation sits over the map), cg = show an event picture (assets/events/<名前>) until
+ * the next bg cue or the end of the scene (portraits are hidden meanwhile).
+ */
+export interface Line { who: string; text: string; face?: 'normal' | 'smile' | 'angry' | 'sad' | 'dere'; pos?: 'left' | 'right'; art?: false; bgm?: string; bg?: string; cg?: string }
 /**
  * 話者名・ユニット名 → 立ち絵とマップ用絵の ID（assets/portraits/<ID>_<表情>.png, assets/units/<ID>.png）。
  * 仲間（CHARS / CAST の名前）は自動で引けるので、ここには名前のある敵・ゲスト・NPC を足す。
@@ -247,50 +289,95 @@ export const SPEAKER_IDS: Record<string, string> = {
   'ナナホシ': 'nanahoshi', // 仲間にはせず会話パートだけに出る（第3章以降）
   'オーベール': 'auber', 'ガル・ファリオン': 'gall', 'ダリウス': 'darius', 'オルステッド': 'orsted',
   '傭兵団長': 'mercboss', '使徒': 'apostle', '迷宮の主': 'labyrinth',
+  'ヴェラ': 'mercboss', 'バラク': 'barak', 'ウォルド': 'apostle', // 使徒の素顔（10章終幕から。それまでは表情「-」で立ち絵なし）
 };
 export type Tile = [number, number];
 /**
- * 勝利条件（systems.md §7）。rout = 全滅、boss = boss フラグの敵をすべて撃破、seize = ルーデウスが tiles で制圧、
- * escape = 生存者全員が tiles から離脱、defend = turns ターン守り切る（敵が lose.tile に乗ると敗北）、
- * survive = turns ターン目の敵軍フェイズを終えたら勝利。
+ * 勝利条件（systems.md §7）。rout = 全滅、boss = boss フラグの敵をすべて撃破（撤退も撃破に数える。撃破不可は除く）、
+ * seize = ルーデウス（by を指定すればそのキャラ）が tiles で「制圧」、escape = 生存者全員が tiles から「離脱」、
+ * defend = turns ターン守り切る（敵が lose.tile / lose.tiles に乗ると敗北）、survive = turns ターン目の敵軍フェイズを終えたら勝利。
+ * defend / survive は、敵の全滅（撃破不可を除く。予定の増援が残っていないとき）でも勝利。
+ * orBoss = defend / survive で、boss の敵がすべて倒れた（撤退を含む）時点でも勝利（2章のドルガン）。
  */
 export type WinCond =
   | { type: 'rout' } | { type: 'boss' }
-  | { type: 'seize'; tiles: Tile[] } | { type: 'escape'; tiles: Tile[] }
-  | { type: 'defend'; turns: number } | { type: 'survive'; turns: number };
-/** 敗北条件：units の誰かが倒れる（ルーデウスは常に含む）、または敵が tile に乗る（defend 用）。 */
-export interface LoseCond { units: string[]; tile?: Tile }
-/** 指定ターンの敵軍フェイズ開始時に出現。出現マスが埋まっていれば次のターンに持ち越す。 */
-export interface Reinforce { turn: number; units: EnemyDef[] }
+  | { type: 'seize'; tiles: Tile[]; by?: string } | { type: 'escape'; tiles: Tile[] }
+  | { type: 'defend'; turns: number; orBoss?: true } | { type: 'survive'; turns: number; orBoss?: true };
+/**
+ * 敗北条件：units の誰かが倒れる（ルーデウスとゲストは常に含む）、または敵が tile / tiles（防衛対象のマス）に乗る。
+ * tileBy = そのボス（キャラID）が乗ったときだけ敗北（M7。7章のバラクの船着き場）。
+ */
+export interface LoseCond { units: string[]; tile?: Tile; tiles?: Tile[]; tileBy?: string }
+/**
+ * 指定ターン（段の中でも通しのターン番号）の敵軍フェイズ開始時に出現。出現マスが埋まっていれば次のターンに持ち越す。
+ * from = 発生源の敵の印（EnemyDef.tag）。その敵が盤面にいなければ（倒された・撤退）この増援は出ない（M6）。
+ */
+export interface Reinforce { turn: number; units: EnemyDef[]; from?: string }
 /**
  * 戦闘中の会話の発生条件（どれも章ごとに一度だけ。発生済みは State.flags の `talk:<場面ID>` に記録してセーブに残る）。
  * - turn：turn ターン目の phase（blue = 自軍 / red = 敵軍）フェイズ開始時。
- * - reinforce：章の reinforce[wave] が出現した直後（マスが埋まって持ち越されたら、実際に出たとき）。
+ * - reinforce：reinforce[wave] が出現した直後（wave に配列を渡すと、どれかが最初に出たとき）。stage = どの段の増援か（省略時 0）。
  * - firstFight：仲間 unit（キャラID）が初めて戦闘するとき。仕掛けても反撃でも、戦闘画面の前。
- * - bossFight：ボス boss（キャラID。SPEAKER_IDS で名前から引く）と初めて戦闘になるとき。どちらが仕掛けても戦闘画面の前。
- * - bossDefeat：ボス boss を倒したとき。撃破の演出の直後。
+ * - bossFight：ボス boss（キャラID。SPEAKER_IDS で名前から引く）と初めて戦闘になるとき。unit を付けると、その仲間との戦闘の専用版
+ *   （M8②）。専用版がある組の戦闘では専用版だけを再生し、汎用版は済みにする。汎用版が先に出ていても、専用版は指定の仲間との初戦闘で出る。
+ * - bossDefeat：ボス boss を倒したとき（撤退・捕縛を含む）。撃破の演出の直後。
  * - firstHeal：仲間 unit が初めて杖で回復したとき。回復の演出の直後。
+ * - stageStart：段 stage が始まったとき（段の切り替えの直後。M8①）。
  * 同じ戦闘で重なったら firstFight → bossFight の順。話者が盤面にいない（離脱・未出撃）仲間の台詞は飛ばす。
  */
 export type TalkWhen =
   | { type: 'turn'; turn: number; phase: Team }
-  | { type: 'reinforce'; wave: number }
+  | { type: 'reinforce'; wave: number | number[]; stage?: number }
   | { type: 'firstFight'; unit: string }
-  | { type: 'bossFight'; boss: string }
+  | { type: 'bossFight'; boss: string; unit?: string }
   | { type: 'bossDefeat'; boss: string }
-  | { type: 'firstHeal'; unit: string };
-export interface TalkEvent { scene: SceneId; when: TalkWhen }
+  | { type: 'firstHeal'; unit: string }
+  | { type: 'stageStart'; stage: number };
+/**
+ * needs = この全員が盤面にいるときだけ再生する（仲間はキャラID、敵はボスのキャラID）。いなければ場面ごと飛ばす
+ * （3章⑦のエリスとロキシーの掛け合い、7章⑥のバラク など）。
+ */
+export interface TalkEvent { scene: SceneId; when: TalkWhen; needs?: string[] }
+/** 盤面に加わる味方（段の切り替え時）。guest = ゲスト（操作できる。倒れると敗北、次章へ持ち越さない）。 */
+export interface AllyDef { id: string; x: number; y: number; guest?: boolean }
+/**
+ * 地形の変化（M5）。turn ターン目の自軍フェイズ開始時、または段 stage の開始時に tiles を地形 to に書き換える。
+ * ユニットが乗っているマスは、空いたフェイズの開始時に変わる。
+ */
+export interface TerrainChange { turn?: number; stage?: number; tiles: Tile[]; to: string }
+/**
+ * 2段目以降の段（M1）。前の段の勝利条件を満たした時点で切り替わる（耐久・防衛は最後のターンの敵軍フェイズのあと）。
+ * ターン番号は通しで数える。省略したものは前の段の値を引き継ぐ（lose・bgm）。
+ * - talk：切り替えの直後に再生する会話（TalkWhen stageStart でもよい）。
+ * - remove：盤面から下げる敵（ボスのキャラID）。'all' で敵を全部下げる。
+ * - allies：加わる味方（ペルギウス、ゲストのオルステッドなど）。マスが埋まっていれば近くの空きマスに置く。
+ * - enemies：加わる敵。reinforce：この段の増援（turn は通しのターン番号）。
+ */
+export interface StageDef {
+  win: WinCond; lose?: LoseCond; talk?: SceneId;
+  remove?: string[] | 'all'; allies?: AllyDef[]; enemies?: EnemyDef[]; reinforce?: Reinforce[];
+  bgm?: { blue?: string; red?: string; boss?: string };
+}
+/** 宝箱・村の訪問（M13）。TODO：未実装。型だけ置いてある（7章の檻、8章の宝箱）。 */
+export interface VisitDef { x: number; y: number; kind: 'chest' | 'village'; item?: string; talk?: SceneId }
 export interface Chapter {
   title: string; map: string[];
   /** 必ず出撃する仲間（新規加入・物語上の必須メンバー）。guest は護衛対象など：倒れると敗北、次章へ持ち越さない。 */
-  players: { id: string; x: number; y: number; guest?: boolean }[];
+  players: AllyDef[];
   /**
    * 名簿から出撃させる残りの枠の配置。sortie = 出撃の上限（players を含み、guest は数えない）。
    * 名簿の仲間が残り枠より多いときは出撃準備の画面で選ぶ（少なければ名簿順で自動）。
    */
   slots?: { x: number; y: number }[]; sortie?: number;
+  /** 1段目（段が1つだけの章はこれだけ）の敵・勝利条件・敗北条件・増援。 */
   enemies: EnemyDef[];
   win: WinCond; lose?: LoseCond; reinforce?: Reinforce[];
+  /** 2段目以降（M1。9章の防衛→制圧、10章の耐久→ボス撃破）。 */
+  stages?: StageDef[];
+  /** 地形の変化（M5）。 */
+  terrainChanges?: TerrainChange[];
+  /** TODO（M13）：宝箱・村の訪問。今は読まない。 */
+  visits?: VisitDef[];
   /**
    * 会話（場面ID。本文は design/script-*.md → src/script/scenes.ts）。prologue = ニューゲーム時に開幕より前に一度だけ。
    * intro = 開幕（出撃前）、outro = 終幕（勝利後）、interlude = 幕間（終幕のあと、支援会話と拠点の前）。
@@ -301,10 +388,12 @@ export interface Chapter {
   /**
    * マップの曲（design/asset-orders.md §1 のファイル名）。省略時は自軍フェイズ＝章に応じて map_dawn（1〜3章）／
    * map_resolve（4〜7章）／map_final（8〜10章）、敵軍フェイズ＝map_enemy。耐久・防衛の章は blue: 'crisis' など。
+   * ボスと交戦中は boss（bossTrack で章ごとに変えられる。10章の使徒は final_boss）。
    */
-  bgm?: { blue?: string; red?: string };
+  bgm?: { blue?: string; red?: string; boss?: string };
+  /** 最終章：クリア後（終幕のあと）にエピローグ → 後日談 → スタッフ表示 → タイトルへ進む。 */
+  ending?: true;
 }
-
 /** Base stats for generic enemies at level 1, plus per-level gains. */
 export const ENEMY_BASE: Record<string, Stats> = {
   soldier: S(17, 4, 0, 3, 3, 1, 3, 0),
@@ -316,120 +405,20 @@ export const ENEMY_BASE: Record<string, Stats> = {
   myrmidon: S(17, 4, 0, 5, 6, 1, 2, 0),
   cavalier: S(20, 5, 0, 3, 4, 1, 4, 0),
   mercenary: S(20, 6, 0, 6, 6, 2, 4, 1),
+  // 3章以降（M4。仮）
+  mage: S(16, 0, 5, 4, 4, 1, 1, 4), // 敵の魔術師（私兵・密猟者）
+  horseKnight: S(21, 5, 0, 4, 5, 1, 4, 1),
+  wolf: S(16, 5, 0, 4, 7, 0, 2, 0),
+  golem: S(26, 7, 0, 2, 1, 0, 9, 1),
+  bird: S(15, 4, 0, 5, 8, 1, 1, 1),
+  bear: S(30, 8, 0, 4, 4, 0, 5, 1),
+  shade: S(16, 0, 6, 5, 5, 0, 2, 5),
+  crystal: S(18, 0, 0, 0, 0, 0, 10, 10),
+  dragonGod: S(60, 18, 15, 20, 18, 10, 15, 12),
 };
 
-export const CHAPTERS: Chapter[] = [
-  {
-    title: '第1章　帰郷',
-    win: { type: 'rout' }, lose: { units: ['rudeus', 'eris'] },
-    // 16×11。北東の山脈に野盗の砦、中央を北から南へ川（橋と浅瀬）、西にロアの崩れた城壁と廃墟、南西に難民キャンプ、南東に畑の跡。
-    map: [
-      'FFFYGUGGGWMMMMMM',
-      'FFGGHHGUGWMMMMMM',
-      'FYGGHGGUGWGMMCMM',
-      'GUGGGGGGGWGGGRGM',
-      'ZZUZZUZRRBRRRRGG',
-      'GYGGGGGRGWGHHGFF',
-      'GNGNGGGRGWWGGYFF',
-      'NGNGNGGRGGWGAAAF',
-      'GNGGGGGRRRPRAAAG',
-      'NGGGNGGGGGWRAAGG',
-      'GGYGGGGGYGWRGGYG',
-    ],
-    players: [
-      { id: 'rudeus', x: 4, y: 8 }, { id: 'ghislaine', x: 3, y: 9 },
-      { id: 'eris', x: 6, y: 8 }, { id: 'ruijerd', x: 7, y: 9 },
-    ],
-    enemies: [
-      { cls: 'soldier', lv: 1, x: 6, y: 5, wps: ['ironLance'], ai: 'charge' },
-      { cls: 'fighter', lv: 1, x: 8, y: 6, wps: ['ironAxe'], ai: 'charge' },
-      { cls: 'archer', lv: 1, x: 7, y: 3, wps: ['ironBow'], ai: 'charge' },
-      { cls: 'fighter', lv: 2, x: 3, y: 3, wps: ['ironAxe'], ai: 'charge' },
-      { cls: 'soldier', lv: 2, x: 5, y: 2, wps: ['ironLance'], ai: 'charge' },
-      { cls: 'soldier', lv: 2, x: 11, y: 3, wps: ['ironLance'], ai: 'hold' },
-      { cls: 'fighter', lv: 3, x: 12, y: 3, wps: ['ironAxe'], ai: 'hold' },
-      { cls: 'archer', lv: 2, x: 14, y: 3, wps: ['ironBow'], ai: 'guard' },
-      { cls: 'knight', lv: 5, x: 13, y: 2, wps: ['javelin'], ai: 'guard', boss: '野盗頭ガズ', defeat: 'captured' },
-    ],
-    prologue: 'prologue', intro: 'ch1.intro', outro: 'ch1.outro', interlude: 'ch1.interlude',
-    talks: [
-      { scene: 'ch1.battle1', when: { type: 'firstFight', unit: 'eris' } },
-      { scene: 'ch1.battle2', when: { type: 'firstFight', unit: 'ruijerd' } },
-      { scene: 'ch1.battle3', when: { type: 'firstFight', unit: 'ghislaine' } },
-      { scene: 'ch1.battle4', when: { type: 'turn', turn: 2, phase: 'blue' } },
-      { scene: 'ch1.battle5', when: { type: 'turn', turn: 3, phase: 'blue' } },
-      { scene: 'ch1.battle6', when: { type: 'bossFight', boss: 'gaz' } },
-      { scene: 'ch1.battle7', when: { type: 'bossDefeat', boss: 'gaz' } },
-    ],
-  },
-  {
-    // 2章（systems.md §6・§7）：ターン耐久8・捜索団員ロッタをゲストとして護衛。出撃5（ゲスト除く）、最初の敵11＋増援4。
-    // マップは依頼により 20×14（§6 の表は 15×10）。敵の約半数は hold / guard。川の東は橋2本と浅瀬1か所で渡る。
-    title: '第2章　捜索団の灯',
-    win: { type: 'survive', turns: 8 }, lose: { units: ['rudeus', 'paul'] },
-    // 20×14。廃村を柵が囲み、門は北・南・西・東の4か所（北門は廃墟の脇の1マス、南の柵は一部崩れている）。西門そばの砦跡にロッタとパウロ。
-    // 北の森と南の林から野盗、東の川（橋2本と浅瀬）を渡って私兵が来る。北東の砦に傭兵隊長。
-    map: [
-      'MMFFFGFGFFFGGGGWXXMM',
-      'MFFHGGGFGFFYGGGWGGXM',
-      'FFHHGFFGGGGGGGGWGRRC',
-      'FGHGGFFGYGGGGGRBRRGG',
-      'GGGGGGLLLGLLLLRWGGGG',
-      'GGGYGGLDDUGGDLRWGGFF',
-      'GGGGGGLGGGGDGLRWWGFF',
-      'RRRRRRRCRRRRRRRRBRRR',
-      'GGGGGGLDGGGGGLGGWGGG',
-      'GGFGGGLDDGGUDLGGPGGG',
-      'AAAGGGLLLGLGLLGGWGGG',
-      'AAAGGFFGGGGFFGGWWGMM',
-      'GAAGGFFFGGGFFGGWGGMM',
-      'GGGGFFFGGGGGFGGWGMMM',
-    ],
-    players: [
-      { id: 'rudeus', x: 1, y: 7 }, { id: 'paul', x: 8, y: 7 }, { id: 'lotta', x: 7, y: 7, guest: true },
-    ],
-    slots: [{ x: 2, y: 8 }, { x: 0, y: 8 }, { x: 1, y: 6 }, { x: 0, y: 6 }, { x: 1, y: 9 }],
-    sortie: 5,
-    enemies: [
-      // 北の森から野盗
-      { cls: 'fighter', lv: 3, x: 7, y: 1, wps: ['ironAxe'], ai: 'charge' },
-      { cls: 'fighter', lv: 2, x: 11, y: 1, wps: ['ironAxe'], ai: 'charge' },
-      { cls: 'soldier', lv: 2, x: 4, y: 2, wps: ['ironLance'], ai: 'charge' },
-      { cls: 'archer', lv: 3, x: 8, y: 1, wps: ['ironBow'], ai: 'hold' },
-      // 南の林から野盗
-      { cls: 'fighter', lv: 2, x: 7, y: 12, wps: ['ironAxe'], ai: 'charge' },
-      { cls: 'soldier', lv: 3, x: 11, y: 12, wps: ['ironLance'], ai: 'hold' },
-      // 川の東から貴族の私兵
-      { cls: 'soldier', lv: 3, x: 18, y: 4, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
-      { cls: 'cavalier', lv: 3, x: 18, y: 7, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
-      { cls: 'myrmidon', lv: 4, x: 17, y: 9, wps: ['ironSword'], ai: 'hold', prefix: '私兵の' },
-      { cls: 'archer', lv: 3, x: 18, y: 10, wps: ['ironBow'], ai: 'hold', prefix: '私兵の' },
-      { cls: 'mercenary', lv: 7, x: 19, y: 2, wps: ['steelSword'], ai: 'guard', boss: '傭兵隊長ドルガン', defeat: 'retreat' },
-    ],
-    reinforce: [
-      { turn: 3, units: [
-        { cls: 'fighter', lv: 3, x: 6, y: 0, wps: ['ironAxe'], ai: 'charge' },
-        { cls: 'soldier', lv: 3, x: 11, y: 0, wps: ['ironLance'], ai: 'charge' },
-      ] },
-      { turn: 5, units: [
-        { cls: 'cavalier', lv: 4, x: 19, y: 9, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
-        { cls: 'soldier', lv: 4, x: 19, y: 7, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
-      ] },
-    ],
-    intro: 'ch2.intro', outro: 'ch2.outro', interlude: 'ch2.interlude',
-    bgm: { blue: 'crisis' }, // 耐久戦：自軍フェイズも追い詰められた曲
-    talks: [
-      { scene: 'ch2.battle1', when: { type: 'firstFight', unit: 'paul' } },
-      { scene: 'ch2.battle2', when: { type: 'turn', turn: 2, phase: 'blue' } },
-      { scene: 'ch2.battle3', when: { type: 'reinforce', wave: 0 } },
-      { scene: 'ch2.battle4', when: { type: 'firstHeal', unit: 'lotta' } },
-      { scene: 'ch2.battle5', when: { type: 'reinforce', wave: 1 } },
-      { scene: 'ch2.battle6', when: { type: 'bossFight', boss: 'dolgan' } },
-      { scene: 'ch2.battle7', when: { type: 'bossDefeat', boss: 'dolgan' } },
-      { scene: 'ch2.battle8', when: { type: 'turn', turn: 7, phase: 'blue' } },
-    ],
-  },
-];
+/** 本編の章（src/chapters/）。CHAPTERS[i] = 第 i+1 章。 */
+export { CHAPTERS, CHAPTER_SLOTS, DEV_CHAPTERS, chapterDef, hasChapter } from './chapters';
 
 // ---------- cast & supports ----------
 

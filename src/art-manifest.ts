@@ -74,3 +74,15 @@ export const PORTRAIT_ART: Record<string, Partial<Record<Face, string>>> = {
   sylphiette: { normal: 'assets/portraits/sylphiette_normal.webp?v=1db0e298', smile: 'assets/portraits/sylphiette_smile.webp?v=4f364a9c', angry: 'assets/portraits/sylphiette_angry.webp?v=5e2bed36', sad: 'assets/portraits/sylphiette_sad.webp?v=352dee7b' },
   zanoba: { normal: 'assets/portraits/zanoba_normal.webp?v=f4ce24fc', smile: 'assets/portraits/zanoba_smile.webp?v=043f2313', angry: 'assets/portraits/zanoba_angry.webp?v=6d68f7cc', sad: 'assets/portraits/zanoba_sad.webp?v=f5d4e2f7' },
 };
+/** Conversation backgrounds by name (screenplay 背景：<名前>). 16:9, width 1280. */
+export const BG_ART: Record<string, string> = {
+  camp_day: 'assets/backgrounds/camp_day.webp?v=d15f68c4',
+  camp_night: 'assets/backgrounds/camp_night.webp?v=d11d434b',
+  grassland_day: 'assets/backgrounds/grassland_day.webp?v=74e1292f',
+  ruined_village: 'assets/backgrounds/ruined_village.webp?v=471efad6',
+  tent_inside: 'assets/backgrounds/tent_inside.webp?v=dac09c48',
+  title: 'assets/backgrounds/title.webp?v=a3b013e8',
+};
+/** Event pictures by name (screenplay 一枚絵：<名前>). */
+export const EVENT_ART: Record<string, string> = {
+};

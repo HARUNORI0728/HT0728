@@ -2,7 +2,8 @@
 // vignette and edge arrows. Everything with gradients or glow is pre-rendered once and reused every frame.
 import { OUT, T, canvas, type C2D } from './common';
 
-export type TileKind = 'move' | 'attack' | 'target' | 'heal';
+/** goal = 制圧・離脱の目標マス（金）、guard = 敵に乗られてはいけない防衛マス（赤）。 */
+export type TileKind = 'move' | 'attack' | 'target' | 'heal' | 'goal' | 'guard';
 const K = T / 72, PAD = Math.ceil(T * 0.12);
 const tiles = new Map<TileKind, HTMLCanvasElement>();
 /** A tile highlight (canvas is T + 2·PAD square; draw it at tile − PAD). */
@@ -16,14 +17,16 @@ function tileImg(kind: TileKind) {
     attack: { fill: 'rgba(255,84,60,.22)', edge: 'rgba(255,170,150,.85)', glow: 'rgba(255,90,70,.7)' },
     target: { fill: 'rgba(255,70,55,.40)', edge: 'rgba(255,230,210,.95)', glow: 'rgba(255,80,60,1)' },
     heal: { fill: 'rgba(90,220,130,.36)', edge: 'rgba(200,255,215,.95)', glow: 'rgba(90,230,140,1)' },
+    goal: { fill: 'rgba(232,197,106,.30)', edge: 'rgba(255,236,170,.95)', glow: 'rgba(232,197,106,1)' },
+    guard: { fill: 'rgba(255,111,97,.22)', edge: 'rgba(255,190,170,.95)', glow: 'rgba(255,90,80,1)' },
   }[kind];
   // soft outer light
-  c.save(); c.shadowColor = P.glow; c.shadowBlur = (kind === 'target' || kind === 'heal' ? 14 : 7) * K;
+  c.save(); c.shadowColor = P.glow; c.shadowBlur = (kind === 'target' || kind === 'heal' || kind === 'goal' || kind === 'guard' ? 14 : 7) * K;
   c.strokeStyle = P.edge; c.lineWidth = (kind === 'move' ? 1.8 : 2) * K; c.beginPath(); c.roundRect(x, y, w, w, r); c.stroke(); c.restore();
   // body: brighter toward the top
   const g = c.createLinearGradient(0, y, 0, y + w); g.addColorStop(0, P.fill.replace(/[\d.]+\)$/, m => String(Math.min(1, parseFloat(m) * 1.35)) + ')')); g.addColorStop(1, P.fill);
   c.fillStyle = g; c.beginPath(); c.roundRect(x, y, w, w, r); c.fill();
-  if (kind === 'attack' || kind === 'target') { // diagonal hatching: tells attack range apart from movement at a glance
+  if (kind === 'attack' || kind === 'target' || kind === 'guard') { // diagonal hatching: tells attack range apart from movement at a glance
     c.save(); c.beginPath(); c.roundRect(x, y, w, w, r); c.clip();
     c.strokeStyle = kind === 'attack' ? 'rgba(255,200,180,.32)' : 'rgba(255,230,220,.38)'; c.lineWidth = 3 * K;
     for (let d = -w; d < w * 2; d += 11 * K) { c.beginPath(); c.moveTo(x + d, y); c.lineTo(x + d - w, y + w); c.stroke(); }

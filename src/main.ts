@@ -1,18 +1,23 @@
 // Screen, input and turn flow. Rules live in logic.ts.
-import { CAST, CHAPTERS, CHARS, CLASSES, RANKS, RANK_PTS, STAT_KEYS, STAT_NAMES, SUPPORTS, SUPPORT_BONUS, WEAPONS, WTYPE_NAMES, type EnemyDef, type Line, type Stats, type SupportPair } from './data';
+import { CAST, CHAPTERS, CHARS, CLASSES, RANKS, RANK_PTS, STAT_KEYS, STAT_NAMES, SUPPORTS, SUPPORT_BONUS, WEAPONS, WTYPE_NAMES, chapterDef, hasChapter, type EnemyDef, type Line, type Stats, type SupportPair } from './data';
 import {
   DIFFICULTY_NAMES, POTION_HEAL, addExp, alive, bondStatus, canEscape, canSeize, dist, expGain, fight, forecast, gainBonds, goalText, heal, healAmount, healExp, healTargets,
   initBonds, inRange, key, loseCond, makeEnemy, makeUnit, maxRank, newChapter, nextNeed, outcome, pairKey, planEnemy, promote, promoOptions, rankName, rankUp, readyPairs,
   rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
   bossId, dueTalks, fightTalks, onMap, talkKey,
+  CANDIDATES, advanceStage, answerConfession, applyAiSwitch, applyTerrainChanges, ensureMarried, isConfession, markedTiles, marriedTo, seizeFlag, stageBgm, stageOf,
   type Bonds, type Difficulty, type SortiePlan, type State, type Unit,
 } from './logic';
+import { confessionScene, endingSequence, placeholderTalk, sceneById, supportScene, wifeLines, wifeTalksAvailable } from './story';
+import { WIFE_TALKS } from './script/scenes';
+import { artLog, cueBgm, play, setOnCg } from './ui/dialogue';
+import { BG_ART } from './art-manifest';
 import { RES, T } from './render/common';
 import { FLOAT_LIFE, drawCursor, drawEdgeMarks, drawFloat, drawTile, drawVignette, type Float } from './render/fx';
 import { drawTerrain } from './render/terrain';
-import { drawIcon, drawPortrait, drawUnit } from './render/units';
+import { drawIcon, drawUnit } from './render/units';
 import { SCENES, SCENE_ORDER, type SceneId } from './script/scenes';
-import { faceHtml, idForName, idForUnit, loadUnitArt, portraitFailed, portraitUrl, preloadPortrait, spriteUrl, type Face } from './render/art';
+import { faceHtml, idForName, idForUnit, loadUnitArt, portraitUrl, preloadPortrait, spriteUrl } from './render/art';
 import { audio } from './audio/engine';
 import { mountAudioUi } from './audio/ui';
 
@@ -31,6 +36,8 @@ let stops = new Set<string>(), threat = new Set<string>();
 let origin = { x: 0, y: 0 }, targets: Unit[] = [], curW = '';
 const offs = new Map<number, { dx: number; dy: number }>();
 const shownHp = new Map<number, number>();
+/** Units that retreated during the combat being shown: still drawn until its animation ends. */
+const leaving = new Set<number>();
 const floats: Float[] = [];
 
 // ---------- camera ----------
@@ -83,18 +90,22 @@ async function follow(pts: { x: number; y: number }[], margin = 1) {
 const followLog: { name: string; x: number; y: number; before: boolean; after: boolean; cam: { x: number; y: number } }[] = [];
 
 // ---------- save ----------
-/** Between chapters: the party, its bonds, the difficulty, and which chapter comes next. */
-interface Camp { next: number; cleared: number; roster: Unit[]; bonds: Bonds; difficulty: Difficulty }
+/** Between chapters: the party, its bonds, the difficulty, and which chapter comes next. ended = the story was finished. */
+interface Camp { next: number; cleared: number; roster: Unit[]; bonds: Bonds; difficulty: Difficulty; ended?: boolean }
 /**
  * seen = conversations watched (for the camp's 記録): scene ids (序章・開幕・終幕・幕間) and support talks
  * (`sup:<pairKey>:<rank>`). Battle conversations that have played are State.flags `talk:<scene>`.
  */
-interface SaveData { v: 4; battle: State | null; camp: Camp | null; seen: string[] }
+interface SaveData { v: 5; battle: State | null; camp: Camp | null; seen: string[]; married: string[] }
+// v5: added `married` (candidates Rudeus married = their bond with him at S; kept for readability and repaired from on
+// load), Camp.ended, Bond.deferred (a confession answered 「応えられない」), State.flags.stage (the current stage), and
+// seen keys for confessions / wife talks / event pictures (`wife.NN`, `cg:<name>`).
 // v4: added `seen`. v3: State gained difficulty / bench / flags, Camp gained difficulty, Unit gained out / guest / left.
-const SAVE = 'fittoa-save-v4', SAVE_V3 = 'fittoa-save-v3', SAVE_V2 = 'fittoa-save-v2', SAVE_V1 = 'fittoa-save-v1';
+const SAVE = 'fittoa-save-v5', SAVE_V4 = 'fittoa-save-v4', SAVE_V3 = 'fittoa-save-v3', SAVE_V2 = 'fittoa-save-v2', SAVE_V1 = 'fittoa-save-v1';
 let camp: Camp | null = null, inBattle = false, seen: string[] = [];
 function save() {
-  const d: SaveData = { v: 4, battle: inBattle ? S : null, camp, seen };
+  const bonds = camp?.bonds ?? (inBattle ? S?.bonds : undefined);
+  const d: SaveData = { v: 5, battle: inBattle ? S : null, camp, seen, married: bonds ? marriedTo(bonds) : [] };
   try { localStorage.setItem(SAVE, JSON.stringify(d)); } catch { /* storage unavailable */ }
 }
 /**
@@ -127,19 +138,22 @@ const validDiff = (d: unknown): Difficulty => (d === 'classic' ? 'classic' : 'ca
 /** Accepts v4, and v3/v2/v1 shapes (missing fields are filled in). Anything malformed is dropped rather than thrown. */
 function normalize(d: any): SaveData | null {
   const b = d?.battle;
-  const battle = b && Array.isArray(b.units) && Array.isArray(b.map) && CHAPTERS[b.chapter] && b.units.every(validUnit) ? upgradeState(b as State) : null;
+  const battle = b && Array.isArray(b.units) && Array.isArray(b.map) && hasChapter(b.chapter) && b.units.every(validUnit) ? upgradeState(b as State) : null;
   const c = d?.camp;
   let cp: Camp | null = null;
   if (c && Array.isArray(c.roster) && typeof c.next === 'number' && typeof c.cleared === 'number' && c.cleared >= 1) {
-    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty) };
+    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), ...(c.ended === true ? { ended: true } : {}) };
   }
+  const married = Array.isArray(d?.married) ? d.married.filter((k: unknown) => typeof k === 'string' && CANDIDATES.includes(k as string)) : [];
+  if (cp) ensureMarried(cp.bonds, married);
+  if (battle) ensureMarried(battle.bonds, married);
   if (battle && cp && !b.difficulty) battle.difficulty = cp.difficulty;
   const sn = Array.isArray(d?.seen) ? d.seen.filter((k: unknown) => typeof k === 'string') : seenFrom(battle, cp);
-  return battle || cp ? { v: 4, battle, camp: cp, seen: sn } : null;
+  return battle || cp ? { v: 5, battle, camp: cp, seen: sn, married: marriedTo(cp?.bonds ?? battle!.bonds) } : null;
 }
 function load(): SaveData | null {
   // Newest first; a corrupt or unreadable entry falls through to the next older one.
-  for (const k of [SAVE, SAVE_V3, SAVE_V2, SAVE_V1]) {
+  for (const k of [SAVE, SAVE_V4, SAVE_V3, SAVE_V2, SAVE_V1]) {
     try {
       const j = localStorage.getItem(k);
       if (!j) continue;
@@ -170,10 +184,15 @@ function render(now = performance.now()) {
       for (const k of stops) tile(k, 'move');
     }
     const pulse = 0.78 + 0.22 * Math.sin(sec * 5);
+    if (inBattle) { // 目標マス（制圧・離脱）と防衛マス：いつも見えるように、ゆっくり明滅させる
+      const mk = markedTiles(S), slow = 0.62 + 0.3 * Math.sin(sec * 2.4);
+      for (const [x, y] of mk.goal) drawTile(ctx, 'goal', x, y, slow);
+      for (const [x, y] of mk.guard) drawTile(ctx, 'guard', x, y, slow);
+    }
     if (mode === 'target') for (const t of targets) tile(key(t.x, t.y), 'target', t === picked ? 1 : pulse);
     if (mode === 'heal') for (const t of targets) tile(key(t.x, t.y), 'heal', t === picked ? 1 : pulse);
     // units, back to front
-    const shown = S.units.filter(u => (shownHp.get(u.uid) ?? u.hp) > 0 && !u.left)
+    const shown = S.units.filter(u => (shownHp.get(u.uid) ?? u.hp) > 0 && (!u.left || leaving.has(u.uid)))
       .map(u => { const o = offs.get(u.uid); return { u, px: u.x * T + (o?.dx ?? 0), py: u.y * T + (o?.dy ?? 0) }; })
       .sort((a, b) => a.py - b.py);
     for (const { u, px, py } of shown) drawUnit(ctx, u, px, py, u.done && S.phase === 'blue', (shownHp.get(u.uid) ?? u.hp) / u.st.hp);
@@ -221,11 +240,11 @@ async function banner(text: string, ms = 900) { const b = $('banner'); b.textCon
 
 // ---------- panel ----------
 function hud() {
-  const ch = CHAPTERS[S.chapter];
+  const ch = chapterDef(S.chapter);
   $('chTitle').textContent = ch.title;
   $('turn').innerHTML = `ターン ${S.turn}　<b class="${S.phase}">${S.phase === 'blue' ? '自軍フェイズ' : '敵軍フェイズ'}</b>`;
   const left = turnsLeft(S);
-  $('goal').textContent = goalText(ch) + (left !== null ? `　（残り ${left} ターン）` : '');
+  $('goal').textContent = goalText(ch, stageOf(S)) + (left !== null ? `　（残り ${left} ターン）` : '');
 }
 /** Weapons as shown in panels: fang units get their built-in attack, staves are listed with the rest. */
 function wpsText(u: Unit, withType = true) {
@@ -267,96 +286,26 @@ function menu(items: [string, () => void, string?][]) {
 /** Bosses the party has fought this chapter (by uid): the boss theme plays while one of them still stands. */
 const engaged = new Set<number>();
 /** Whether this boss's first-clash conversation has played (also after reloading mid-chapter). */
-const bossTalkPlayed = (u: Unit) => (CHAPTERS[S.chapter].talks ?? []).some(e => e.when.type === 'bossFight' && e.when.boss === bossId(u) && S.flags[talkKey(e.scene)]);
-const bossEngaged = () => S.units.some(u => u.team === 'red' && u.boss && u.hp > 0 && !u.left && (engaged.has(u.uid) || bossTalkPlayed(u)));
+const bossTalkPlayed = (u: Unit) => (chapterDef(S.chapter).talks ?? []).some(e => e.when.type === 'bossFight' && e.when.boss === bossId(u) && S.flags[talkKey(e.scene)]);
+const bossEngaged = () => S.units.some(u => u.team === 'red' && u.boss && !u.unkillable && u.hp > 0 && !u.left && (engaged.has(u.uid) || bossTalkPlayed(u)));
 /**
  * The map's track: the boss theme from the first clash with a boss until it falls (or retreats); otherwise the
  * chapter's own (Chapter.bgm) or the default by chapter — map_dawn 1–3, map_resolve 4–7, map_final 8–10 — and
  * map_enemy in the enemy phase.
  */
 function mapTrack(): string {
-  if (bossEngaged()) return 'boss';
-  const ch = CHAPTERS[S.chapter], n = S.chapter + 1;
-  if (S.phase === 'red') return ch.bgm?.red ?? 'map_enemy';
-  return ch.bgm?.blue ?? (n <= 3 ? 'map_dawn' : n <= 7 ? 'map_resolve' : 'map_final');
+  const bgm = stageBgm(chapterDef(S.chapter), stageOf(S)) ?? {}, n = S.chapter + 1;
+  if (bossEngaged()) return bgm.boss ?? 'boss';
+  if (S.phase === 'red') return bgm.red ?? 'map_enemy';
+  return bgm.blue ?? (n <= 3 ? 'map_dawn' : n <= 7 ? 'map_resolve' : 'map_final');
 }
 const mapMusic = () => { if (inBattle && S) audio.bgm(mapTrack()); };
-/** A screenplay music cue: a track name, or 'none' for silence. */
-const cueBgm = (name: string | undefined) => { if (name) audio.bgm(name === 'none' ? null : name); };
 /** Old companions whose talks are about shared history rather than romance or banter. */
 const FAMILY_PAIRS = new Set([pairKey('rudeus', 'ruijerd'), pairKey('eris', 'ruijerd'), pairKey('rudeus', 'ghislaine')]);
 /** Support talks: romance for pairs who can reach S, family for old bonds (tags such as 師弟・親子・元仲間), daily otherwise. */
 const supportTrack = (p: SupportPair) => (p.max === 'S' ? 'romance' : (p.tag && p.tag !== 'IF') || FAMILY_PAIRS.has(pairKey(p.a, p.b)) ? 'family' : 'daily');
 
-// ---------- dialogue ----------
-// Visual-novel layout: the line box at the bottom, up to two portraits standing behind it (left / right).
-// The speaker is lit, the listener dimmed. Speakers without a portrait (一般兵, narration) show just a name.
-type Side = 'left' | 'right';
-interface Stand { id: string; face: Face; last: number }
-const isFoe = (id: string) => !CHARS[id] && !CAST[id];
-/** Unnamed enemy speakers (野盗, 私兵 …): name tag in the enemy colour. */
-const FOE_NAME = /野盗|私兵|傭兵|兵士?$/;
-/**
- * Plays a conversation. mono = the monologue look (序章): a dark screen, no portraits, every line centred;
- * narration in the normal ink, the hero's inner voice in the ally colour. The skip button ends it at once.
- */
-function play(lines: Line[], opts: { mono?: boolean } = {}): Promise<void> {
-  return new Promise(done => {
-    const d = $('dlg'), face = $<HTMLCanvasElement>('dlgFace'), box = $('dlgBox'), name = $('dlgName'), text = $('dlgText');
-    const slot = (s: Side) => d.querySelector<HTMLElement>(`.dlgSlot.${s}`)!;
-    const stands: Record<Side, Stand | null> = { left: null, right: null };
-    const mono = !!opts.mono;
-    d.classList.toggle('mono', mono);
-    if (!mono) for (const l of lines) preloadPortrait(idForName(l.who), l.face ?? 'normal');
-    for (const s of ['left', 'right'] as Side[]) { const e = slot(s); e.className = `dlgSlot ${s} empty`; e.querySelector('img')!.removeAttribute('src'); }
-    let i = 0;
-    const put = (s: Side, st: Stand) => {
-      const e = slot(s), img = e.querySelector('img')!, url = portraitUrl(st.id, st.face)!;
-      const entering = stands[s]?.id !== st.id;
-      stands[s] = st;
-      if (img.getAttribute('src') !== url) img.src = url;
-      img.onerror = () => { e.classList.add('empty'); };
-      if (entering) { e.classList.add('empty'); void e.offsetWidth; } // restart the slide-in
-      e.classList.remove('empty');
-    };
-    const end = () => { d.hidden = true; d.onclick = null; $('dlgSkip').onclick = null; d.classList.remove('mono'); done(); };
-    const show = () => {
-      while (i < lines.length && lines[i].bgm && !lines[i].text) cueBgm(lines[i++].bgm); // music cues between lines
-      if (i >= lines.length) { end(); return; }
-      const n = i, l = lines[i++], id = mono ? null : idForName(l.who);
-      const f: Face = l.face && !portraitFailed(id, l.face) ? l.face : 'normal'; // a missing expression falls back to normal
-      let side: Side | null = null;
-      if (id && l.art !== false && portraitUrl(id, f) && !portraitFailed(id, f)) { // face "-" in the screenplay: never a portrait
-        side = l.pos ?? (stands.left?.id === id ? 'left' : stands.right?.id === id ? 'right' : null);
-        if (!side) {
-          const pref: Side = isFoe(id) ? 'right' : 'left', other: Side = pref === 'left' ? 'right' : 'left';
-          side = !stands[pref] ? pref : !stands[other] ? other : (stands.left!.last <= stands.right!.last ? 'left' : 'right');
-        }
-        const away: Side = side === 'left' ? 'right' : 'left';
-        if (stands[away]?.id === id) { stands[away] = null; slot(away).classList.add('empty'); } // moved sides
-        put(side, { id, face: f, last: n });
-      }
-      for (const s of ['left', 'right'] as Side[]) slot(s).classList.toggle('on', s === side);
-      const thought = !!l.who && /^（[\s\S]*）$/.test(l.text);
-      box.classList.toggle('narr', !l.who);
-      box.classList.toggle('thought', thought);
-      box.classList.toggle('foe', (!!id && isFoe(id) && id !== 'lotta') || (!id && FOE_NAME.test(l.who)));
-      box.classList.toggle('npc', !!l.who && !id && !FOE_NAME.test(l.who) && !Object.values(CHARS).some(v => v.name === l.who));
-      box.dataset.side = side ?? '';
-      name.hidden = !l.who || mono; name.textContent = l.who;
-      // No portrait drawn (none delivered, or it failed): the old vector face inside the box, for the cast.
-      const c = !side && !mono && l.art !== false ? Object.values(CHARS).find(v => v.name === l.who) : undefined;
-      face.hidden = !c;
-      if (c) drawPortrait(face, { ...c, team: 'blue' });
-      text.textContent = l.text;
-      if (mono) { text.classList.remove('fadein'); void text.offsetWidth; text.classList.add('fadein'); }
-      if (fast()) show();
-    };
-    // skipping still applies the last music cue, so the scene ends on the track it would have ended on
-    $('dlgSkip').onclick = e => { e.stopPropagation(); cueBgm(lines.slice(i).filter(l => l.bgm).pop()?.bgm); i = lines.length; show(); };
-    d.hidden = false; d.onclick = () => { audio.sfx('talk'); show(); }; show();
-  });
-}
+// ---------- dialogue (src/ui/dialogue.ts) ----------
 /** Test log: every conversation played, in order (scene id, or `sup:…` for support talks). */
 const playedLog: string[] = [];
 /** Lines of a scene, dropping those of cast members who are not on the map (fallen, benched) during a battle. */
@@ -365,18 +314,18 @@ function sceneLines(id: SceneId, inBattleTalk: boolean): Line[] {
   if (!inBattleTalk || !S) return lines;
   return lines.filter(l => {
     const cid = idForName(l.who);
-    if (!cid || !CHARS[cid]) return true; // narration, extras, enemies
+    if (!cid || !CAST[cid]) return true; // narration, extras, enemies, guests such as Orsted (who may be an enemy)
     return S.units.some(u => u.team === 'blue' && u.id === cid && onMap(u));
   });
 }
 /** Plays a screenplay scene. Story scenes (序章・開幕・終幕・幕間) go into `seen` for the camp's 記録. */
-async function playScene(id: SceneId, battleTalk = false) {
+async function playScene(id: SceneId, battleTalk = false): Promise<number> {
   playedLog.push(id);
   if (!battleTalk) markSeen(id);
-  const lines = sceneLines(id, battleTalk);
-  if (!lines.some(l => l.text)) return;
-  cueBgm(SCENES[id].bgm);
-  await play(lines, { mono: id === 'prologue' });
+  const sc = SCENES[id], lines = sceneLines(id, battleTalk);
+  if (!lines.some(l => l.text) && !sc.choice) return -1;
+  cueBgm(sc.bgm);
+  return play(lines, { mono: id === 'prologue', bg: sc.bg, choice: sc.choice });
 }
 /** Plays this chapter's due battle conversations (each once; recorded in the save straight away). */
 async function runTalks(evs: ReturnType<typeof dueTalks>) {
@@ -418,8 +367,8 @@ function openMenu() {
     const ts = healTargets(S, u, sid);
     if (ts.length) items.push([`杖：${WEAPONS[sid].name}`, () => chooseHeal(sid, ts), 'primary']);
   }
-  if (canSeize(S, u)) items.push(['制圧', () => { S.flags.seized = true; finish(u); }, 'primary']);
-  if (canEscape(S, u)) items.push(['離脱', () => { u.left = true; finish(u); }]);
+  if (canSeize(S, u)) items.push(['制圧', () => { S.flags[seizeFlag(S)] = true; audio.sfx('decide'); finish(u); }, 'primary']);
+  if (canEscape(S, u)) items.push(['離脱', () => { u.left = true; float(u, '離脱', '#e8c56a'); finish(u); }, 'primary']);
   if (u.potions > 0 && u.hp < u.st.hp) items.push([`傷薬（残り${u.potions}）`, () => { u.potions--; u.hp = Math.min(u.st.hp, u.hp + POTION_HEAL); float(u, `+${POTION_HEAL}`, '#8fe0a0'); audio.sfx('heal'); finish(u); }]);
   items.push(['待機', () => finish(u)]);
   items.push(['もどる', () => { u.x = origin.x; u.y = origin.y; selectUnit(u); }]);
@@ -570,11 +519,17 @@ function preloadChapterArt() {
   for (const u of S.units) { const id = idForUnit(u); if (id) { preloadPortrait(id); preloadPortrait(id, 'angry'); } }
 }
 async function battle(att: Unit, wid: string, def: Unit) {
-  await runTalks(fightTalks(S, att, def)); // a member's first fight, then the first clash with a boss
+  // a member's first fight, then the first clash with a boss (a dedicated version for this member replaces the generic one)
+  const skip: ReturnType<typeof dueTalks> = [];
+  const evs = fightTalks(S, att, def, skip);
+  for (const e of skip) { S.flags[talkKey(e.scene)] = true; persistFlag(talkKey(e.scene)); }
+  await runTalks(evs);
   for (const u of [att, def]) if (u.team === 'red' && u.boss) engaged.add(u.uid);
   mapMusic(); // the boss theme from the first clash on
   shownHp.set(att.uid, att.hp); shownHp.set(def.uid, def.hp);
   const strikes = fight(S, att, wid, def);
+  const retreated = [att, def].filter(u => u.retreated);
+  for (const u of retreated) leaving.add(u.uid);
   await cutin(att, def);
   for (const k of strikes) {
     if (k.crit && k.hit) await cutin(k.from, k.to, true);
@@ -588,11 +543,12 @@ async function battle(att: Unit, wid: string, def: Unit) {
   }
   shownHp.clear();
   for (const u of [att, def]) if (u.team === 'red' && u.hp <= 0 && u.defeat) { float(u, u.defeat === 'captured' ? '捕縛' : '撤退', '#e8c56a'); await sleep(500); }
-  const downBoss = [att, def].map(u => (u.hp <= 0 ? bossId(u) : null)).filter((id): id is string => !!id);
+  for (const u of retreated) { float(u, '撤退', '#e8c56a'); await sleep(600); leaving.delete(u.uid); }
+  const downBoss = [att, def].map(u => (u.hp <= 0 || retreated.includes(u) ? bossId(u) : null)).filter((id): id is string => !!id);
   if (downBoss.length) await runTalks(dueTalks(S, w => w.type === 'bossDefeat' && downBoss.includes(w.boss)));
   for (const g of gainBonds(S, [att, def])) float(g.partner, g.ready ? '支援会話あり' : `絆+${g.added}`, '#ff8fa8');
   const fallen = [att, def].find(u => u.team === 'blue' && u.hp <= 0);
-  if (fallen && !fallen.guest && !loseCond(CHAPTERS[S.chapter]).units.includes(fallen.id)) {
+  if (fallen && !fallen.guest && !loseCond(chapterDef(S.chapter)).units.includes(fallen.id)) {
     await banner(S.difficulty === 'classic' ? `${fallen.name}は重傷を負い、戦線離脱した` : `${fallen.name}は重傷を負い、撤退した（次の章で復帰）`, 1500);
   }
   const me = att.team === 'blue' ? att : def, foe = me === att ? def : att;
@@ -609,20 +565,22 @@ async function checkEnd(): Promise<boolean> {
   const o = outcome(S);
   if (!o) return false;
   mode = 'busy'; hud();
+  if (o === 'stage') { await stageChange(); return outcome(S) ? checkEnd() : false; }
   if (o === 'win') {
     audio.jingle('victory', { stop: true });
     await banner('勝利！', 1300);
-    const ch = CHAPTERS[S.chapter];
+    const ch = chapterDef(S.chapter);
     // The camp is saved first (with the closing scenes marked seen), so closing the page mid-scene loses nothing:
     // they can be watched again from the camp's 記録.
-    camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster: rosterOf(S), bonds: S.bonds, difficulty: S.difficulty };
+    camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster: rosterOf(S), bonds: S.bonds, difficulty: S.difficulty, ...(camp?.ended ? { ended: true } : {}) };
     markSeen(ch.outro); if (ch.interlude) markSeen(ch.interlude);
     inBattle = false; save();
     await playScene(ch.outro);
     if (ch.interlude) await playScene(ch.interlude);
+    if (ch.ending) { await playEnding(true); return true; }
     await supportTalks(camp);
     const lost = camp.roster.filter(u => u.out && !S.bench.some(b => b.id === u.id)).map(u => u.name);
-    showCamp(CHAPTERS[camp.cleared - 1].title.replace(/\s+/g, '　') + '　クリア！' + (lost.length ? `　${lost.join('、')}は戦線離脱した。` : ''));
+    showCamp(chapterDef(camp.cleared - 1).title.replace(/\s+/g, '　') + '　クリア！' + (lost.length ? `　${lost.join('、')}は戦線離脱した。` : ''));
   } else {
     audio.jingle('defeat', { stop: true });
     await banner('敗北……', 1500);
@@ -639,6 +597,27 @@ function showDefeat() {
   $('btnRetryPhase').hidden = classic;
 }
 
+// ---------- stages (M1) ----------
+/** Test log: stage changes (stage number and turn). */
+const stageLog: { stage: number; turn: number }[] = [];
+/** The current stage is won and another follows: enemies leave, allies and enemies join, terrain changes, the stage's talk. */
+async function stageChange() {
+  const r = advanceStage(S);
+  if (!r) return;
+  stageLog.push({ stage: r.stage, turn: S.turn });
+  sel = picked = inspect = null; stops = new Set(); threat = new Set();
+  hud();
+  await banner('戦況が変わった！', 1100);
+  if (r.terrain.length) { await paintTerrain(); await follow(r.terrain.map(([x, y]) => ({ x, y }))); await banner('地形が変わった！', 900); }
+  for (const u of r.added) float(u, u.guest ? '参戦' : '加入', '#8fc1ff');
+  for (const u of r.foes) float(u, '出現', '#ff9a8f');
+  if (r.added.length) { await follow(r.added); await sleep(500); }
+  const st = chapterDef(S.chapter).stages?.[r.stage - 1];
+  if (st?.talk) await playScene(st.talk);
+  await runTalks(dueTalks(S, w => w.type === 'stageStart' && w.stage === r.stage));
+  mapMusic(); hud(); save();
+}
+
 // ---------- phases ----------
 function fortHeal(team: 'blue' | 'red') {
   for (const u of alive(S, team)) if (terrainAt(S, u.x, u.y).heal && u.hp < u.st.hp) { const h = Math.min(u.st.hp - u.hp, Math.ceil(u.st.hp * 0.2)); u.hp += h; float(u, `+${h}`, '#8fe0a0'); }
@@ -651,13 +630,14 @@ async function endTurn() {
   mapMusic(); audio.sfx('phaseRed');
   await banner('敵軍フェイズ');
   fortHeal('red');
+  applyAiSwitch(S); // aiFrom: e.g. a boss that starts to charge or flee from this turn's enemy phase
   const actors = alive(S, 'red'); // reinforcements appear now but do not act this phase
   await turnTalks();
   const waves: number[] = [];
   const rf = spawnReinforcements(S, waves);
   if (rf.length) {
     await follow(rf.slice(0, 1)); for (const u of rf) float(u, '増援', '#ff9a8f'); await banner('敵の増援が現れた！');
-    await runTalks(dueTalks(S, w => w.type === 'reinforce' && waves.includes(w.wave)));
+    await runTalks(dueTalks(S, w => w.type === 'reinforce' && (w.stage ?? 0) === stageOf(S) && [w.wave].flat().some(n => waves.includes(n))));
   }
   for (const e of actors) {
     if (e.hp <= 0) continue;
@@ -678,8 +658,10 @@ async function endTurn() {
   }
   S.phase = 'blue'; S.turn++;
   for (const u of S.units) u.done = false;
-  if (await checkEnd()) return; // survive / defend: the last enemy phase is over
+  if (await checkEnd()) return; // survive / defend: the last enemy phase is over (or the next stage begins)
   if (scrolls()) await panTo(camBefore.x, camBefore.y); // back to where the player was looking
+  const changed = applyTerrainChanges(S, 'turn');
+  if (changed.length) { await paintTerrain(); await follow(changed.map(([x, y]) => ({ x, y }))); await banner('地形が変わった！', 900); }
   fortHeal('blue'); save(); hud();
   mapMusic(); audio.sfx('phaseBlue');
   await banner('自軍フェイズ');
@@ -694,23 +676,85 @@ async function supportTalks(c: Camp) {
   const done = new Set<string>();
   for (;;) {
     const ids = new Set(c.roster.map(u => u.id)); // only pairs who have both joined (start points alone can fill C)
-    const p = readyPairs(c.bonds).find(q => !done.has(pairKey(q.a, q.b)) && ids.has(q.a) && ids.has(q.b));
+    const p = readyPairs(c.bonds, c.cleared).find(q => !done.has(pairKey(q.a, q.b)) && ids.has(q.a) && ids.has(q.b));
     if (!p) break;
     done.add(pairKey(p.a, p.b));
     const next = RANKS[c.bonds[pairKey(p.a, p.b)].rank];
+    if (next === 'S' && isConfession(p)) { await confession(c, p); continue; }
     await banner(`支援会話　${castName(p.a)} × ${castName(p.b)}　${next}`, 1100);
-    const lines = p.talks[next];
     markSeen(supKey(p.a, p.b, next)); playedLog.push(supKey(p.a, p.b, next));
-    audio.bgm(supportTrack(p));
-    await play(lines?.length ? lines : [{ who: '', text: `${castName(p.a)}と${castName(p.b)}は、しばらく語り合った。（この支援会話は制作中です）` }]);
+    await playSupport(p, next);
     const r = rankUp(c.bonds, p);
     save();
     if (r) { audio.jingle('support'); await banner(`${castName(p.a)}と${castName(p.b)}の支援ランクが ${r} になった！`, 1300); }
   }
 }
+/** Plays a support conversation: the screenplay's when written (its own music and background), else data.ts, else a placeholder. */
+async function playSupport(p: SupportPair, rank: string) {
+  const sc = supportScene(p, rank as 'C');
+  audio.bgm(supportTrack(p));
+  if (sc?.bgm) cueBgm(sc.bgm);
+  await play(sc ? sc.lines : placeholderTalk(p), { bg: sc?.bg });
+}
+/**
+ * 告白（world.md §5.1）：ルーデウス×候補の支援が S に届いた章のクリア後。「応える」→ S・結婚確定（最大3人）。
+ * 「応えられない」→ A のまま、次の章のクリア後にもう一度。
+ */
+async function confession(c: Camp, p: SupportPair) {
+  const id = p.a === 'rudeus' ? p.b : p.a, sc = confessionScene(id);
+  await banner(`告白　${castName(id)}`, 1100);
+  playedLog.push(`confess.${id}`); markSeen(`confess.${id}`);
+  audio.bgm('romance');
+  if (sc?.bgm) cueBgm(sc.bgm);
+  const k = await play(sc?.lines ?? [{ who: '', text: `${castName(id)}から、想いを告げられた。（この告白の場面は制作中です）` }],
+    { bg: sc?.bg, choice: sc?.choice ?? { options: ['応える', '応えられない'], branches: [[], []] } });
+  const accept = k === 0;
+  answerConfession(c.bonds, p, accept, c.cleared);
+  save();
+  if (accept) { audio.jingle('support'); await banner(`${castName(id)}と結婚の約束を交わした！（${marriedTo(c.bonds).length} / ${sLimit('rudeus')}人）`, 1600); }
+  else await banner(`返事は保留した。次の章のあとで、もう一度向き合おう。`, 1400);
+}
+
+// ---------- the ending (plot.md §3) ----------
+/** Test log: the ending's parts in the order they played. */
+const endingLog: string[] = [];
+/**
+ * Epilogue → the 7 afterwords (married or companion version) → closing → staff roll → title.
+ * first = right after clearing the last chapter (marks the story as finished); otherwise a replay from the 記録.
+ */
+async function playEnding(first: boolean) {
+  if (!camp) return;
+  const ctx = { married: marriedTo(camp.bonds), bonds: camp.bonds, out: camp.roster.filter(u => u.out && CANDIDATES.includes(u.id)).map(u => u.id) };
+  if (first) { camp.ended = true; save(); }
+  for (const part of endingSequence(ctx)) {
+    endingLog.push(part.id);
+    if (part.id.startsWith('after.')) await banner(`後日談　${part.title.replace(/^後日談　/, '').replace(/（.*$/, '')}`, 900);
+    cueBgm(part.bgm);
+    await play(part.lines, { bg: part.bg });
+    if (first) markSeen(part.id);
+  }
+  await credits();
+  if (first) { save(); showTitle('クリアおめでとう！　「つづきから」で章間に戻り、記録から結末を見返せる。'); }
+}
+/** スタッフロール風の締め：名前が下から流れる。タップで飛ばせる。 */
+function credits(): Promise<void> {
+  return new Promise(done => {
+    const el = $('credits'), roll = $('creditsRoll');
+    const cast = Object.values(CAST).map(c => c.name);
+    const sec = (h: string, items: string[]) => `<section><h3>${esc(h)}</h3>${items.map(t => `<p>${esc(t)}</p>`).join('')}</section>`;
+    roll.innerHTML = `<h2>フィットア奪還戦記</h2>${sec('登場人物', cast)}${sec('そして', ['ロッタ', 'ハンナ', 'トト', 'ベルト', 'ナナホシ', 'オルステッド', 'ウォルド'])}
+      ${sec('原作', ['『無職転生 〜異世界行ったら本気だす〜』（理不尽な孫の手）', 'この作品は個人で遊ぶための非公式ファンゲームです'])}${sec('', ['遊んでくれて、ありがとう'])}<p class="fin">― 終 ―</p>`;
+    audio.bgm('ending');
+    el.hidden = false; roll.classList.remove('go'); void roll.offsetWidth; roll.classList.add('go');
+    let t = 0;
+    const finish = () => { clearTimeout(t); el.hidden = true; el.onclick = null; roll.classList.remove('go'); done(); };
+    el.onclick = finish;
+    t = window.setTimeout(finish, fast() ? 0 : 26000);
+  });
+}
 
 // ---------- between chapters ----------
-type CampTab = 'units' | 'bonds' | 'log';
+type CampTab = 'units' | 'bonds' | 'tent' | 'log';
 let campTab: CampTab = 'units';
 const esc = (t: string) => t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]!));
 const MTYPE_NAMES = { foot: '歩兵', armor: '重装', horse: '騎馬', fly: '飛行' } as const;
@@ -722,17 +766,29 @@ function showCamp(msg = '') {
   prep = null; $('campTabs').hidden = false; $('campBtns').hidden = false;
   $('campTitle').textContent = `章間　難民キャンプ（${DIFFICULTY_NAMES[camp.difficulty]}）`;
   campMsg(msg);
-  const has = !!CHAPTERS[camp.next];
+  const has = hasChapter(camp.next);
   const nb = $<HTMLButtonElement>('btnNext');
-  nb.disabled = !has; nb.textContent = has ? '次の章へ' : `第${camp.next + 1}章は制作中です`;
+  nb.disabled = !has; nb.textContent = has ? '次の章へ' : camp.ended ? '物語は完結した' : `第${camp.next + 1}章は制作中です`;
   $('title').hidden = true; $('camp').hidden = false;
   audio.bgm('camp');
   renderCamp();
 }
+/** 結婚相手の一行（キャンプ画面の見出しの下）。 */
+function renderWed() {
+  const w = camp ? marriedTo(camp.bonds) : [];
+  const e = $('campWed');
+  e.hidden = !w.length;
+  e.innerHTML = w.length ? `<span>結婚</span>${w.map(id => `${faceHtml({ id, name: castName(id), cls: CAST[id]?.cls ?? '', team: 'blue' }, 'pair')}<b>${esc(castName(id))}</b>`).join('')}` : '';
+}
+/** Wife talks watchable now and not yet watched (the 天幕 tab shows a mark). */
+const unreadWife = () => (camp ? wifeTalksAvailable(marriedTo(camp.bonds), camp.cleared).filter(w => !seen.includes(w.id)) : []);
 function renderCamp() {
   for (const b of document.querySelectorAll<HTMLButtonElement>('#campTabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === campTab));
+  const tent = document.querySelector<HTMLButtonElement>('#campTabs button[data-tab="tent"]')!;
+  tent.classList.toggle('unread', unreadWife().length > 0);
+  renderWed();
   $('campBody').innerHTML = '';
-  if (campTab === 'units') renderUnits(); else if (campTab === 'bonds') renderBonds(); else renderLog();
+  if (campTab === 'units') renderUnits(); else if (campTab === 'bonds') renderBonds(); else if (campTab === 'tent') renderTent(); else renderLog();
 }
 function el(tag: string, cls: string, html = '') { const e = document.createElement(tag); if (cls) e.className = cls; e.innerHTML = html; return e; }
 function btn(label: string, fn: () => void, cls = '', disabled = false) {
@@ -791,54 +847,85 @@ function renderBonds() {
   const body = $('campBody'), c = camp!, ids = new Set(c.roster.map(u => u.id));
   const b = SUPPORT_BONUS;
   body.appendChild(el('p', 'hint', `隣で一緒に戦うと絆が深まる。支援相手が2マス以内にいると、ランクに応じて命中・回避・必殺が上がる（C 命中/回避+${b.C.hit}　B +${b.B.hit}　A +${b.A.hit}　S +${b.S.hit}・ダメージ+${b.S.dmg}）。`));
-  body.appendChild(el('p', 'hint', `ルーデウスの恋愛（S）：${sCount(c.bonds, 'rudeus')} / ${sLimit('rudeus')}人　ほかの仲間は1人まで。`));
+  const wed = marriedTo(c.bonds);
+  body.appendChild(el('p', 'hint', `ルーデウスの結婚：${wed.length} / ${sLimit('rudeus')}人${wed.length ? `（${wed.map(castName).join('、')}）` : ''}　支援がSに届くと章クリア後に告白が起きる。ほかの仲間の恋愛（S）は1人まで。`));
   const pairs = SUPPORTS.filter(p => ids.has(p.a) && ids.has(p.b));
   if (!pairs.length) body.appendChild(el('p', 'hint', '支援できる組はまだいない。'));
   for (const p of pairs) body.appendChild(bondRow(p, c.bonds));
 }
 function bondRow(p: SupportPair, bonds: Bonds) {
-  const bd = bonds[pairKey(p.a, p.b)], need = nextNeed(p, bd), st = bondStatus(bonds, p);
+  const bd = bonds[pairKey(p.a, p.b)], need = nextNeed(p, bd), st = bondStatus(bonds, p, camp?.cleared);
+  const wed = isConfession(p) && bd.rank >= 4;
   const prev = bd.rank > 0 ? RANK_PTS[RANKS[bd.rank - 1]] : 0;
   const pct = need === null ? 100 : Math.max(0, Math.min(100, 100 * (bd.pts - prev) / Math.max(1, need - prev)));
   const out = camp?.roster.some(u => u.out && (u.id === p.a || u.id === p.b));
-  const label = (st === 'ready' ? '会話待ち（章クリア後）' : st === 'sBlocked' ? 'S枠なし' : need === null ? '最大ランク' : `${bd.pts} / ${need}`) + (out && st !== 'ready' ? '　療養中（絆は増えない）' : '');
+  const label = (st === 'ready' ? (bd.rank === 3 && isConfession(p) ? '告白待ち（章クリア後）' : '会話待ち（章クリア後）') : st === 'deferred' ? '告白の返事を保留中（次の章のクリア後にもう一度）'
+    : st === 'sBlocked' ? 'S枠なし' : wed ? '結婚' : need === null ? '最大ランク' : `${bd.pts} / ${need}`) + (out && st !== 'ready' ? '　療養中（絆は増えない）' : '');
   const pf = (id: string) => faceHtml({ id, name: castName(id), cls: CAST[id]?.cls ?? '', team: 'blue' }, 'pair');
-  return el('div', 'card bond', `<div class="bhead"><span class="bpair">${pf(p.a)}${pf(p.b)}</span><span class="bnames">${castName(p.a)} × ${castName(p.b)}${p.tag ? `<small>（${p.tag}）</small>` : ''}</span><b class="rank">${rankName(bd.rank)}</b></div>
+  return el('div', 'card bond', `<div class="bhead"><span class="bpair">${pf(p.a)}${pf(p.b)}</span><span class="bnames">${castName(p.a)} × ${castName(p.b)}${p.tag ? `<small>（${p.tag}）</small>` : ''}</span><b class="rank">${rankName(bd.rank)}${wed ? '<small class="wedTag">結婚</small>' : ''}</b></div>
     <div class="hp"><div class="bar"><i style="width:${pct}%;background:var(--rose)"></i></div><span>${label}</span></div>
     <div class="wps">上限 ${p.max}${p.max === 'S' ? '（恋愛）' : ''}　次：${bd.rank < maxRank(p) ? RANKS[bd.rank] : '—'}</div>`);
 }
 
+/** 天幕：嫁同士の会話（world.md §5.2）。結婚した相手の組み合わせが条件を満たすと見られる。未読には印。 */
+function renderTent() {
+  const body = $('campBody'), c = camp!, wed = marriedTo(c.bonds);
+  const list = wifeTalksAvailable(wed, c.cleared);
+  body.appendChild(el('p', 'hint', wed.length >= 2 ? '天幕の奥から、にぎやかな声が聞こえる。結婚した相手どうしの会話を見られる。' : `結婚した相手が2人以上になると、ここで嫁どうしの会話を見られる（いまは${wed.length}人）。`));
+  const box = el('div', 'logList');
+  for (const w of list) {
+    const unread = !seen.includes(w.id);
+    const b = btn(`${unread ? '● ' : ''}${w.scene.title}　（${w.common ? wed.map(castName).join('・') : w.members.map(castName).join(' × ')}）`, () => replay(async () => {
+      markSeen(w.id); playedLog.push(w.id); save();
+      audio.bgm('daily'); if (w.scene.bgm) cueBgm(w.scene.bgm);
+      await play(wifeLines(w, wed), { bg: w.scene.bg });
+    }).then(renderCamp), 'logItem' + (unread ? ' unread' : ''));
+    box.appendChild(b);
+  }
+  if (wed.length >= 2 && !list.length) box.appendChild(el('p', 'hint', 'いまは見られる会話がない。'));
+  body.appendChild(box);
+}
 /** 記録: every story scene and support talk watched so far, in story order; tap one to watch it again. */
 function renderLog() {
   const body = $('campBody');
   body.appendChild(el('p', 'hint', 'これまでに見た会話を、もう一度見られる。'));
-  const scenes = SCENE_ORDER.filter(id => !/\.battle\d+$/.test(id) && seen.includes(id));
+  // 後日談・エピローグは結婚の組み合わせで変わるので、まとめて「結末」から見る。
+  const scenes = SCENE_ORDER.filter(id => !/\.battle\d+$/.test(id) && !/^(after\.|epilogue\.|frag:)/.test(id) && seen.includes(id));
   let part = -1;
   const list = el('div', 'logList');
   for (const id of scenes) {
     const sc = SCENES[id];
-    if (sc.chapter !== part) { part = sc.chapter; list.appendChild(el('h3', 'prepHead', esc(sc.chapter === 0 ? '序章' : CHAPTERS[sc.chapter - 1]?.title.replace(/\s+/g, '　') ?? `第${sc.chapter}章`))); }
-    list.appendChild(btn(sc.title.replace(/^第\d+章　/, ''), () => replay(() => playScene(id)), 'logItem'));
+    if (sc.chapter !== part) { part = sc.chapter; list.appendChild(el('h3', 'prepHead', esc(sc.chapter === 0 ? '序章' : sc.chapter === 11 ? '告白' : CHAPTERS[sc.chapter - 1]?.title.replace(/\s+/g, '　') ?? `第${sc.chapter}章`))); }
+    list.appendChild(btn(sc.title.replace(/^第\d+章　/, ''), () => replay(async () => { await playScene(id); }), 'logItem'));
+  }
+  if (camp?.ended) {
+    list.appendChild(el('h3', 'prepHead', '結末'));
+    list.appendChild(btn('エピローグと後日談、スタッフロール', () => replay(() => playEnding(false)), 'logItem'));
   }
   const sups = seen.filter(k => k.startsWith('sup:'));
   if (sups.length) list.appendChild(el('h3', 'prepHead', '支援会話'));
   for (const k of sups) {
     const [, pk, rank] = k.split(':'), p = SUPPORTS.find(q => pairKey(q.a, q.b) === pk);
     if (!p) continue;
-    const lines = p.talks[rank as keyof typeof p.talks];
-    list.appendChild(btn(`${castName(p.a)} × ${castName(p.b)}　${rank}`, () => replay(() => (audio.bgm(supportTrack(p)), play(lines?.length ? lines : [{ who: '', text: `${castName(p.a)}と${castName(p.b)}は、しばらく語り合った。（この支援会話は制作中です）` }]))), 'logItem'));
+    list.appendChild(btn(`${castName(p.a)} × ${castName(p.b)}　${rank}`, () => replay(() => playSupport(p, rank)), 'logItem'));
   }
+  const wives = WIFE_TALKS.filter(w => seen.includes(w.id));
+  if (wives.length) list.appendChild(el('h3', 'prepHead', '嫁どうしの会話'));
+  for (const w of wives) list.appendChild(btn(w.scene.title, () => replay(async () => { audio.bgm('daily'); if (w.scene.bgm) cueBgm(w.scene.bgm); await play(wifeLines(w, marriedTo(camp!.bonds)), { bg: w.scene.bg }); }), 'logItem'));
+  const cgs = seen.filter(k => k.startsWith('cg:'));
+  if (cgs.length) list.appendChild(el('h3', 'prepHead', '思い出（一枚絵）'));
+  cgs.forEach((k, i) => list.appendChild(btn(`一枚絵 ${i + 1}`, () => replay(async () => { await play([{ who: '', text: '', cg: k.slice(3) }, { who: '', text: '（思い出の一場面）' }]); }), 'logItem')));
   if (!scenes.length && !sups.length) list.appendChild(el('p', 'hint', 'まだ記録はない。'));
   body.appendChild(list);
 }
-async function replay(go: () => Promise<void>) { const y = $('camp').scrollTop; await go(); $('camp').scrollTop = y; audio.bgm('camp'); }
+async function replay(go: () => Promise<unknown>) { const y = $('camp').scrollTop; await go(); $('camp').scrollTop = y; audio.bgm('camp'); }
 
 // ---------- sortie preparation ----------
 /** The sortie screen's state: which chapter, its plan, and the ids picked for the free slots. */
 let prep: { index: number; plan: SortiePlan; picks: string[] } | null = null;
 /** 「次の章へ」: opens the sortie screen when there is a choice to make, otherwise starts right away. */
 function goNext() {
-  if (!camp || !CHAPTERS[camp.next]) return;
+  if (!camp || !hasChapter(camp.next)) return;
   const plan = sortiePlan(camp.next, camp.roster);
   if (!plan.choose) { start(newChapter(camp.next, camp.roster, camp.bonds, camp.difficulty), true); return; }
   prep = { index: camp.next, plan, picks: [...plan.picks] };
@@ -850,7 +937,7 @@ function renderPrep() {
   const p = prep!, c = camp!, plan = p.plan;
   const fixedN = plan.fixed.filter(f => !f.guest).length, n = fixedN + p.picks.length;
   $('campTabs').hidden = true; $('campBtns').hidden = true;
-  $('campTitle').textContent = `出撃準備　${CHAPTERS[p.index].title.replace(/\s+/g, '　')}`;
+  $('campTitle').textContent = `出撃準備　${chapterDef(p.index).title.replace(/\s+/g, '　')}`;
   const body = $('campBody'); body.innerHTML = '';
   body.appendChild(el('p', 'hint', `出撃できるのは${plan.cap}人まで。必ず出撃する仲間は固定で、残り${plan.free}枠を名簿から選ぶ。`));
   body.appendChild(el('p', 'prepCount', `出撃 <b>${n}</b> / ${plan.cap}`));
@@ -894,6 +981,23 @@ function showTitle(msg = '', panel: 'main' | 'diff' | 'defeat' = 'main') {
 }
 /** Test log: how long each chapter's terrain took to draw (ms). */
 const terrainMs: number[] = [];
+/**
+ * Paints the terrain at the canvas's final resolution (RES), so it is as crisp as the figures; at chapter start and
+ * after a terrain change. That takes a moment on big maps: say so first, so the screen does not look frozen.
+ * 石床 (K) and 岩壁 (Q) are drawn as road and cliff until they get their own tiles (M9).
+ */
+async function paintTerrain() {
+  const b = $('banner'); b.textContent = '地図を描いています'; b.hidden = false;
+  await new Promise<void>(r => requestAnimationFrame(() => setTimeout(r, 0)));
+  const t0 = performance.now();
+  const tc = document.createElement('canvas'); tc.width = Math.round(cols() * T * RES); tc.height = Math.round(rows() * T * RES);
+  const tg = tc.getContext('2d')!; tg.setTransform(RES, 0, 0, RES, 0, 0);
+  drawTerrain(tg, S.map.map(r => r.replace(/K/g, 'R').replace(/Q/g, 'X')));
+  terrainMs.push(Math.round(performance.now() - t0));
+  b.hidden = true;
+  terrain = tc;
+  topPad = makeTopPad(tc);
+}
 async function start(state: State, intro: boolean) {
   S = state; mode = 'busy'; inspect = sel = picked = null; inBattle = true; engaged.clear();
   $('camp').hidden = true; $('title').hidden = true;
@@ -901,16 +1005,7 @@ async function start(state: State, intro: boolean) {
   // a moment on big maps: say so first, so the screen does not look frozen.
   terrain = null; topPad = null; hud(); menu([]);
   info('<p class="hint">地図を描いています……</p>');
-  const b = $('banner'); b.textContent = '地図を描いています'; b.hidden = false;
-  await new Promise<void>(r => requestAnimationFrame(() => setTimeout(r, 0)));
-  const t0 = performance.now();
-  const tc = document.createElement('canvas'); tc.width = Math.round(cols() * T * RES); tc.height = Math.round(rows() * T * RES);
-  const tg = tc.getContext('2d')!; tg.setTransform(RES, 0, 0, RES, 0, 0);
-  drawTerrain(tg, S.map);
-  terrainMs.push(Math.round(performance.now() - t0));
-  b.hidden = true;
-  terrain = tc;
-  topPad = makeTopPad(tc);
+  await paintTerrain();
   // Scrolling maps take over touch drags on the canvas; 15×10 maps keep the page's normal touch behaviour.
   cv.style.touchAction = scrolls() ? 'none' : 'manipulation';
   drag = null; cam.x = 0; cam.y = -TOP_PAD;
@@ -918,12 +1013,28 @@ async function start(state: State, intro: boolean) {
   if (lead) centerOn(lead.x, lead.y); else clampCam();
   $('title').hidden = true; hud(); info(''); menu([]);
   preloadChapterArt();
-  if (intro) await playScene(CHAPTERS[S.chapter].intro);
+  if (intro) await playScene(chapterDef(S.chapter).intro);
   save();
   mapMusic(); audio.sfx(S.phase === 'blue' ? 'phaseBlue' : 'phaseRed');
   await banner(S.phase === 'blue' ? '自軍フェイズ' : '敵軍フェイズ');
   await turnTalks();
   idle();
+}
+setOnCg(name => markSeen(`cg:${name}`));
+// タイトル画面の背景（届いていなければ従来の夜空のグラデーション）。
+if (BG_ART.title) $('title').style.backgroundImage = `linear-gradient(to bottom, rgba(10, 9, 16, .35), rgba(10, 9, 16, .55) 55%, rgba(10, 9, 16, .9)), url("${BG_ART.title}")`;
+/** Development: a party of every cast member with stats (at their joining level), for test chapters and chapters written out of order. */
+function devRoster(): Unit[] {
+  return Object.keys(CAST).map(id => makeUnit(id)).filter((u): u is Unit => !!u);
+}
+/** Development: starts chapter `index` (a test chapter 90 / 91, or any written story slot) with the dev roster. */
+function devStart(index: number, difficulty: Difficulty = 'casual') {
+  if (!hasChapter(index)) return false;
+  const roster = camp?.roster?.length ? camp.roster : devRoster();
+  const bonds = initBonds(camp?.bonds);
+  camp = { next: index, cleared: Math.max(1, index), roster, bonds, difficulty, ...(camp?.ended ? { ended: true } : {}) };
+  void start(newChapter(index, roster, bonds, difficulty), true);
+  return true;
 }
 // Sound: starts on the first tap (autoplay rules); every button gives a short click.
 audio.attach();
@@ -939,7 +1050,7 @@ for (const b of document.querySelectorAll<HTMLButtonElement>('#diffPick button[d
   b.onclick = async () => {
     camp = null; seen = [];
     $('title').hidden = true;
-    const ch = CHAPTERS[0];
+    const ch = chapterDef(0);
     if (ch.prologue) await playScene(ch.prologue); // 序章：戦闘のない会話パート
     start(newChapter(0, undefined, undefined, b.dataset.diff as Difficulty), true);
   };
@@ -990,4 +1101,26 @@ requestAnimationFrame(render);
   /** Test helper: open the camp on a tab. */
   campTab(t: CampTab) { campTab = t; renderCamp(); },
   addToRoster(id: string, out = false) { const u = makeUnit(id); if (!u || !camp) return null; if (out) u.out = true; camp.roster.push(u); return u; },
+  /** Development: start a test chapter (90 = 防衛→制圧, 91 = 耐久→離脱・最終章扱い) or a story chapter by number (1–10). */
+  devChapter: (index: number) => devStart(index),
+  startChapter: (n: number) => devStart(n - 1),
+  /** Development: open the camp with the dev roster (after a fresh page), optionally as if `cleared` chapters were done. */
+  devCamp(cleared = 2) { camp = { next: cleared, cleared, roster: devRoster(), bonds: initBonds(), difficulty: 'casual' }; showCamp(); return camp; },
+  /** Development: set a pair's bond (on the camp, and on the battle state when in a chapter). */
+  setBond(a: string, b: string, pts: number, rank: number) {
+    for (const bonds of [camp?.bonds, inBattle ? S?.bonds : undefined]) if (bonds) bonds[pairKey(a, b)] = { pts, rank };
+  },
+  /** Development: run the after-chapter supports / confessions now (camp must exist). */
+  supportTalks: () => (camp ? supportTalks(camp) : Promise.resolve()),
+  /** Development: play the ending (epilogue, afterwords, staff roll) with the camp's marriages. */
+  playEnding: () => playEnding(false),
+  /** Development: the ending's parts (ids and lines) for the camp's current marriages. */
+  endingParts: () => (camp ? endingSequence({ married: marriedTo(camp.bonds), bonds: camp.bonds, out: camp.roster.filter(u => u.out && CANDIDATES.includes(u.id)).map(u => u.id) }) : []),
+  checkEnd: () => checkEnd(), endTurn: () => endTurn(), finish: (u: Unit) => finish(u), idle: () => idle(),
+  /** Logs: stages, ending parts, backgrounds / event pictures shown. */
+  stageLog, endingLog, artLog,
+  get married() { return camp ? marriedTo(camp.bonds) : []; },
+  /** Development: what a support pair's next conversation is (scene title, or null for data.ts / placeholder). */
+  supportScene: (a: string, b: string, rank: string) => { const p = SUPPORTS.find(q => pairKey(q.a, q.b) === pairKey(a, b)); return p ? supportScene(p, rank as 'C') : null; },
+  sceneById,
 };

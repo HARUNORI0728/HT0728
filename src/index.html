@@ -236,6 +236,48 @@
   @media (max-width: 560px) { #dlg.mono #dlgText { font-size: 16px; line-height: 2; } }
   @media (prefers-reduced-motion: reduce) { #dlgText.fadein { animation: none; } }
   .logList { display: flex; flex-direction: column; gap: 6px; }
+  button.logItem.unread { border-color: var(--rose); }
+  #campTabs button.unread::after { content: "●"; color: var(--rose); font-size: 10px; margin-left: 3px; vertical-align: top; }
+  #campWed { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-family: var(--pixel); color: var(--ink); font-size: 14px; }
+  #campWed > span { color: var(--rose); margin-right: 4px; }
+  #campWed b { font-weight: normal; margin-right: 8px; }
+  #campWed .face.pair + b { margin-left: 2px; }
+  .wedTag { font-size: 12px; color: var(--rose); margin-left: 6px; }
+  /* Conversation backgrounds: the picture fills the screen (a gradient stands in until it is delivered). */
+  #dlgBg { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+  #dlgBg img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; display: block; }
+  #dlgBg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(var(--shade), .78) 0, rgba(var(--shade), .2) 34%, rgba(var(--shade), 0) 60%); }
+  #dlg.hasbg { background: none; }
+  /* Event picture: a framed 16:9 picture above the line box; portraits step aside while it shows. */
+  #dlgCg { position: absolute; z-index: 1; left: 50%; top: max(56px, env(safe-area-inset-top, 0px)); transform: translateX(-50%);
+    width: min(calc(100% - 24px), 1100px, calc((100vh - 250px) * 16 / 9)); aspect-ratio: 16 / 9; border: 2px solid var(--gold); border-radius: 6px;
+    overflow: hidden; box-shadow: 0 10px 40px rgba(0, 0, 0, .6); animation: cgIn .5s ease-out both; }
+  #dlgCg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  @keyframes cgIn { from { opacity: 0; } to { opacity: 1; } }
+  #dlg.hascg .dlgSlot { opacity: 0; }
+  @media (max-width: 560px) { #dlgCg { top: max(54px, calc((100vh - 230px - (100vw - 16px) * 9 / 16) / 2)); width: calc(100% - 16px); } }
+  /* The player's choice (告白): large buttons above the line box. */
+  #dlgChoice { position: absolute; z-index: 3; left: 50%; transform: translateX(-50%); bottom: calc(160px + env(safe-area-inset-bottom, 0px));
+    width: min(420px, calc(100% - 32px)); display: flex; flex-direction: column; gap: 10px; cursor: default; }
+  #dlgChoice button { min-height: 52px; font-size: 17px; background: linear-gradient(rgba(38, 33, 58, .97), rgba(22, 19, 34, .98)); border: 2px solid var(--gold); box-shadow: 0 4px 18px rgba(0, 0, 0, .55); }
+  #dlgChoice button.primary { color: var(--gold); }
+  #dlg.choosing #dlgNext { visibility: hidden; }
+  #dlg.choosing { cursor: default; }
+  #dlgChoice button:hover, #dlgChoice button:focus-visible { background: var(--ally-bg); }
+  @media (max-width: 560px) { #dlgChoice { bottom: calc(176px + env(safe-area-inset-bottom, 0px)); } }
+  /* Staff roll. */
+  #credits { z-index: 30; background: radial-gradient(ellipse at 50% 40%, #1d1a2a 0, var(--night) 70%); overflow: hidden; cursor: pointer; }
+  #creditsRoll { position: absolute; left: 0; right: 0; top: 100%; text-align: center; padding: 0 16px; color: var(--ink); }
+  #creditsRoll.go { animation: roll 24s linear forwards; }
+  @keyframes roll { from { transform: translateY(0); } to { transform: translateY(calc(-100% - 100vh)); } }
+  @media (prefers-reduced-motion: reduce) { #creditsRoll.go { animation: none; top: 10%; } }
+  #creditsRoll h2 { font-family: var(--pixel); font-weight: normal; color: var(--gold); font-size: clamp(24px, 7vw, 40px); letter-spacing: .14em; margin: 0 0 18vh; }
+  #creditsRoll section { margin: 0 0 12vh; }
+  #creditsRoll h3 { font-family: var(--pixel); font-weight: normal; color: var(--dim); font-size: 14px; letter-spacing: .2em; margin: 0 0 14px; }
+  #creditsRoll p { margin: 6px 0; font-size: 17px; line-height: 1.7; }
+  #creditsRoll .fin { font-family: var(--pixel); color: var(--gold); font-size: 22px; margin-top: 20vh; }
+  .creditsSkip { position: absolute; right: 16px; bottom: max(14px, env(safe-area-inset-bottom, 0px)); margin: 0; color: var(--dim); font-size: 12.5px; }
+  #title { background-size: cover; background-position: 50% 35%; }
   button.logItem { text-align: left; font-family: var(--text); }
   /* Sound settings: a small button on the title, the map HUD and the camp; the panel sits above every overlay. */
   .sndBtn { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 4px 10px; font-size: 13px; color: var(--dim); flex: none; }
@@ -268,9 +310,11 @@
   <div class="campIn">
     <div class="campHead"><h2 id="campTitle">章間</h2><button class="sndBtn" type="button"></button></div>
     <p id="campMsg" role="status"></p>
+    <p id="campWed" hidden></p>
     <div id="campTabs" role="tablist">
       <button data-tab="units" role="tab">部隊</button>
       <button data-tab="bonds" role="tab">支援</button>
+      <button data-tab="tent" role="tab">天幕</button>
       <button data-tab="log" role="tab">記録</button>
     </div>
     <div id="campBody"></div>
@@ -282,8 +326,11 @@
 </div>
 
 <div id="dlg" class="overlay" hidden>
+  <div id="dlgBg" hidden><img alt=""></div>
   <div class="dlgSlot left empty"><img alt=""></div>
   <div class="dlgSlot right empty"><img alt=""></div>
+  <div id="dlgCg" hidden><img alt=""></div>
+  <div id="dlgChoice" role="group" aria-label="選択肢" hidden></div>
   <div id="dlgBox">
     <canvas id="dlgFace" width="200" height="200"></canvas>
     <div id="dlgName"></div>
@@ -292,6 +339,8 @@
   </div>
   <button id="dlgSkip" type="button">スキップ ▶▶</button>
 </div>
+
+<div id="credits" class="overlay" hidden><div id="creditsRoll"></div><p class="creditsSkip">タップで閉じる</p></div>
 
 <div id="title" class="overlay">
   <button class="sndBtn" type="button"></button>
