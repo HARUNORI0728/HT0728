@@ -31,10 +31,10 @@ export const ch03: Chapter = {
   sortie: 6,
   enemies: [
     // 丘を囲む狼（突撃）
-    { cls: 'wolf', lv: 4, x: 16, y: 7, wps: ['wolfFang'], ai: 'charge', prefix: '' },
+    { cls: 'wolf', lv: 4, x: 17, y: 8, wps: ['wolfFang'], ai: 'charge', prefix: '' },
     { cls: 'wolf', lv: 4, x: 15, y: 9, wps: ['wolfFang'], ai: 'charge', prefix: '' },
     { cls: 'wolf', lv: 4, x: 11, y: 10, wps: ['wolfFang'], ai: 'charge', prefix: '' },
-    { cls: 'wolf', lv: 4, x: 14, y: 5, wps: ['wolfFang'], ai: 'charge', prefix: '' },
+    { cls: 'wolf', lv: 4, x: 11, y: 4, wps: ['wolfFang'], ai: 'hold', prefix: '' },
     // 森をうろつく狼
     { cls: 'wolf', lv: 4, x: 10, y: 2, wps: ['wolfFang'], ai: 'hold', prefix: '' },
     { cls: 'wolf', lv: 4, x: 5, y: 1, wps: ['wolfFang'], ai: 'hold', prefix: '' },
@@ -42,11 +42,11 @@ export const ch03: Chapter = {
     { cls: 'wolf', lv: 4, x: 6, y: 11, wps: ['wolfFang'], ai: 'hold', prefix: '' },
     { cls: 'wolf', lv: 5, x: 13, y: 11, wps: ['wolfFang'], ai: 'charge', prefix: '' },
     // 窪地の口を固める岩人形
-    { cls: 'golem', lv: 4, x: 12, y: 3, wps: ['golemFist'], ai: 'hold', prefix: '' },
-    { cls: 'golem', lv: 5, x: 14, y: 2, wps: ['golemFist'], ai: 'hold', prefix: '' },
-    { cls: 'golem', lv: 5, x: 16, y: 4, wps: ['golemFist'], ai: 'hold', prefix: '' },
-    { cls: 'golem', lv: 4, x: 17, y: 5, wps: ['golemFist'], ai: 'hold', prefix: '' },
-    { cls: 'golem', lv: 4, x: 18, y: 2, wps: ['golemFist'], ai: 'hold', prefix: '' },
+    { cls: 'golem', lv: 4, x: 13, y: 3, wps: ['golemFist'], ai: 'hold', prefix: '' },
+    { cls: 'golem', lv: 5, x: 14, y: 2, wps: ['golemFist'], ai: 'guard', prefix: '' },
+    { cls: 'golem', lv: 5, x: 15, y: 4, wps: ['golemFist'], ai: 'guard', prefix: '' },
+    { cls: 'golem', lv: 4, x: 17, y: 4, wps: ['golemFist'], ai: 'guard', prefix: '' },
+    { cls: 'golem', lv: 4, x: 18, y: 2, wps: ['golemFist'], ai: 'guard', prefix: '' },
     { cls: 'bear', lv: 9, x: 16, y: 2, wps: ['bearClaw'], ai: 'guard', boss: '残光の大熊' },
   ],
   reinforce: [
