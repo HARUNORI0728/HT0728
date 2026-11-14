@@ -27,7 +27,7 @@ export const ch04: Chapter = {
   ],
   players: [
     { id: 'rudeus', x: 1, y: 7 },
-    { id: 'ariel', x: 16, y: 9 }, { id: 'sylphiette', x: 15, y: 10 }, { id: 'luke', x: 17, y: 10 },
+    { id: 'ariel', x: 16, y: 9 }, { id: 'sylphiette', x: 15, y: 9 }, { id: 'luke', x: 17, y: 9 },
   ],
   slots: [{ x: 1, y: 6 }, { x: 1, y: 8 }, { x: 2, y: 7 }, { x: 0, y: 6 }],
   sortie: 7,
