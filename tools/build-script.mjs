@@ -14,7 +14,7 @@
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
 
 const SRC_DIR = 'design', OUT = 'src/script/scenes.ts';
-const FACES = new Set(['normal', 'smile', 'angry', 'sad']);
+const FACES = new Set(['normal', 'smile', 'angry', 'sad', 'dere']);
 const CIRCLED = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
 const KIND = { 開幕: 'intro', 終幕: 'outro', 幕間: 'interlude', 戦闘中: 'battle' };
 // Track names (design/asset-orders.md §1; jingles are played by the game, not by the screenplay).
@@ -74,7 +74,7 @@ for (const file of files) {
     if (b < 0) { errors.push(`${at}: 「話者｜表情｜本文」の形になっていません`); return; }
     const who = raw.slice(0, a).trim(), face = raw.slice(a + 1, b).trim(), text = raw.slice(b + 1);
     if (!who) { errors.push(`${at}: 話者がありません`); return; }
-    if (face !== '-' && !FACES.has(face)) { errors.push(`${at}: 表情「${face}」は使えません（normal/smile/angry/sad/-）`); return; }
+    if (face !== '-' && !FACES.has(face)) { errors.push(`${at}: 表情「${face}」は使えません（normal/smile/angry/sad/dere/-）`); return; }
     if (!text.trim()) { errors.push(`${at}: 本文がありません`); return; }
     const line = { who: who === '（地の文）' ? '' : who, text };
     if (face !== '-') line.face = face;
