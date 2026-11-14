@@ -264,7 +264,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch1.battle5": {
     title: "第1章　戦闘中⑤", chapter: 1,
-    cond: "3ターン目・自軍フェイズ開始時", bgm: "daily",
+    cond: "3ターン目・自軍フェイズ開始時",
     lines: [
       {"who":"","text":"天幕の陰で、炊き出しの鍋を抱えた女が、子どもたちを背に隠していた。"},
       {"who":"ハンナ","text":"ほら坊やたち、頭を下げてな！ 大丈夫、あの人たちが来てくれたからね！","art":false},
@@ -475,7 +475,7 @@ export const SCENES: Record<SceneId, Scene> = {
     title: "第2章　終幕", chapter: 2,
     cond: "第2章の勝利後（8ターン目の敵軍フェイズ終了後）", bgm: "daily",
     lines: [
-      {"who":"","text":"日が山の端に沈むと、傭兵たちは旗を巻き、川の向こうへ引きあげていった。"},
+      {"who":"","text":"戦いが終わると、傭兵たちは旗を巻き、川の向こうへ引きあげていった。"},
       {"who":"ロッタ","text":"団長、怪我人は全員無事です！ 一人も欠けてません！","face":"smile"},
       {"who":"パウロ","text":"……そうか。よくやった、ロッタ。みんなも、ありがとうな。","face":"smile"},
       {"who":"ギレーヌ","text":"パウロ。相変わらず無茶な戦い方だ。","face":"normal"},

@@ -8,7 +8,7 @@ export const ch04: Chapter = {
   title: '第4章　白い髪の護衛',
   win: { type: 'seize', tiles: [[10, 1]] }, lose: { units: ['rudeus', 'ariel'] },
   // 20×14。東西に旧街道が通る宿場町（家屋・廃墟・柵）。北は山あいの関所跡（城壁と崖で囲まれた砦。南の門と西の崩れた壁から入る）。
-  // 東寄りに崩れた礼拝堂（石壁で囲んだ一角。西の扉と東の裏口）にアリエル隊。北東は丘と林（弓兵の高所）、南は柵で区切った畑の跡。
+  // 東寄りに崩れた礼拝堂（石壁で囲んだ一角。西の扉と東の裏口。アリエルの立つ祭壇＝家屋は南からしか近づけない）にアリエル隊。北東は丘と林（弓兵の高所）、南は柵で区切った畑の跡。
   map: [
     'MMMMFMMZZZZZZMHHFFHF',
     'MFFMFFMZZUCNZMHGFHHG',
@@ -50,7 +50,7 @@ export const ch04: Chapter = {
     { cls: 'archer', lv: 5, x: 14, y: 2, wps: ['ironBow'], ai: 'hold', prefix: P },
     { cls: 'archer', lv: 5, x: 17, y: 5, wps: ['ironBow'], ai: 'guard', prefix: P },
     { cls: 'myrmidon', lv: 11, x: 13, y: 3, wps: ['ironSword'], ai: 'guard', boss: '北帝オーベール', retreatAt: 0.5, defeat: 'retreat',
-      aiFrom: { turn: 2, ai: 'charge' } },
+      aiFrom: { turn: 3, ai: 'charge' } },
   ],
   reinforce: [
     { turn: 3, units: [ // 礼拝堂の裏（地下の抜け道の出口＝南東の林）から
