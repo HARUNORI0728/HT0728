@@ -37,8 +37,8 @@ export const ch03: Chapter = {
     { cls: 'wolf', lv: 4, x: 11, y: 4, wps: ['wolfFang'], ai: 'hold', prefix: '' },
     // 森をうろつく狼
     { cls: 'wolf', lv: 4, x: 10, y: 2, wps: ['wolfFang'], ai: 'hold', prefix: '' },
-    { cls: 'wolf', lv: 4, x: 5, y: 1, wps: ['wolfFang'], ai: 'hold', prefix: '' },
-    { cls: 'wolf', lv: 5, x: 7, y: 1, wps: ['wolfFang'], ai: 'hold', prefix: '' },
+    { cls: 'wolf', lv: 4, x: 11, y: 1, wps: ['wolfFang'], ai: 'hold', prefix: '' },
+    { cls: 'wolf', lv: 5, x: 12, y: 0, wps: ['wolfFang'], ai: 'hold', prefix: '' },
     { cls: 'wolf', lv: 4, x: 6, y: 11, wps: ['wolfFang'], ai: 'hold', prefix: '' },
     { cls: 'wolf', lv: 5, x: 14, y: 12, wps: ['wolfFang'], ai: 'hold', prefix: '' },
     // 窪地の口を固める岩人形
