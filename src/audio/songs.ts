@@ -148,7 +148,7 @@ export const SONGS: Record<string, SongDef> = {
     bpm: 110, grid: 4, bar: 16, gain: 1.05,
     chords: 'Dm | Dm | Bb | A | Dm | Dm | Gm | A | Bb | C | Dm | A | Gm | Dm/F | Bb | A',
     tracks: [
-      { inst: 'horn', notes: bars('D4:6 E4:2 F4:8', 'A4:6 G4:2 F4:4 E4:4', 'D4:8 F4:8', 'E4:12 .:4', 'D4:6 E4:2 F4:8', 'A4:6 Bb4:2 A4:8', 'G4:6 A4:2 Bb4:8', 'C#5:12 .:4',
+      { inst: 'horn', notes: bars('D4:6 E4:2 F4:8', 'A4:6 G4:2 F4:4 D4:4', 'D4:8 F4:8', 'E4:12 .:4', 'D4:6 E4:2 F4:8', 'A4:6 Bb4:2 A4:8', 'G4:6 A4:2 Bb4:8', 'C#5:12 .:4',
         'D5:6 C5:2 Bb4:8', 'C5:6 Bb4:2 G4:8', 'A4:6 F4:2 D4:8', 'E4:4 C#4:4 E4:4 A4:4', 'Bb4:6 A4:2 G4:8', 'F4:6 E4:2 D4:8', 'F4:8 D4:8', 'E4:8 C#4:4 E4:4'), vol: 1.0, pan: 0.1, rev: 0.35 },
       { inst: 'stacc', low: 38, bass: 'R . R 5 R . R 3 R . R 5 R . 8 5', vol: 1.1, pan: -0.2, rev: 0.2 },
       { inst: 'bass', low: 26, bass: hold(16), vol: 0.55, rev: 0.1 },
@@ -185,14 +185,14 @@ export const SONGS: Record<string, SongDef> = {
 
   // 耐久・防衛：G minor 138. Urgent string figure, heartbeat drum, a flute glimmer of hope in the second half.
   crisis: (() => {
-    const mel = bars('D5:16', 'G5:8 Bb5:4 A5:4', 'G5:12 Bb5:4', 'Eb5:16', 'C5:8 Eb5:4 G5:4', 'G5:8 Eb5:4 D5:4', 'F#5:16', 'A5:8 F#5:4 D5:4',
-      'D6:12 C6:2 Bb5:2', 'A5:12 C6:4', 'G5:8 Bb5:4 Eb6:4', 'D6:8 F5:8', 'Eb6:8 C6:4 D6:4', 'Bb5:8 G5:8', 'A5:8 F#5:8', 'C6:8 A5:4 F#5:4');
+    const mel = bars('D5:16', 'G5:8 Bb5:4 D6:4', 'G5:12 Bb5:4', 'Eb5:16', 'C5:8 Eb5:4 G5:4', 'G5:8 Eb5:4 C5:4', 'F#5:16', 'A5:8 F#5:4 D5:4',
+      'D6:12 C6:2 Bb5:2', 'A5:12 C6:4', 'G5:8 Bb5:4 Eb6:4', 'D6:8 F5:8', 'Eb6:8 C6:4 G5:4', 'Bb5:8 G5:8', 'A5:8 F#5:8', 'C6:8 A5:4 F#5:4');
     return {
       bpm: 138, grid: 4, bar: 16, gain: 0.98,
       chords: 'Gm | Gm | Eb | Eb | Cm | Cm | D | D | Gm | F | Eb | Bb | Cm | Eb | D | D7',
       tracks: [
         { inst: 'strings', notes: mel, oct: -1, vol: 1.15, pan: 0.05, rev: 0.35 },
-        { inst: 'flute', notes: bars('D6:12 C6:2 Bb5:2', 'A5:12 C6:4', 'G5:8 Bb5:4 Eb6:4', 'D6:8 F5:8', 'Eb6:8 C6:4 D6:4', 'Bb5:8 G5:8', 'A5:8 F#5:8', 'C6:8 A5:4 F#5:4'), at: 8, oct: -1, vol: 0.8, pan: 0.25, rev: 0.4 },
+        { inst: 'flute', notes: bars('D6:12 C6:2 Bb5:2', 'A5:12 C6:4', 'G5:8 Bb5:4 Eb6:4', 'D6:8 F5:8', 'Eb6:8 C6:4 G5:4', 'Bb5:8 G5:8', 'A5:8 F#5:8', 'C6:8 A5:4 F#5:4'), at: 8, oct: -1, vol: 0.8, pan: 0.25, rev: 0.4 },
         { inst: 'stacc', low: 55, arp: '0 1 2 1 0 1 2 1 0 1 2 1 0 1 2 1', vol: 0.85, pan: -0.25, rev: 0.2 },
         { inst: 'bass', low: 31, bass: 'R . . . R . . . R . . . R . R .', vol: 0.8, rev: 0.1 },
         { inst: 'pad', low: 50, pad: true, bars: [[8, 16]], vol: 0.45, rev: 0.4 },
