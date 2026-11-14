@@ -34,13 +34,14 @@ export const ch06: Chapter = {
     'FFGLLLLLLLLLLLGFGWGFFF',
     'FGAAAAGAAAAGAAGFFWFFFM',
   ],
-  players: [{ id: 'rudeus', x: 8, y: 8 }, { id: 'zanoba', x: 9, y: 7 }, { id: 'cliff', x: 7, y: 9 }],
-  slots: [{ x: 9, y: 9 }, { x: 7, y: 7 }, { x: 4, y: 8 }, { x: 11, y: 8 }, { x: 10, y: 9 }],
+  // 開幕の時点で、仲間は食糧庫のまわりと3つの門の近くに散っている。
+  players: [{ id: 'rudeus', x: 8, y: 8 }, { id: 'zanoba', x: 11, y: 9 }, { id: 'cliff', x: 9, y: 10 }],
+  slots: [{ x: 7, y: 7 }, { x: 5, y: 9 }, { x: 9, y: 8 }, { x: 4, y: 8 }, { x: 12, y: 10 }],
   sortie: 8,
   enemies: [
     // 北の丘と林（主攻）
     smerc(9, 7, 2, 'target'), merc(9, 9, 3, 'target'), lance(9, 4, 3, 'target'), lance(9, 12, 3, 'hold'),
-    archer(9, 10, 2, 'hold'), archer(8, 6, 1, 'hold'), mage(9, 9, 1, 'hold'), healer(9, 12, 1, 'hold'),
+    archer(9, 13, 0, 'hold'), archer(8, 5, 0, 'hold'), mage(9, 10, 0, 'hold'), healer(9, 12, 1, 'hold'),
     { cls: 'mercenary', lv: 12, x: 5, y: 2, wps: ['steelSword'], ai: 'hold', boss: '傭兵隊長ドルガン', defeat: 'retreat' },
     { cls: 'mercenary', lv: 14, x: 11, y: 1, wps: ['steelSword'], ai: 'hold', boss: '傭兵団長ヴェラ', aiFrom: { turn: 10, ai: 'charge' } },
     // 川向こう（東）
