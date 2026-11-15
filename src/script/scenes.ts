@@ -157,9 +157,17 @@ export type SceneId =
   | "frag:差し込み・リニアとプルセナ（仲間）"
   | "frag:差し替え・エリナリーゼ"
   | "frag:差し替え・ルーク"
-  | "epilogue.close";
+  | "epilogue.close"
+  | "frag:差し込み・ただひとり・シルフィエット"
+  | "frag:差し込み・ただひとり・ロキシー"
+  | "frag:差し込み・ただひとり・エリス"
+  | "frag:差し込み・ただひとり・サラ"
+  | "frag:差し込み・ただひとり・リニア"
+  | "frag:差し込み・ただひとり・プルセナ"
+  | "frag:差し込み・ただひとり・アリエル"
+  | "frag:差し込み・三人の取り決め";
 /** Scene ids in screenplay order. */
-export const SCENE_ORDER: SceneId[] = ["prologue", "ch1.intro", "ch1.battle1", "ch1.battle2", "ch1.battle3", "ch1.battle4", "ch1.battle5", "ch1.battle6", "ch1.battle7", "ch1.battle8", "ch1.battle9", "ch1.battle10", "ch1.battle11", "ch1.battle12", "ch1.outro", "ch1.interlude", "ch2.intro", "ch2.battle1", "ch2.battle2", "ch2.battle3", "ch2.battle4", "ch2.battle5", "ch2.battle6", "ch2.battle7", "ch2.battle8", "ch2.outro", "ch2.interlude", "ch3.intro", "ch3.battle1", "ch3.battle2", "ch3.battle3", "ch3.battle4", "ch3.battle5", "ch3.battle6", "ch3.battle7", "ch3.outro", "ch3.interlude", "ch4.intro", "ch4.battle1", "ch4.battle2", "ch4.battle3", "ch4.battle4", "ch4.battle5", "ch4.battle6", "ch4.battle7", "ch4.outro", "ch4.interlude", "ch5.intro", "ch5.battle1", "ch5.battle2", "ch5.battle3", "ch5.battle4", "ch5.battle5", "ch5.battle6", "ch5.battle7", "ch5.outro", "ch5.interlude", "ch6.intro", "ch6.battle1", "ch6.battle2", "ch6.battle3", "ch6.battle4", "ch6.battle5", "ch6.battle6", "ch6.battle7", "ch6.battle8", "ch6.outro", "ch6.interlude", "ch7.intro", "ch7.battle1", "ch7.battle2", "ch7.battle3", "ch7.battle4", "ch7.battle5", "ch7.battle6", "ch7.battle7", "ch7.battle8", "ch7.battle9", "ch7.battle10", "ch7.outro", "ch7.interlude", "ch8.intro", "ch8.battle1", "ch8.battle2", "ch8.battle3", "ch8.battle4", "ch8.battle5", "ch8.battle6", "ch8.battle7", "ch8.outro", "ch8.interlude", "ch9.intro", "ch9.battle1", "ch9.battle2", "ch9.battle3", "ch9.battle4", "ch9.battle5", "ch9.battle9", "ch9.battle6", "ch9.battle7", "ch9.battle8", "ch9.outro", "ch9.interlude", "ch10.intro", "ch10.battle1", "ch10.battle2", "ch10.battle9", "ch10.battle3", "ch10.battle4", "ch10.battle5", "ch10.battle6", "ch10.battle7", "ch10.battle8", "ch10.outro", "confess.sylphiette", "confess.roxy", "confess.eris", "confess.sara", "confess.linia", "confess.pursena", "confess.ariel", "epilogue.open", "after.sylphiette.wed", "after.sylphiette.friend", "after.roxy.wed", "after.roxy.friend", "after.eris.wed", "after.eris.friend", "after.sara.wed", "after.sara.friend", "after.linia.wed", "after.linia.friend", "after.pursena.wed", "after.pursena.friend", "after.ariel.wed", "after.ariel.friend", "frag:差し替え・サラ（仲間）", "frag:差し込み・療養中", "frag:差し込み・シルフィエットとエリス", "frag:差し込み・シルフィエットとロキシー", "frag:差し込み・シルフィエットとアリエル", "frag:差し込み・エリスとロキシー", "frag:差し込み・エリスとアリエル", "frag:差し込み・リニアとプルセナ（結婚）", "frag:差し込み・リニアとプルセナ（仲間）", "frag:差し替え・エリナリーゼ", "frag:差し替え・ルーク", "epilogue.close"];
+export const SCENE_ORDER: SceneId[] = ["prologue", "ch1.intro", "ch1.battle1", "ch1.battle2", "ch1.battle3", "ch1.battle4", "ch1.battle5", "ch1.battle6", "ch1.battle7", "ch1.battle8", "ch1.battle9", "ch1.battle10", "ch1.battle11", "ch1.battle12", "ch1.outro", "ch1.interlude", "ch2.intro", "ch2.battle1", "ch2.battle2", "ch2.battle3", "ch2.battle4", "ch2.battle5", "ch2.battle6", "ch2.battle7", "ch2.battle8", "ch2.outro", "ch2.interlude", "ch3.intro", "ch3.battle1", "ch3.battle2", "ch3.battle3", "ch3.battle4", "ch3.battle5", "ch3.battle6", "ch3.battle7", "ch3.outro", "ch3.interlude", "ch4.intro", "ch4.battle1", "ch4.battle2", "ch4.battle3", "ch4.battle4", "ch4.battle5", "ch4.battle6", "ch4.battle7", "ch4.outro", "ch4.interlude", "ch5.intro", "ch5.battle1", "ch5.battle2", "ch5.battle3", "ch5.battle4", "ch5.battle5", "ch5.battle6", "ch5.battle7", "ch5.outro", "ch5.interlude", "ch6.intro", "ch6.battle1", "ch6.battle2", "ch6.battle3", "ch6.battle4", "ch6.battle5", "ch6.battle6", "ch6.battle7", "ch6.battle8", "ch6.outro", "ch6.interlude", "ch7.intro", "ch7.battle1", "ch7.battle2", "ch7.battle3", "ch7.battle4", "ch7.battle5", "ch7.battle6", "ch7.battle7", "ch7.battle8", "ch7.battle9", "ch7.battle10", "ch7.outro", "ch7.interlude", "ch8.intro", "ch8.battle1", "ch8.battle2", "ch8.battle3", "ch8.battle4", "ch8.battle5", "ch8.battle6", "ch8.battle7", "ch8.outro", "ch8.interlude", "ch9.intro", "ch9.battle1", "ch9.battle2", "ch9.battle3", "ch9.battle4", "ch9.battle5", "ch9.battle9", "ch9.battle6", "ch9.battle7", "ch9.battle8", "ch9.outro", "ch9.interlude", "ch10.intro", "ch10.battle1", "ch10.battle2", "ch10.battle9", "ch10.battle3", "ch10.battle4", "ch10.battle5", "ch10.battle6", "ch10.battle7", "ch10.battle8", "ch10.outro", "confess.sylphiette", "confess.roxy", "confess.eris", "confess.sara", "confess.linia", "confess.pursena", "confess.ariel", "epilogue.open", "after.sylphiette.wed", "after.sylphiette.friend", "after.roxy.wed", "after.roxy.friend", "after.eris.wed", "after.eris.friend", "after.sara.wed", "after.sara.friend", "after.linia.wed", "after.linia.friend", "after.pursena.wed", "after.pursena.friend", "after.ariel.wed", "after.ariel.friend", "frag:差し替え・サラ（仲間）", "frag:差し込み・療養中", "frag:差し込み・シルフィエットとエリス", "frag:差し込み・シルフィエットとロキシー", "frag:差し込み・シルフィエットとアリエル", "frag:差し込み・エリスとロキシー", "frag:差し込み・エリスとアリエル", "frag:差し込み・リニアとプルセナ（結婚）", "frag:差し込み・リニアとプルセナ（仲間）", "frag:差し替え・エリナリーゼ", "frag:差し替え・ルーク", "epilogue.close", "frag:差し込み・ただひとり・シルフィエット", "frag:差し込み・ただひとり・ロキシー", "frag:差し込み・ただひとり・エリス", "frag:差し込み・ただひとり・サラ", "frag:差し込み・ただひとり・リニア", "frag:差し込み・ただひとり・プルセナ", "frag:差し込み・ただひとり・アリエル", "frag:差し込み・三人の取り決め"];
 export const SCENES: Record<SceneId, Scene> = {
   "prologue": {
     title: "序章「ふたたびの産声」", chapter: 0,
@@ -2525,6 +2533,62 @@ export const SCENES: Record<SceneId, Scene> = {
       {"who":"ルーデウス","text":"（今度こそ、本気で生きる。……ここで、みんなと）","face":"smile"},
       {"who":"ルーデウス","text":"……はい、今行きます！","face":"smile"},
       {"who":"","text":"――フィットア奪還戦記　終――"},
+    ],
+  },
+  "frag:差し込み・ただひとり・シルフィエット": {
+    title: "差し込み・ただひとり・シルフィエット", chapter: 11,
+    cond: "結婚したのがシルフィエット1人だけ。後日談・シルフィエット（結婚）の1行目のあとに足す", bg: "buena_hill",
+    lines: [
+      {"who":"","text":"家は、二人で住むには少し広い。「そのうち、にぎやかになるよ」と、シルフィエットは笑う。"},
+    ],
+  },
+  "frag:差し込み・ただひとり・ロキシー": {
+    title: "差し込み・ただひとり・ロキシー", chapter: 11,
+    cond: "結婚したのがロキシー1人だけ。後日談・ロキシー（結婚）の1行目のあとに足す", bg: "rebuilt_village",
+    lines: [
+      {"who":"","text":"校舎の隣には、小さな家がある。教師ふたりの家だ。帰り道は、いつも同じ道を二人で歩く。"},
+    ],
+  },
+  "frag:差し込み・ただひとり・エリス": {
+    title: "差し込み・ただひとり・エリス", chapter: 11,
+    cond: "結婚したのがエリス1人だけ。後日談・エリス（結婚）の1行目のあとに足す", bg: "rebuilt_village",
+    lines: [
+      {"who":"","text":"道場の奥の部屋には、木剣が二本だけ掛けてある。一本は、どうしても上達しない夫の分だ。"},
+    ],
+  },
+  "frag:差し込み・ただひとり・サラ": {
+    title: "差し込み・ただひとり・サラ", chapter: 11,
+    cond: "結婚したのがサラ1人だけ。後日談・サラ（結婚）の1行目のあとに足す", bg: "rebuilt_village",
+    lines: [
+      {"who":"","text":"若い弓兵に言い寄られても、サラは赤い矢羽根の矢を一本見せるだけで、黙って追い払う。"},
+    ],
+  },
+  "frag:差し込み・ただひとり・リニア": {
+    title: "差し込み・ただひとり・リニア", chapter: 11,
+    cond: "結婚したのがリニア1人だけ。後日談・リニア（結婚）の1行目のあとに足す", bg: "rebuilt_village",
+    lines: [
+      {"who":"","text":"看板の隅には、小さく「共同経営」と書いてある。もう一人の経営者は、帳簿に口を出す権利をまだもらっていない。"},
+    ],
+  },
+  "frag:差し込み・ただひとり・プルセナ": {
+    title: "差し込み・ただひとり・プルセナ", chapter: 11,
+    cond: "結婚したのがプルセナ1人だけ。後日談・プルセナ（結婚）の1行目のあとに足す", bg: "home_inside",
+    lines: [
+      {"who":"","text":"群れは二人だけ。それでいいと、プルセナは言う。そのぶん、肉を大きく切れるから。"},
+    ],
+  },
+  "frag:差し込み・ただひとり・アリエル": {
+    title: "差し込み・ただひとり・アリエル", chapter: 11,
+    cond: "結婚したのがアリエル1人だけ。後日談・アリエル（結婚）の1行目のあとに足す", bg: "home_inside",
+    lines: [
+      {"who":"","text":"王都の宴で縁談を持ちかけられるたび、彼女は扇の陰で微笑む。「夫は一人で足りておりますの。手のかかる人ですから」"},
+    ],
+  },
+  "frag:差し込み・三人の取り決め": {
+    title: "差し込み・三人の取り決め", chapter: 11,
+    cond: "シルフィエット・エリス・アリエルの3人と結婚している。後日談・アリエル（結婚）の1行目のあとに足す", bg: "home_inside",
+    lines: [
+      {"who":"","text":"フィットアの館の壁には、三人の妻の取り決めが貼ってある。条文は年ごとに増え、夫に有利な条文は、今も一つもない。"},
     ],
   },
 };

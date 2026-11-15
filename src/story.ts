@@ -100,6 +100,8 @@ export interface EndingCtx {
 export interface EndingPart { id: string; title: string; bg?: string; bgm?: string; lines: Line[] }
 const sRank = (c: EndingCtx, a: string, b: string) => (c.bonds[pairKey(a, b)]?.rank ?? 0) >= 4;
 const both = (a: string, b: string) => (c: EndingCtx) => c.married.includes(a) && c.married.includes(b);
+/** Rudeus married only this candidate (design/script-romance.md の差し込み・ただひとり). */
+const only = (a: string) => (c: EndingCtx) => c.married.length === 1 && c.married[0] === a;
 type Op = { replace: [number, number] } | { replaceMatch: RegExp } | 'beforeLast' | 'afterFirst' | 'first';
 /**
  * The screenplay's fragments (### 差し替え・… / ### 差し込み・…) and where they go. Text-line positions count only lines
@@ -114,6 +116,14 @@ const PATCHES: { frag: string; targets: string[]; op: Op; when: (c: EndingCtx) =
   { frag: '差し込み・エリスとアリエル', targets: ['after.ariel.wed'], op: 'beforeLast', when: both('eris', 'ariel') },
   { frag: '差し込み・リニアとプルセナ（結婚）', targets: ['after.pursena.wed'], op: 'beforeLast', when: both('linia', 'pursena') },
   { frag: '差し込み・リニアとプルセナ（仲間）', targets: ['after.linia.friend', 'after.pursena.friend'], op: 'afterFirst', when: c => !c.married.includes('linia') && !c.married.includes('pursena') },
+  { frag: '差し込み・ただひとり・シルフィエット', targets: ['after.sylphiette.wed'], op: 'afterFirst', when: only('sylphiette') },
+  { frag: '差し込み・ただひとり・ロキシー', targets: ['after.roxy.wed'], op: 'afterFirst', when: only('roxy') },
+  { frag: '差し込み・ただひとり・エリス', targets: ['after.eris.wed'], op: 'afterFirst', when: only('eris') },
+  { frag: '差し込み・ただひとり・サラ', targets: ['after.sara.wed'], op: 'afterFirst', when: only('sara') },
+  { frag: '差し込み・ただひとり・リニア', targets: ['after.linia.wed'], op: 'afterFirst', when: only('linia') },
+  { frag: '差し込み・ただひとり・プルセナ', targets: ['after.pursena.wed'], op: 'afterFirst', when: only('pursena') },
+  { frag: '差し込み・ただひとり・アリエル', targets: ['after.ariel.wed'], op: 'afterFirst', when: only('ariel') },
+  { frag: '差し込み・三人の取り決め', targets: ['after.ariel.wed'], op: 'afterFirst', when: c => ['sylphiette', 'eris', 'ariel'].every(id => c.married.includes(id)) },
   { frag: '差し替え・エリナリーゼ', targets: ['epilogue.close'], op: { replaceMatch: /^エリナリーゼは/ }, when: c => sRank(c, 'cliff', 'elinalise') },
   { frag: '差し替え・ルーク', targets: ['epilogue.close'], op: { replaceMatch: /^ルークは/ }, when: c => sRank(c, 'luke', 'sara') },
 ];
