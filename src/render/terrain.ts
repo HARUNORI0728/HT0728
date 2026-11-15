@@ -396,7 +396,7 @@ export function drawTerrain(c: C2D, mapIn: string[]) {
       const b0 = v < 0.5 ? 46 + (114 - 46) * v * 2 : 114 + (166 - 114) * (v - 0.5) * 2;
       const tint = ss(0.25, 0.7, noise(tx * 0.35 + 40, ty * 0.35 + 20)); // violet seep of the residue in places
       const o = (j * lw + i) * 4;
-      img.data[o] = r0 + 10 * tint; img.data[o + 1] = g0 - 4 * tint; img.data[o + 2] = b0 + 18 * tint; img.data[o + 3] = 255;
+      img.data[o] = r0 + 7 * tint; img.data[o + 1] = g0 - 3 * tint; img.data[o + 2] = b0 + 13 * tint; img.data[o + 3] = 255;
     }
     g.putImageData(img, 0, 0);
     c.save(); c.clip(fp, 'evenodd');
@@ -819,15 +819,15 @@ export function drawTerrain(c: C2D, mapIn: string[]) {
       // the top: lit rock at the rim, sinking to near black inside a thick mass; lumpy, mottled
       const b = boxOf(map, 'Q')!, cs = 4 * u;
       const x0 = Math.max(0, Math.floor((b[0] - 0.5) * T / cs)), y0 = Math.max(0, Math.floor((b[1] - 0.5) * T / cs));
-      const x1 = Math.min(Math.ceil(W / cs), Math.ceil((b[2] + 1.5) * T / cs)), y1 = Math.min(Math.ceil(H / cs), Math.ceil((b[3] + 1.5) * T / cs));
+      const x1 = Math.min(Math.ceil(W / cs), Math.ceil((b[2] + 1.5) * T / cs)), y1 = Math.min(Math.ceil((H + fh) / cs), Math.ceil((b[3] + 1.5) * T / cs));
       const cv = canvas(Math.max(1, x1 - x0), Math.max(1, y1 - y0)), g = cv.getContext('2d')!, img = g.createImageData(cv.width, cv.height);
       for (let j = y0; j < y1; j++) for (let i = x0; i < x1; i++) {
         const px = (i + 0.5) * cs, py = (j + 0.5) * cs, tx = px / T, ty = py / T;
         const depth = ss(0.4, 0.9, valueAtB(deep, px, py)), rim = 1 - ss(0.5, 0.97, valueAtB(qf, px, py));
-        const h = (a: number, bb: number) => noise(a * 1.6 + 21, bb * 1.6 + 4) * 0.6 + noise(a * 4.2 + 8, bb * 4.2 + 30) * 0.3;
+        const h = (a: number, bb: number) => noise(a * 1.6 + 21, bb * 1.6 + 4) * 0.6 + noise(a * 3.3 + 8, bb * 3.3 + 30) * 0.22;
         const lump = (h(tx - 0.05, ty - 0.05) - h(tx + 0.05, ty + 0.05)) * 3.2; // lit on the north-west of each lump
         const m = noise(tx * 9 + 5, ty * 9 + 1) * 0.08;
-        const v = Math.max(0, Math.min(1, 0.1 + rim * 0.42 + (1 - depth) * 0.2 + (lump + m) * (0.5 - depth * 0.3)));
+        const v = Math.max(0, Math.min(1, 0.08 + rim * 0.42 + (1 - depth) * 0.2 + (lump + m) * (0.5 - depth * 0.38)));
         const o = ((j - y0) * cv.width + (i - x0)) * 4;
         img.data[o] = 22 + 104 * v; img.data[o + 1] = 18 + 92 * v; img.data[o + 2] = 30 + 108 * v; img.data[o + 3] = 255;
       }
