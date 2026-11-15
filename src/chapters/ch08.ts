@@ -9,7 +9,7 @@ const golem = (lv: number, x: number, y: number, ai: EnemyAI): EnemyDef =>
 const shade = (lv: number, x: number, y: number, ai: EnemyAI): EnemyDef => ({ cls: 'shade', lv, x, y, wps: ['shadeBolt'], ai, prefix: '' });
 const crystal = (x: number, y: number, tag: string): EnemyDef => ({ cls: 'crystal', lv: 12, x, y, wps: [], ai: 'guard', prefix: '', tag });
 
-// 24×16。旧鉱山の跡にできた迷宮（K 石床・Q 岩壁。見た目は今は道と崖で代用）。南の中央が核の間（開始位置）、北の中央に地上への出口（3マス）。
+// 24×16。旧鉱山の跡にできた迷宮（K 石床・Q 岩壁。src/render/terrain.ts が洞窟として描く。G は出口の地上だけ）。南の中央が核の間（開始位置）、北の中央に地上への出口（3マス）。
 // 近道（東）：核の間から細い坑道を北へ上がり、迷宮の主の広間（東）を抜けて、北の大広間へ出る。広間の出口の1マスの通路を迷宮の主が塞ぐ。
 // 遠回り（西）：核の間から西の坑道を抜け、地下水の流れる西の縦穴を北へ登る（流れは橋か浅瀬で渡る）。西の上の坑道から北の大広間へ。
 // 真ん中は地底湖と裂け目（崖）と岩の塊で通れない。大広間・縦穴・主の広間には古い坑道の残骸（廃墟）と崩れた土砂（丘）、坑道沿いの岩棚（山＝歩兵だけ登れる高所）。
