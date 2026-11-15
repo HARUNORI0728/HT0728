@@ -78,7 +78,7 @@ export const PORTRAIT_ART: Record<string, Partial<Record<Face, string>>> = {
   rudeus: { normal: 'assets/portraits/rudeus_normal.webp?v=717a45e2', smile: 'assets/portraits/rudeus_smile.webp?v=4df873fa', angry: 'assets/portraits/rudeus_angry.webp?v=15e5c916', sad: 'assets/portraits/rudeus_sad.webp?v=b0b00f20' },
   ruijerd: { normal: 'assets/portraits/ruijerd_normal.webp?v=842eabc6', smile: 'assets/portraits/ruijerd_smile.webp?v=665cc7e1', angry: 'assets/portraits/ruijerd_angry.webp?v=16b5ce4d', sad: 'assets/portraits/ruijerd_sad.webp?v=c87d17e5' },
   sara: { normal: 'assets/portraits/sara_normal.webp?v=45711161', smile: 'assets/portraits/sara_smile.webp?v=3fe355ba', angry: 'assets/portraits/sara_angry.webp?v=e2d466cf', sad: 'assets/portraits/sara_sad.webp?v=6a31c149' },
-  sylphiette: { normal: 'assets/portraits/sylphiette_normal.webp?v=1db0e298', smile: 'assets/portraits/sylphiette_smile.webp?v=4f364a9c', angry: 'assets/portraits/sylphiette_angry.webp?v=5e2bed36', sad: 'assets/portraits/sylphiette_sad.webp?v=352dee7b' },
+  sylphiette: { normal: 'assets/portraits/sylphiette_normal.webp?v=1db0e298', smile: 'assets/portraits/sylphiette_smile.webp?v=4f364a9c', angry: 'assets/portraits/sylphiette_angry.webp?v=5e2bed36', sad: 'assets/portraits/sylphiette_sad.webp?v=352dee7b', dere: 'assets/portraits/sylphiette_dere.webp?v=ff3b7017' },
   zanoba: { normal: 'assets/portraits/zanoba_normal.webp?v=f4ce24fc', smile: 'assets/portraits/zanoba_smile.webp?v=043f2313', angry: 'assets/portraits/zanoba_angry.webp?v=6d68f7cc', sad: 'assets/portraits/zanoba_sad.webp?v=f5d4e2f7' },
 };
 /** Conversation backgrounds by name (screenplay 背景：<名前>). 16:9, width 1280. */
@@ -110,6 +110,6 @@ export const EVENT_ART: Record<string, string> = {
 };
 /** Painted map backgrounds by chapter (ch01–ch10), stretched over the whole map. Chapters without one are drawn by code. */
 export const MAP_ART: Record<string, string> = {
-  ch01: 'assets/maps/ch01.webp?v=2ae57eda',
+  ch01: 'assets/maps/ch01.webp?v=ba9c11db',
   ch08: 'assets/maps/ch08.webp?v=09a110a5',
 };
