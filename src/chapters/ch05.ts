@@ -54,6 +54,8 @@ export const ch05: Chapter = {
     { turn: 6, from: 'c2', units: [wolf(8, 16, 8, 'charge')] },
     { turn: 6, from: 'c3', units: [bird(8, 11, 10, 'charge')] },
   ],
+  // 寄り道の宝箱（M13）：北西の森の隅。持てる者がいなければ銀に換わる。
+  visits: [{ x: 0, y: 0, kind: 'chest', item: 'steelBow' }],
   intro: 'ch5.intro', outro: 'ch5.outro', interlude: 'ch5.interlude',
   talks: [
     { scene: 'ch5.battle1', when: { type: 'turn', turn: 1, phase: 'blue' } },

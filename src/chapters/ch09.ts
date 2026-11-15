@@ -66,6 +66,8 @@ export const ch09: Chapter = {
     bgm: { blue: 'map_final' },
   }],
   terrainChanges: [{ stage: 1, tiles: [[11, 7], [12, 7], [13, 7]], to: 'R' }],
+  // 寄り道の宝箱（M13）：南西の茂み（城壁の内側）。
+  visits: [{ x: 2, y: 13, kind: 'chest', gold: 300 }],
   intro: 'ch9.intro', outro: 'ch9.outro', interlude: 'ch9.interlude',
   bgm: { blue: 'crisis', red: 'map_enemy', boss: 'boss' },
   talks: [

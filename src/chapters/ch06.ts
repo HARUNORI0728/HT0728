@@ -58,6 +58,8 @@ export const ch06: Chapter = {
     ] },
   ],
   terrainChanges: [{ turn: 7, tiles: [[13, 11], [13, 12]], to: 'U' }],
+  // 寄り道の宝箱（M13）：南西の森。守りの輪から離れることになる。
+  visits: [{ x: 0, y: 13, kind: 'chest', gold: 250 }],
   intro: 'ch6.intro', outro: 'ch6.outro', interlude: 'ch6.interlude',
   bgm: { blue: 'crisis' },
   talks: [

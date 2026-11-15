@@ -68,6 +68,8 @@ export const ch04: Chapter = {
       { cls: 'cavalier', lv: 6, x: 0, y: 6, wps: ['ironLance'], ai: 'charge', prefix: P },
     ] },
   ],
+  // 寄り道の宝箱（M13）：南の畑の農家。
+  visits: [{ x: 2, y: 13, kind: 'chest', item: 'rapier' }],
   intro: 'ch4.intro', outro: 'ch4.outro', interlude: 'ch4.interlude',
   talks: [
     { scene: 'ch4.battle1', when: { type: 'turn', turn: 1, phase: 'blue' } },

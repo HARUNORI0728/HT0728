@@ -55,6 +55,8 @@ export const ch02: Chapter = {
       { cls: 'soldier', lv: 4, x: 19, y: 7, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
     ] },
   ],
+  // 寄り道の宝箱（M13）：南西の畑の外れ。
+  visits: [{ x: 0, y: 13, kind: 'chest', gold: 150 }],
   intro: 'ch2.intro', outro: 'ch2.outro', interlude: 'ch2.interlude',
   bgm: { blue: 'crisis' }, // 耐久戦：自軍フェイズも追い詰められた曲
   talks: [

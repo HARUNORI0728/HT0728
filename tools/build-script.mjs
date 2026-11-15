@@ -7,7 +7,9 @@
 //                                           N章・戦闘中①… Labels read anywhere (script-endings.md / script-supports-*.md):
 //                                           告白・<名前>, 後日談・<名前>（結婚｜仲間）, エピローグ・前半, エピローグ・締め,
 //                                           差し替え・…, 差し込み・…, 支援・<名前>×<名前>・<C|B|A|S>,
-//                                           嫁同士・<2桁>　<組>「<題>」（条件：の書き方は src/endings.ts の WIFE_TALKS の説明）.
+//                                           嫁同士・<2桁>　<組>「<題>」（組 = A×B or A×B×C: all of them married; or a common
+//                                           script such as 結婚相手3人）, ふたりの時間・<名前>・<番号>「<題>」（条件：告白の後 /
+//                                           告白のN章後 / 第N章のクリア後）, 戦闘・<名前>・<隣接|撤退> (design/script-romance.md).
 //   話者｜表情｜本文                      → one line. 表情 = normal/smile/angry/sad/dere, or - (no portrait: art: false).
 //                                           （地の文） = narration (who: '').
 //   BGM：<曲名>                           → music. Right under the heading: the scene's track (scene.bgm).
@@ -43,7 +45,7 @@ const NAME_IDS = {};
 const pairKey = (a, b) => (a < b ? a + '+' + b : b + '+' + a);
 
 const files = readdirSync(SRC_DIR).filter(f => /^script-.*\.md$/.test(f)).sort();
-const scenes = [], supports = [], wives = [], errors = [], warnings = [];
+const scenes = [], supports = [], wives = [], dates = [], barks = [], errors = [], warnings = [];
 for (const file of files) {
   const path = `${SRC_DIR}/${file}`;
   const lenient = /^script-supports-/.test(file);
@@ -81,13 +83,25 @@ for (const file of files) {
         if (supports.some(s => s.id === id && !s.bad)) { fail(at, `支援会話 ${label} が二度出てきます`); return; }
       } else if ((m = label.match(/^嫁同士・(\d+)[\s　]+(.+?)「(.+)」$/))) {
         kind = 'wife';
-        const pairM = m[2].match(/^(.+?)×(.+)$/);
-        const members = pairM ? [NAME_IDS[pairM[1]], NAME_IDS[pairM[2]]] : [];
+        const names = m[2].split('×'), pairM = names.length >= 2;
+        const members = pairM ? names.map(n => NAME_IDS[n.trim()]) : [];
         if (pairM && members.some(x => !x)) { fail(at, `嫁同士の組の名前を読めません: ${m[2]}`); return; }
-        const need = pairM ? 2 : /3人/.test(cond) ? 3 : 2;
+        const need = pairM ? members.length : /3人/.test(cond) ? 3 : 2;
         const minC = cond.match(/第(\d+)章のクリア後/), maxC = cond.match(/第(\d+)章の開始前/);
         id = `wife.${m[1].padStart(2, '0')}`; title = `${m[3]}`;
         extra = { no: Number(m[1]), group: m[2], members, need, common: !pairM, minCleared: minC ? Number(minC[1]) : undefined, maxCleared: maxC ? Number(maxC[1]) - 1 : undefined };
+      } else if ((m = label.match(/^ふたりの時間・(.+?)・(\d+)「(.+)」$/))) {
+        const who = NAME_IDS[m[1]];
+        if (!who) { fail(at, `ふたりの時間の名前を読めません: ${m[1]}`); return; }
+        kind = 'date'; id = `date.${who}.${m[2]}`; title = m[3];
+        if (dates.some(s => s.id === id)) { fail(at, `ふたりの時間 ${label} が二度出てきます`); return; }
+        const afterM = cond.match(/告白の(\d+)章後/), minC = cond.match(/第(\d+)章のクリア後/);
+        if (!/告白の/.test(cond) && !minC) { fail(at, `ふたりの時間の条件を読めません（告白の後 / 告白のN章後 / 第N章のクリア後）: ${cond}`); return; }
+        extra = { who, no: Number(m[2]), afterWed: afterM ? Number(afterM[1]) : 0, minCleared: minC ? Number(minC[1]) : undefined };
+      } else if ((m = label.match(/^戦闘・(.+?)・(隣接|撤退)$/))) {
+        const who = NAME_IDS[m[1]];
+        if (!who) { fail(at, `戦闘中のひとことの名前を読めません: ${m[1]}`); return; }
+        kind = 'bark'; id = `${who}:${m[2] === '隣接' ? 'adj' : 'fall'}`; title = label;
       } else if (part) {
         if (label === '序章') { id = 'prologue'; title = part.title; }
         else {
@@ -109,7 +123,7 @@ for (const file of files) {
       }
       if (kind === 'scene' && scenes.some(s => s.id === id)) fail(at, `場面 ${id} が二度出てきます`);
       scene = { id, title, label, cond, part: part?.title, chapter, lines: [], at, ...extra };
-      (kind === 'support' ? supports : kind === 'wife' ? wives : scenes).push(scene);
+      ({ support: supports, wife: wives, date: dates, bark: barks }[kind] ?? scenes).push(scene);
       return;
     }
     const h4 = raw.match(/^#### (.+)$/);
@@ -167,6 +181,7 @@ for (const file of files) {
 const hasText = s => s.lines.some(l => l.text) || s.choice?.branches.some(b => b.some(l => l.text));
 for (const s of scenes) if (!hasText(s)) errors.push(`${s.id}: 台詞がありません`);
 for (const s of scenes) if (s.choice && s.choice.branches.some(b => !b.some(l => l.text))) errors.push(`${s.id}: 選択肢の続き（#### ▼…）が空です`);
+for (const s of [...dates, ...barks]) if (!hasText(s)) errors.push(`${s.at}: 台詞がありません`);
 for (const s of [...supports, ...wives]) if (!s.bad && !hasText(s)) { warnings.push(`${s.at}: 台詞がありません（この場面は読み飛ばします）`); s.bad = true; }
 for (const s of scenes) if (s.bgm === undefined && !s.id.startsWith('frag:')) warnings.push(`${s.id}: BGM の指定がありません（直前の曲が続きます）`);
 if (warnings.length) console.warn('build-script: ' + warnings.join('\n  '));
@@ -175,6 +190,7 @@ if (errors.length) { console.error('build-script: 脚本の読み込みに失敗
 const q = v => JSON.stringify(v);
 const sceneBody = s => `{\n    title: ${q(s.title)}, chapter: ${s.chapter},\n    cond: ${q(s.cond)},${s.bgm && s.bgm !== 'keep' ? ` bgm: ${q(s.bgm)},` : ''}${s.bg ? ` bg: ${q(s.bg)},` : ''}\n    lines: [\n${s.lines.map(l => `      ${q(l)},`).join('\n')}\n    ],${s.choice ? `\n    choice: ${q(s.choice)},` : ''}\n  }`;
 const okSupports = supports.filter(s => !s.bad), okWives = wives.filter(s => !s.bad).sort((a, b) => a.no - b.no);
+const okDates = dates; // screenplay order (each partner's scenes in number order)
 const out = `// Generated by tools/build-script.mjs from ${files.map(f => `${SRC_DIR}/${f}`).join(', ')}. Do not edit by hand:
 // change the screenplay and run \`npm run build\` (or \`npm run check\`).
 import type { Line } from '../data';
@@ -205,11 +221,23 @@ export interface WifeTalk { id: string; no: number; group: string; members: stri
 export const WIFE_TALKS: WifeTalk[] = [
 ${okWives.map(s => `  { id: ${q(s.id)}, no: ${s.no}, group: ${q(s.group)}, members: ${q(s.members)}, need: ${s.need}, common: ${s.common},${s.minCleared !== undefined ? ` minCleared: ${s.minCleared},` : ''}${s.maxCleared !== undefined ? ` maxCleared: ${s.maxCleared},` : ''} scene: ${sceneBody(s)} },`).join('\n')}
 ];
+/**
+ * ふたりの時間（design/script-romance.md）：告白で結ばれた相手 who との短い場面。no = その相手の中の順番（一つ前を見たあとで解放）。
+ * afterWed = 告白に応えた章間から何章クリアした後か。minCleared = この章のクリア後から（camp.cleared）。
+ */
+export interface DateTalk { id: string; who: string; no: number; afterWed: number; minCleared?: number; scene: Scene }
+export const DATE_TALKS: DateTalk[] = [
+${okDates.map(s => `  { id: ${q(s.id)}, who: ${q(s.who)}, no: ${s.no}, afterWed: ${s.afterWed},${s.minCleared !== undefined ? ` minCleared: ${s.minCleared},` : ''} scene: ${sceneBody(s)} },`).join('\n')}
+];
+/** 戦闘中のひとこと（design/script-romance.md）。\`<id>:adj\` = ルーデウスと隣り合って戦った、\`<id>:fall\` = 倒れた。 */
+export const BATTLE_BARKS: Record<string, Line[]> = {
+${barks.map(s => `  ${q(s.id)}: [\n${s.lines.map(l => `    ${q(l)},`).join('\n')}\n  ],`).join('\n')}
+};
 `;
 mkdirSync('src/script', { recursive: true });
 let old = '';
 try { old = readFileSync(OUT, 'utf8'); } catch { /* first run */ }
 if (old !== out) writeFileSync(OUT, out);
-const all = [...scenes, ...okSupports, ...okWives];
+const all = [...scenes, ...okSupports, ...okWives, ...okDates, ...barks];
 const allLines = s => [...s.lines, ...(s.choice?.branches.flat() ?? [])];
-console.log(`build-script: ${scenes.length} scenes, ${okSupports.length} support talks, ${okWives.length} wife talks, ${all.reduce((n, s) => n + allLines(s).filter(l => l.text).length, 0)} lines, ${all.reduce((n, s) => n + (s.bg && s.bg !== 'none' ? 1 : 0) + allLines(s).filter(l => l.bg && l.bg !== 'none').length, 0)} backgrounds, ${all.reduce((n, s) => n + allLines(s).filter(l => l.cg).length, 0)} event pictures → ${OUT}${old === out ? ' (unchanged)' : ''}`);
+console.log(`build-script: ${scenes.length} scenes, ${okSupports.length} support talks, ${okWives.length} wife talks, ${okDates.length} date talks, ${barks.length} battle lines, ${all.reduce((n, s) => n + allLines(s).filter(l => l.text).length, 0)} lines, ${all.reduce((n, s) => n + (s.bg && s.bg !== 'none' ? 1 : 0) + allLines(s).filter(l => l.bg && l.bg !== 'none').length, 0)} backgrounds, ${all.reduce((n, s) => n + allLines(s).filter(l => l.cg).length, 0)} event pictures → ${OUT}${old === out ? ' (unchanged)' : ''}`);

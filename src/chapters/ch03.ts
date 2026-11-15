@@ -66,6 +66,8 @@ export const ch03: Chapter = {
       { cls: 'wolf', lv: 5, x: 8, y: 0, wps: ['wolfFang'], ai: 'charge', prefix: '' },
     ] },
   ],
+  // 寄り道の宝箱（M13）：南西の森の奥。
+  visits: [{ x: 0, y: 12, kind: 'chest', gold: 200 }],
   intro: 'ch3.intro', outro: 'ch3.outro', interlude: 'ch3.interlude',
   talks: [
     { scene: 'ch3.battle1', when: { type: 'turn', turn: 1, phase: 'blue' } },

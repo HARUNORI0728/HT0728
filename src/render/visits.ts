@@ -2,7 +2,7 @@
 // 未開封は足もとに金の光がゆっくり明滅し、開けた後は光が消えて開いた絵になる。原点 = マスの左上、1マス = T。
 import { OUT, T, type C2D } from './common';
 
-const K = T / 96;
+const K = (T / 96) * 1.3; // 描いた地図の上でも埋もれない大きさ
 
 function glow(c: C2D, cx: number, cy: number, a: number) {
   const g = c.createRadialGradient(cx, cy, 2 * K, cx, cy, 40 * K);
@@ -10,6 +10,8 @@ function glow(c: C2D, cx: number, cy: number, a: number) {
   g.addColorStop(1, 'rgba(255,226,140,0)');
   c.fillStyle = g;
   c.beginPath(); c.ellipse(cx, cy, 42 * K, 24 * K, 0, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = `rgba(255,236,170,${0.8 * a})`; c.lineWidth = 2.5 * K;
+  c.beginPath(); c.ellipse(cx, cy, 30 * K, 14 * K, 0, 0, Math.PI * 2); c.stroke();
 }
 
 function chest(c: C2D, cx: number, by: number, open: boolean) {
@@ -80,7 +82,7 @@ function cage(c: C2D, cx: number, by: number, open: boolean) {
 
 /** 宝箱・檻（村）のマーカーを (tx, ty) のマスに描く。sec = 経過秒（未開封の光の明滅）。 */
 export function drawVisit(c: C2D, kind: 'chest' | 'village', tx: number, ty: number, open: boolean, sec: number) {
-  const cx = (tx + 0.5) * T, by = (ty + 0.78) * T;
+  const cx = (tx + 0.5) * T, by = (ty + 0.86) * T;
   if (!open) glow(c, cx, by - 4 * K, 0.7 + 0.3 * Math.sin(sec * 2.4));
   if (kind === 'chest') chest(c, cx, by, open);
   else cage(c, cx, by, open);
