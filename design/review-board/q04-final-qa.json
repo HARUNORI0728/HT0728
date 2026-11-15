@@ -1,0 +1,92 @@
+[
+  {
+    "id": "white_void",
+    "source": {
+      "path": "assets/backgrounds/white_void.png",
+      "width": 1672,
+      "height": 941,
+      "sha256": "55984bf12abae9ff6374137b52aa19d8ba5b8ac4d4a8260e40d3cfd540d5a25b"
+    },
+    "runtime": {
+      "path": "play/assets/backgrounds/white_void.webp",
+      "width": 1280,
+      "height": 720,
+      "sha256": "066e8cd8a1d6eff68dd7a42ef167bbe469e727d6493de4dd7f74c83fde013cf4"
+    }
+  },
+  {
+    "id": "rebuilt_village",
+    "source": {
+      "path": "assets/backgrounds/rebuilt_village.png",
+      "width": 1672,
+      "height": 941,
+      "sha256": "663eed9f6f4d7f23695c44b3b925681066a7102f67c72fab0013b7da54f4b7ac"
+    },
+    "runtime": {
+      "path": "play/assets/backgrounds/rebuilt_village.webp",
+      "width": 1280,
+      "height": 720,
+      "sha256": "45c8ac3bb96d19002ef33f4a79910daf267350c112d6d740a9e60fc07e9a8aa8"
+    }
+  },
+  {
+    "id": "home_inside",
+    "source": {
+      "path": "assets/backgrounds/home_inside.png",
+      "width": 1672,
+      "height": 941,
+      "sha256": "3fa3f22221f7a34256072b170e22790be34f24197761f1272dc649c48fc09bf6"
+    },
+    "runtime": {
+      "path": "play/assets/backgrounds/home_inside.webp",
+      "width": 1280,
+      "height": 720,
+      "sha256": "938c50293d776759da920443aa35fa271c0f025380e23044953f6681fa1decce"
+    }
+  },
+  {
+    "id": "camp_sunset",
+    "source": {
+      "path": "assets/backgrounds/camp_sunset.png",
+      "width": 1672,
+      "height": 941,
+      "sha256": "d36f93c715ef90bf07613fd25cedfbcce5a483c54ca0c1a621c4bdb5354c00f2"
+    },
+    "runtime": {
+      "path": "play/assets/backgrounds/camp_sunset.webp",
+      "width": 1280,
+      "height": 720,
+      "sha256": "3f3c7495b5cca755a97c27184aeec1d39728530d7edeba4cc0792dd4babc5912"
+    }
+  },
+  {
+    "id": "camp_dawn",
+    "source": {
+      "path": "assets/backgrounds/camp_dawn.png",
+      "width": 1672,
+      "height": 941,
+      "sha256": "7d84995661cbaba009ae1a9e4647cda942b8109f57c3941d82423e5a6e620d9e"
+    },
+    "runtime": {
+      "path": "play/assets/backgrounds/camp_dawn.webp",
+      "width": 1280,
+      "height": 720,
+      "sha256": "a32e2b1b528a66bd2aa7c8d1b7eff80df398b10ec152d3b5b95a61218cfe27fb"
+    }
+  },
+  {
+    "id": "boreas_memorial",
+    "source": {
+      "path": "assets/backgrounds/boreas_memorial.png",
+      "width": 1672,
+      "height": 941,
+      "sha256": "240abcf3d2951d2f79e3176f47fe59dd5076ad3d72ec1d93c7e0172670602bdf"
+    },
+    "runtime": {
+      "path": "play/assets/backgrounds/boreas_memorial.webp",
+      "width": 1280,
+      "height": 720,
+      "sha256": "81960b0e8610205f964f8e528b94bdbfd711110b84eef8a1d72b89d6fba60829"
+    }
+  }
+]

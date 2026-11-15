@@ -84,20 +84,26 @@ export const PORTRAIT_ART: Record<string, Partial<Record<Face, string>>> = {
 /** Conversation backgrounds by name (screenplay 背景：<名前>). 16:9, width 1280. */
 export const BG_ART: Record<string, string> = {
   battlefield_dusk: 'assets/backgrounds/battlefield_dusk.webp?v=e9cf8852',
+  boreas_memorial: 'assets/backgrounds/boreas_memorial.webp?v=6fd08962',
   buena_hill: 'assets/backgrounds/buena_hill.webp?v=b7f9fe36',
+  camp_dawn: 'assets/backgrounds/camp_dawn.webp?v=8dc4b9d6',
   camp_day: 'assets/backgrounds/camp_day.webp?v=d15f68c4',
   camp_night: 'assets/backgrounds/camp_night.webp?v=d11d434b',
+  camp_sunset: 'assets/backgrounds/camp_sunset.webp?v=c70e7763',
   forest: 'assets/backgrounds/forest.webp?v=4c009e28',
   forest_residue: 'assets/backgrounds/forest_residue.webp?v=18cb68f4',
   grassland_day: 'assets/backgrounds/grassland_day.webp?v=74e1292f',
+  home_inside: 'assets/backgrounds/home_inside.webp?v=946db3f3',
   labyrinth: 'assets/backgrounds/labyrinth.webp?v=00dc650c',
   noble_camp: 'assets/backgrounds/noble_camp.webp?v=662f6d78',
+  rebuilt_village: 'assets/backgrounds/rebuilt_village.webp?v=f9e5e21f',
   riverside: 'assets/backgrounds/riverside.webp?v=add5204f',
   ruined_city: 'assets/backgrounds/ruined_city.webp?v=496d281b',
   ruined_village: 'assets/backgrounds/ruined_village.webp?v=471efad6',
   sky_fortress: 'assets/backgrounds/sky_fortress.webp?v=74c7f16c',
   tent_inside: 'assets/backgrounds/tent_inside.webp?v=dac09c48',
   title: 'assets/backgrounds/title.webp?v=a3b013e8',
+  white_void: 'assets/backgrounds/white_void.webp?v=fe9b85da',
 };
 /** Event pictures by name (screenplay 一枚絵：<名前>). */
 export const EVENT_ART: Record<string, string> = {
