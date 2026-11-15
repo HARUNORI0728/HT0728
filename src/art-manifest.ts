@@ -74,11 +74,11 @@ export const PORTRAIT_ART: Record<string, Partial<Record<Face, string>>> = {
   paul: { normal: 'assets/portraits/paul_normal.webp?v=414c8ce1', smile: 'assets/portraits/paul_smile.webp?v=58b6a131', angry: 'assets/portraits/paul_angry.webp?v=bce20505', sad: 'assets/portraits/paul_sad.webp?v=79731ed2' },
   perugius: { normal: 'assets/portraits/perugius_normal.webp?v=7b1632dc', smile: 'assets/portraits/perugius_smile.webp?v=44a17278', angry: 'assets/portraits/perugius_angry.webp?v=0e602df7', sad: 'assets/portraits/perugius_sad.webp?v=b9fbf877' },
   pursena: { normal: 'assets/portraits/pursena_normal.webp?v=1706710e', smile: 'assets/portraits/pursena_smile.webp?v=db0508b0', angry: 'assets/portraits/pursena_angry.webp?v=a39649bd', sad: 'assets/portraits/pursena_sad.webp?v=e408ac4e' },
-  roxy: { normal: 'assets/portraits/roxy_normal.webp?v=65f235b0', smile: 'assets/portraits/roxy_smile.webp?v=8fe891ef', angry: 'assets/portraits/roxy_angry.webp?v=2b6b1128', sad: 'assets/portraits/roxy_sad.webp?v=d3740636' },
+  roxy: { normal: 'assets/portraits/roxy_normal.webp?v=65f235b0', smile: 'assets/portraits/roxy_smile.webp?v=8fe891ef', angry: 'assets/portraits/roxy_angry.webp?v=2b6b1128', sad: 'assets/portraits/roxy_sad.webp?v=d3740636', dere: 'assets/portraits/roxy_dere.webp?v=ffd40b40' },
   rudeus: { normal: 'assets/portraits/rudeus_normal.webp?v=717a45e2', smile: 'assets/portraits/rudeus_smile.webp?v=4df873fa', angry: 'assets/portraits/rudeus_angry.webp?v=15e5c916', sad: 'assets/portraits/rudeus_sad.webp?v=b0b00f20' },
   ruijerd: { normal: 'assets/portraits/ruijerd_normal.webp?v=842eabc6', smile: 'assets/portraits/ruijerd_smile.webp?v=665cc7e1', angry: 'assets/portraits/ruijerd_angry.webp?v=16b5ce4d', sad: 'assets/portraits/ruijerd_sad.webp?v=c87d17e5' },
   sara: { normal: 'assets/portraits/sara_normal.webp?v=45711161', smile: 'assets/portraits/sara_smile.webp?v=3fe355ba', angry: 'assets/portraits/sara_angry.webp?v=e2d466cf', sad: 'assets/portraits/sara_sad.webp?v=6a31c149' },
-  sylphiette: { normal: 'assets/portraits/sylphiette_normal.webp?v=1db0e298', smile: 'assets/portraits/sylphiette_smile.webp?v=4f364a9c', angry: 'assets/portraits/sylphiette_angry.webp?v=5e2bed36', sad: 'assets/portraits/sylphiette_sad.webp?v=352dee7b', dere: 'assets/portraits/sylphiette_dere.webp?v=ff3b7017' },
+  sylphiette: { normal: 'assets/portraits/sylphiette_normal.webp?v=1db0e298', smile: 'assets/portraits/sylphiette_smile.webp?v=4f364a9c', angry: 'assets/portraits/sylphiette_angry.webp?v=5e2bed36', sad: 'assets/portraits/sylphiette_sad.webp?v=352dee7b', dere: 'assets/portraits/sylphiette_dere.webp?v=cbe4bde2' },
   zanoba: { normal: 'assets/portraits/zanoba_normal.webp?v=f4ce24fc', smile: 'assets/portraits/zanoba_smile.webp?v=043f2313', angry: 'assets/portraits/zanoba_angry.webp?v=6d68f7cc', sad: 'assets/portraits/zanoba_sad.webp?v=f5d4e2f7' },
 };
 /** Conversation backgrounds by name (screenplay 背景：<名前>). 16:9, width 1280. */
@@ -111,5 +111,6 @@ export const EVENT_ART: Record<string, string> = {
 /** Painted map backgrounds by chapter (ch01–ch10), stretched over the whole map. Chapters without one are drawn by code. */
 export const MAP_ART: Record<string, string> = {
   ch01: 'assets/maps/ch01.webp?v=ba9c11db',
+  ch02: 'assets/maps/ch02.webp?v=c65d8d9a',
   ch08: 'assets/maps/ch08.webp?v=09a110a5',
 };
