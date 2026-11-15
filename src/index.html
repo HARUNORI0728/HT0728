@@ -90,6 +90,17 @@
   .wps { font-size: 13px; color: var(--dim); margin-top: 4px; }
   .benchUp { font-size: 13px; color: var(--heal); margin-top: 4px; font-family: var(--pixel); }
   .benchUp b { font-weight: normal; color: var(--gold); }
+  #campGold { margin: 0; font-family: var(--pixel); color: var(--dim); }
+  #campGold b { font-weight: normal; color: var(--gold); font-size: 18px; }
+  .inv { display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--line); padding-top: 6px; }
+  .invRow { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; min-height: 32px; font-size: 13px; }
+  .invRow .invName { font-family: var(--pixel); font-size: 14px; color: var(--ink); }
+  .invRow .invName small { color: var(--dim); font-size: 12px; }
+  .invRow > small { color: var(--dim); font-variant-numeric: tabular-nums; flex: 1 1 auto; }
+  .invRow .invBtn { min-height: 36px; padding: 2px 10px; font-size: 13px; margin-left: auto; }
+  .eqTag { font-style: normal; color: var(--night); background: var(--gold); border-radius: 3px; padding: 0 5px; margin-right: 6px; font-size: 12px; }
+  .invCap { font-size: 12px; color: var(--dim); font-family: var(--pixel); }
+  .pick.shopItem em { color: var(--gold); border-color: var(--gold); }
   .fc { display: grid; grid-template-columns: 1fr auto 1fr; gap: 2px 12px; text-align: center; font-variant-numeric: tabular-nums; font-family: var(--pixel); }
   .fc .k { color: var(--gold); font-size: 12px; align-self: center; }
   .fc .n { font-size: 16px; }
@@ -318,8 +329,10 @@
     <div class="campHead"><h2 id="campTitle">章間</h2><button class="sndBtn" type="button"></button></div>
     <p id="campMsg" role="status"></p>
     <p id="campWed" hidden></p>
+    <p id="campGold" hidden></p>
     <div id="campTabs" role="tablist">
       <button data-tab="units" role="tab">部隊</button>
+      <button data-tab="shop" role="tab">商人</button>
       <button data-tab="bonds" role="tab">支援</button>
       <button data-tab="tent" role="tab">天幕</button>
       <button data-tab="log" role="tab">記録</button>

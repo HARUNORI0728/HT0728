@@ -44,6 +44,20 @@ export const WEAPONS: Record<string, Weapon> = {
   wind: { name: 'ウィンド', type: 'anima', mt: 3, hit: 90, crit: 5, rng: [1, 2] },
   fire: { name: 'ファイアー', type: 'anima', mt: 5, hit: 85, crit: 0, rng: [1, 2] },
   lightning: { name: 'ライトニング', type: 'light', mt: 4, hit: 95, crit: 5, rng: [1, 2] },
+  // ---- 店の武器（systems.md §2「武器の格」）。鋼＝鉄の威力+3・命中-5、業物＝威力+6・命中±0、遠近両用＝近接-1・命中-15 ----
+  handAxe: { name: '手斧', type: 'axe', mt: 7, hit: 55, crit: 0, rng: [1, 2] },
+  steelLance: { name: '鋼の槍', type: 'lance', mt: 9, hit: 75, crit: 0, rng: [1, 1] },
+  steelAxe: { name: '鋼の斧', type: 'axe', mt: 11, hit: 65, crit: 0, rng: [1, 1] },
+  steelBow: { name: '鋼の弓', type: 'bow', mt: 9, hit: 80, crit: 0, rng: [2, 2] },
+  keenSword: { name: '業物の剣', type: 'sword', mt: 11, hit: 90, crit: 0, rng: [1, 1] },
+  keenLance: { name: '業物の槍', type: 'lance', mt: 12, hit: 80, crit: 0, rng: [1, 1] },
+  keenAxe: { name: '業物の斧', type: 'axe', mt: 14, hit: 70, crit: 0, rng: [1, 1] },
+  keenBow: { name: '業物の弓', type: 'bow', mt: 12, hit: 85, crit: 0, rng: [2, 2] },
+  // 教本で覚える魔術（名前は仮）。中級・上級は店の教本だけで手に入る。
+  iceBlade: { name: '氷刃', type: 'anima', mt: 7, hit: 80, crit: 0, rng: [1, 2] },
+  holyLight: { name: '聖光', type: 'light', mt: 7, hit: 85, crit: 5, rng: [1, 2] },
+  blaze: { name: '豪炎', type: 'anima', mt: 10, hit: 80, crit: 0, rng: [1, 2] },
+  radiance: { name: '天光', type: 'light', mt: 10, hit: 85, crit: 5, rng: [1, 2] },
   // ペルギウス専用の理魔術（systems.md §4。名前は仮）。「章ごと8回」の回数制は未実装（所持品・回数制の作業で入れる）。
   summon: { name: '召喚術', type: 'anima', mt: 9, hit: 85, crit: 0, rng: [1, 3] },
   // 獣族の牙爪：全員共通の仮想武器。威力は logic.ts fangMight() が Lv から足す。wps には入れない。

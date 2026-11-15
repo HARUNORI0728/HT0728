@@ -8,23 +8,27 @@
 //                              [--browser]                   // Playwright で本物の画面と持ち越しを照合する
 //                              [--root DIR]                  // DIR/src のルールとデータで測る（調整前との比較用）
 //                              [--trace 3,4]                 // その章の行動を1手ずつ表示
+//                              [--noshop]                    // キャンプで買い物をしない（店の影響を比べる）
 // 出力：表（標準出力）と JSON（--out。既定は OS の一時フォルダ ht0728-playthrough/）。名簿 *-camps.json は --camp に渡せる。
 import { build } from 'esbuild';
-import { writeFileSync, readFileSync, mkdirSync, unlinkSync } from 'node:fs';
+import { writeFileSync, readFileSync, mkdirSync, unlinkSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 
+// --root DIR：別の場所のソース（例：git archive で取り出した調整前の src）で測る。
+const ROOT_I = process.argv.indexOf('--root'), ROOT = ROOT_I > 0 ? process.argv[ROOT_I + 1] : process.cwd();
+// 店（src/shop.ts）は無い版もある（--root で古いソースを測るとき）。
+const HAS_SHOP = existsSync(join(ROOT, 'src', 'shop.ts'));
 const src = `
 import { CAST, CHARS, CLASSES, TERRAIN, WEAPONS, chapterDef, hasChapter, moveCost } from './src/data';
 import * as L from './src/logic';
-export { CAST, CHARS, CLASSES, TERRAIN, WEAPONS, chapterDef, hasChapter, moveCost, L };
+${HAS_SHOP ? "import * as SHOP from './src/shop';" : 'const SHOP = null;'}
+export { CAST, CHARS, CLASSES, TERRAIN, WEAPONS, chapterDef, hasChapter, moveCost, L, SHOP };
 `;
-// --root DIR：別の場所のソース（例：git archive で取り出した調整前の src）で測る。
-const ROOT_I = process.argv.indexOf('--root'), ROOT = ROOT_I > 0 ? process.argv[ROOT_I + 1] : process.cwd();
 const bundle = await build({ bundle: true, write: false, platform: 'node', format: 'esm', stdin: { contents: src, resolveDir: ROOT, loader: 'ts' }, logLevel: 'silent' });
 const BUNDLE = join(tmpdir(), `ht0728-playthrough-${process.pid}.mjs`);
 writeFileSync(BUNDLE, bundle.outputFiles[0].text);
-const { CLASSES, WEAPONS, chapterDef, hasChapter, moveCost, L } = await import('file://' + BUNDLE);
+const { CLASSES, WEAPONS, chapterDef, hasChapter, moveCost, L, SHOP } = await import('file://' + BUNDLE);
 unlinkSync(BUNDLE);
 
 // ---------- options ----------
@@ -35,6 +39,7 @@ const [C0, C1] = String(opt('chapters', '1-10')).split('-').map(Number);
 const FROM = +opt('from', 0), CAMP_FILE = opt('camp', null);
 const OUT = opt('out', join(tmpdir(), 'ht0728-playthrough', 'playthrough.json'));
 const QUIET = !!opt('quiet', false);
+const NOSHOP = !!opt('noshop', false) || !SHOP;
 const DIFF = opt('classic', false) ? 'classic' : 'casual';
 const TRACE = opt('trace', false) ? String(opt('trace')).split(',').map(Number) : null;
 
@@ -394,6 +399,28 @@ function sortiePicks(index, roster) {
   const score = u => L.effLv(u) + (OSHI.includes(u.id) ? 30 : 0) + (!fixedHeal && L.staves(u).length ? 20 : 0) + fresh(u);
   return [...ready].sort((a, b) => score(b) - score(a)).slice(0, plan.free).map(u => u.id);
 }
+// 単純な買い物：出撃しそうな順（推し・強い順）に、買える中でいちばん強い武器（威力が今の最強より上のもの）を1本ずつ買い、先頭（装備）にする。
+// 枠がいっぱいなら一番弱い武器と入れ替える。杖・傷薬は買わない。お金が続く限り繰り返す。
+function shopStep(roster, gold, cleared) {
+  const bought = [];
+  const best = u => Math.max(0, ...L.usable(u).map(w => L.weaponMight(u, WEAPONS[w])));
+  const order = roster.filter(u => !u.out).sort((a, b) => (L.effLv(b) + (OSHI.includes(b.id) ? 30 : 0)) - (L.effLv(a) + (OSHI.includes(a.id) ? 30 : 0)));
+  for (const u of order) {
+    const cand = SHOP.shopStock(cleared).filter(it => (it.kind === 'weapon' || it.kind === 'book') && it.price <= gold && WEAPONS[it.id].mt > best(u))
+      .filter(it => { const h = SHOP.canHold(u, it); return h.ok || h.full; })
+      .sort((a, b) => WEAPONS[b.id].mt - WEAPONS[a.id].mt || a.price - b.price)[0];
+    if (!cand) continue;
+    const h = SHOP.canHold(u, cand);
+    let rep;
+    if (!h.ok) rep = u.wps.reduce((m, w, i) => (WEAPONS[w].mt < WEAPONS[u.wps[m]].mt ? i : m), 0);
+    const left = SHOP.buy(gold, u, cand, rep);
+    if (left === null) continue;
+    gold = left;
+    SHOP.equipFirst(u, u.wps.indexOf(cand.id));
+    bought.push(`${u.id}:${cand.id}`);
+  }
+  return { gold, bought };
+}
 function campStep(roster, bonds, cleared) {
   // supports (talks skipped) and confessions (応える)
   const ids = new Set(roster.map(u => u.id));
@@ -418,7 +445,7 @@ function campStep(roster, bonds, cleared) {
 function campaign(seed, startIndex = C0 - 1, startCamp = null) {
   const rnd = rngOf(seed * 7919 + 13);
   const sim = Sim(rnd);
-  let roster = startCamp?.roster ?? null, bonds = startCamp?.bonds ?? null;
+  let roster = startCamp?.roster ?? null, bonds = startCamp?.bonds ?? null, gold = startCamp?.gold ?? 0;
   const chapters = [], camps = [];
   for (let i = startIndex; i <= C1 - 1 && hasChapter(i); i++) {
     const picks = roster ? sortiePicks(i, roster) : undefined;
@@ -457,7 +484,12 @@ function campaign(seed, startIndex = C0 - 1, startCamp = null) {
     } else { roster = L.rosterOf(r.s); bonds = r.s.bonds; if (L.benchExp) entry.bench = L.benchExp(r.s, roster, rnd).map(g => `${g.id}+${g.exp}:${g.fromLv}→${g.lv}`); }
     for (const u of roster) u.joined ??= i;
     entry.promoted = campStep(roster, bonds, i + 1);
-    camps.push({ next: i + 1, roster: clone(roster), bonds: clone(bonds) });
+    if (!NOSHOP) {
+      if (r.result === 'win') gold += SHOP.chapterReward(i + 1);
+      const sh = shopStep(roster, gold, i + 1);
+      gold = sh.gold; entry.bought = sh.bought; entry.gold = gold;
+    }
+    camps.push({ next: i + 1, roster: clone(roster), bonds: clone(bonds), gold });
   }
   return { seed, chapters, camps };
 }

@@ -26,6 +26,8 @@ export interface Unit {
   left?: boolean;
   /** ボスが倒されたときの扱い（EnemyDef.defeat）。 */
   defeat?: 'captured' | 'retreat';
+  /** 道具枠（systems.md §2。最大2枠・1枠3個まで）。いまは店の傷薬だけ。章ごとに配られる3個とは別。 */
+  items?: { id: string; n: number }[];
   /** 出撃した時点の累計経験値（totalXp）。章クリア時の控えの経験値の計算に使う。 */
   xp0?: number;
 }
@@ -44,6 +46,8 @@ export const DIFFICULTY_NAMES: Record<Difficulty, string> = { casual: 'カジュ
 export interface State {
   chapter: number; turn: number; phase: Team; units: Unit[]; map: string[]; bonds: Bonds;
   difficulty: Difficulty; bench: Unit[]; flags: Record<string, number | boolean>;
+  /** 出撃準備で選んだ（空き枠に出した）仲間。「章の最初から」で同じメンバーにする。 */
+  picks?: string[];
 }
 
 export const key = (x: number, y: number) => x + ',' + y;
@@ -54,6 +58,21 @@ export const alive = (s: State, team: Team) => s.units.filter(u => onMap(u) && u
 export const terrainAt = (s: State, x: number, y: number) => TERRAIN[s.map[y][x]];
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
+
+// ---------- 所持枠（systems.md §2） ----------
+/** 武器枠（武器・魔術・杖を合わせて）・道具枠・1枠に重ねられる数。 */
+export const WEAPON_SLOTS = 4, ITEM_SLOTS = 2, ITEM_STACK = 3;
+/** 章の初めに無料で配られる傷薬の数（従来どおり）。買った傷薬はこれに上乗せされる。 */
+export const FREE_POTIONS = 3;
+export const itemCount = (u: Unit, id: string) => (u.items ?? []).filter(i => i.id === id).reduce((a, i) => a + i.n, 0);
+/** 道具 `id` を `n` 個にそろえ直す（ITEM_STACK ごとに枠へ詰める。ほかの道具の枠はそのまま）。 */
+export function setItemCount(u: Unit, id: string, n: number) {
+  const rest = (u.items ?? []).filter(i => i.id !== id);
+  for (let left = Math.max(0, n); left > 0; left -= ITEM_STACK) rest.push({ id, n: Math.min(ITEM_STACK, left) });
+  u.items = rest;
+}
+/** 出撃時の傷薬の数：配られる3個 + 持っている傷薬。 */
+const potionsAtStart = (u: Unit) => FREE_POTIONS + itemCount(u, 'potion');
 
 /** A fresh player unit from CHARS (null when the character has no stats yet). */
 export function makeUnit(id: string): Unit | null {
@@ -123,7 +142,7 @@ export function newChapter(index: number, roster?: Unit[], bonds?: Bonds, diffic
   const units: Unit[] = [], used = new Set<string>();
   const deploy = (base: Unit, x: number, y: number, guest = false) => {
     used.add(base.id);
-    units.push({ ...base, uid: uid++, x, y, hp: base.st.hp, done: false, potions: 3, left: false, guest: guest || undefined, xp0: totalXp(base) });
+    units.push({ ...base, uid: uid++, x, y, hp: base.st.hp, done: false, potions: potionsAtStart(base), eq: 0, left: false, guest: guest || undefined, xp0: totalXp(base) });
   };
   for (const p of ch.players) {
     const kept = pool.find(r => r.id === p.id);
@@ -134,10 +153,11 @@ export function newChapter(index: number, roster?: Unit[], bonds?: Bonds, diffic
   }
   const plan = sortiePlan(index, pool);
   const order = (picks ?? plan.picks).map(id => pool.find(r => r.id === id)).filter((r): r is Unit => !!r && !used.has(r.id) && !r.out && !r.guest);
-  (ch.slots ?? []).slice(0, plan.free).forEach((sl, i) => { if (order[i]) deploy(order[i], sl.x, sl.y); });
+  const picked: string[] = [];
+  (ch.slots ?? []).slice(0, plan.free).forEach((sl, i) => { if (order[i]) { deploy(order[i], sl.x, sl.y); picked.push(order[i].id); } });
   const bench = pool.filter(r => !used.has(r.id) && !r.guest);
   for (const e of ch.enemies) units.push(makeEnemy(e, uid++));
-  return { chapter: index, turn: 1, phase: 'blue', units, map: [...ch.map], bonds: initBonds(bonds), difficulty, bench, flags: {} };
+  return { chapter: index, turn: 1, phase: 'blue', units, map: [...ch.map], bonds: initBonds(bonds), difficulty, bench, flags: {}, picks: picked };
 }
 
 /**
@@ -155,7 +175,7 @@ export function upgradeState(s: State): State {
   if (ch && !mapMatches(s.map, ch)) {
     const party = s.units.filter(u => u.team === 'blue' && !u.guest);
     const pool = [...party, ...s.bench].map(u => ({ ...clone(u), hp: u.st.hp, done: false, left: false }));
-    return newChapter(s.chapter, pool, s.bonds, s.difficulty, party.map(u => u.id));
+    return newChapter(s.chapter, pool, s.bonds, s.difficulty, s.picks ?? party.map(u => u.id));
   }
   return s;
 }
@@ -455,10 +475,15 @@ export function rosterOf(s: State): Unit[] {
   const deployed = s.units.filter(u => u.team === 'blue' && !u.guest).map(u => {
     const c = clone(u);
     if (u.hp <= 0 && s.difficulty === 'classic') c.out = true;
+    // 使った傷薬は配られた分から減らし、買った傷薬は残りの数までにする。
+    if (itemCount(c, 'potion')) setItemCount(c, 'potion', Math.min(itemCount(c, 'potion'), Math.max(0, u.potions)));
     return c;
   });
   return [...deployed, ...clone(s.bench ?? [])].map(u => ({ ...u, hp: u.st.hp, done: false, left: false, x: 0, y: 0 }));
 }
+
+/** The members picked for the free slots of this chapter (older states: everyone deployed who isn't a guest). */
+export const chapterPicks = (s: State): string[] => (Array.isArray(s.picks) ? [...s.picks] : s.units.filter(u => u.team === 'blue' && !u.guest).map(u => u.id));
 
 // ---------- bench experience (systems.md §5) ----------
 
@@ -526,7 +551,7 @@ export function addAlly(s: State, a: AllyDef): Unit | null {
   const fromBench = s.bench.findIndex(b => b.id === a.id && !b.out);
   const base = fromBench >= 0 ? s.bench.splice(fromBench, 1)[0] : makeUnit(a.id);
   if (!base || s.units.some(u => u.team === 'blue' && u.id === a.id && onMap(u))) return null;
-  const u: Unit = { ...clone(base), uid: Math.max(0, ...s.units.map(v => v.uid)) + 1, hp: base.st.hp, done: false, left: false, potions: 3, guest: a.guest || undefined, xp0: totalXp(base) };
+  const u: Unit = { ...clone(base), uid: Math.max(0, ...s.units.map(v => v.uid)) + 1, hp: base.st.hp, done: false, left: false, potions: potionsAtStart(base), eq: 0, guest: a.guest || undefined, xp0: totalXp(base) };
   [u.x, u.y] = freeTileNear(s, a.x, a.y, u);
   s.units.push(u);
   return u;
@@ -916,7 +941,7 @@ export function promote(u: Unit, to: string): PromoResult | null {
   u.hp = Math.min(u.st.hp, u.hp + (gains.hp ?? 0));
   u.cls = to; u.lv = 1; u.exp = 0;
   let gift: string | null = null;
-  if (c.gift && !u.wps.some(w => WEAPONS[w].type === WEAPONS[c.gift!].type)) { u.wps.push(c.gift); gift = c.gift; }
+  if (c.gift && u.wps.length < WEAPON_SLOTS && !u.wps.some(w => WEAPONS[w].type === WEAPONS[c.gift!].type)) { u.wps.push(c.gift); gift = c.gift; }
   if (!usable(u).includes(u.wps[u.eq])) u.eq = Math.max(0, u.wps.findIndex(w => usable(u).includes(w)));
   return { gains, gift, oldLv };
 }

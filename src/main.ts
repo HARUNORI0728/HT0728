@@ -3,7 +3,7 @@ import { CAST, CHAPTERS, CHARS, CLASSES, RANKS, RANK_PTS, STAT_KEYS, STAT_NAMES,
 import {
   DIFFICULTY_NAMES, POTION_HEAL, addExp, alive, bondStatus, canEscape, canSeize, dist, expGain, fight, forecast, gainBonds, goalText, heal, healAmount, healExp, healTargets,
   initBonds, inRange, key, loseCond, makeEnemy, makeUnit, maxRank, newChapter, nextNeed, outcome, pairKey, planEnemy, promote, promoOptions, rankName, rankUp, readyPairs,
-  benchExp, rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
+  WEAPON_SLOTS, benchExp, chapterPicks, rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
   bossId, dueTalks, fightTalks, onMap, talkKey,
   CANDIDATES, advanceStage, answerConfession, applyAiSwitch, applyTerrainChanges, ensureMarried, isConfession, markedTiles, marriedTo, seizeFlag, stageBgm, stageOf,
   type Bonds, type Difficulty, type SortiePlan, type State, type Unit,
@@ -11,6 +11,8 @@ import {
 import { confessionScene, endingSequence, placeholderTalk, sceneById, supportScene, wifeLines, wifeTalksAvailable } from './story';
 import { WIFE_TALKS } from './script/scenes';
 import { artLog, cueBgm, play, setOnCg } from './ui/dialogue';
+import { invBlock, renderShop } from './ui/shop-ui';
+import { chapterReward } from './shop';
 import { BG_ART } from './art-manifest';
 import { RES, T } from './render/common';
 import { FLOAT_LIFE, drawCursor, drawEdgeMarks, drawFloat, drawTile, drawVignette, type Float } from './render/fx';
@@ -106,6 +108,8 @@ const followLog: { name: string; x: number; y: number; before: boolean; after: b
 /** Between chapters: the party, its bonds, the difficulty, and which chapter comes next. ended = the story was finished. */
 interface Camp {
   next: number; cleared: number; roster: Unit[]; bonds: Bonds; difficulty: Difficulty; ended?: boolean;
+  /** 所持金（銀）。章クリアごとに chapterReward が入る。 */
+  gold: number;
   /** 直前の章で控えが得た経験値（部隊タブに表示）。 */
   bench?: { id: string; exp: number; fromLv: number; lv: number }[];
 }
@@ -113,16 +117,18 @@ interface Camp {
  * seen = conversations watched (for the camp's 記録): scene ids (序章・開幕・終幕・幕間) and support talks
  * (`sup:<pairKey>:<rank>`). Battle conversations that have played are State.flags `talk:<scene>`.
  */
-interface SaveData { v: 5; battle: State | null; camp: Camp | null; seen: string[]; married: string[] }
+interface SaveData { v: 6; battle: State | null; camp: Camp | null; seen: string[]; married: string[] }
+// v6: added Camp.gold (silver) and Unit.items (bought potions); weapons are capped at 4 (older saves: gold 0,
+// weapons as they were).
 // v5: added `married` (candidates Rudeus married = their bond with him at S; kept for readability and repaired from on
 // load), Camp.ended, Bond.deferred (a confession answered 「応えられない」), State.flags.stage (the current stage), and
 // seen keys for confessions / wife talks / event pictures (`wife.NN`, `cg:<name>`).
 // v4: added `seen`. v3: State gained difficulty / bench / flags, Camp gained difficulty, Unit gained out / guest / left.
-const SAVE = 'fittoa-save-v5', SAVE_V4 = 'fittoa-save-v4', SAVE_V3 = 'fittoa-save-v3', SAVE_V2 = 'fittoa-save-v2', SAVE_V1 = 'fittoa-save-v1';
+const SAVE = 'fittoa-save-v6', SAVE_V5 = 'fittoa-save-v5', SAVE_V4 = 'fittoa-save-v4', SAVE_V3 = 'fittoa-save-v3', SAVE_V2 = 'fittoa-save-v2', SAVE_V1 = 'fittoa-save-v1';
 let camp: Camp | null = null, inBattle = false, seen: string[] = [];
 function save() {
   const bonds = camp?.bonds ?? (inBattle ? S?.bonds : undefined);
-  const d: SaveData = { v: 5, battle: inBattle ? S : null, camp, seen, married: bonds ? marriedTo(bonds) : [] };
+  const d: SaveData = { v: 6, battle: inBattle ? S : null, camp, seen, married: bonds ? marriedTo(bonds) : [] };
   try { localStorage.setItem(SAVE, JSON.stringify(d)); } catch { /* storage unavailable */ }
 }
 /**
@@ -159,18 +165,18 @@ function normalize(d: any): SaveData | null {
   const c = d?.camp;
   let cp: Camp | null = null;
   if (c && Array.isArray(c.roster) && typeof c.next === 'number' && typeof c.cleared === 'number' && c.cleared >= 1) {
-    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), ...(c.ended === true ? { ended: true } : {}), ...(Array.isArray(c.bench) ? { bench: c.bench.filter((g: any) => g && typeof g.id === 'string' && typeof g.exp === 'number') } : {}) };
+    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), gold: Number.isFinite(c.gold) && c.gold > 0 ? Math.floor(c.gold) : 0, ...(c.ended === true ? { ended: true } : {}), ...(Array.isArray(c.bench) ? { bench: c.bench.filter((g: any) => g && typeof g.id === 'string' && typeof g.exp === 'number') } : {}) };
   }
   const married = Array.isArray(d?.married) ? d.married.filter((k: unknown) => typeof k === 'string' && CANDIDATES.includes(k as string)) : [];
   if (cp) ensureMarried(cp.bonds, married);
   if (battle) ensureMarried(battle.bonds, married);
   if (battle && cp && !b.difficulty) battle.difficulty = cp.difficulty;
   const sn = Array.isArray(d?.seen) ? d.seen.filter((k: unknown) => typeof k === 'string') : seenFrom(battle, cp);
-  return battle || cp ? { v: 5, battle, camp: cp, seen: sn, married: marriedTo(cp?.bonds ?? battle!.bonds) } : null;
+  return battle || cp ? { v: 6, battle, camp: cp, seen: sn, married: marriedTo(cp?.bonds ?? battle!.bonds) } : null;
 }
 function load(): SaveData | null {
   // Newest first; a corrupt or unreadable entry falls through to the next older one.
-  for (const k of [SAVE, SAVE_V4, SAVE_V3, SAVE_V2, SAVE_V1]) {
+  for (const k of [SAVE, SAVE_V5, SAVE_V4, SAVE_V3, SAVE_V2, SAVE_V1]) {
     try {
       const j = localStorage.getItem(k);
       if (!j) continue;
@@ -628,8 +634,8 @@ async function checkEnd(): Promise<boolean> {
     const ch = chapterDef(S.chapter);
     // The camp is saved first (with the closing scenes marked seen), so closing the page mid-scene loses nothing:
     // they can be watched again from the camp's 記録.
-    const roster = rosterOf(S), benchUp = benchExp(S, roster);
-    camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster, bonds: S.bonds, difficulty: S.difficulty, bench: benchUp.map(g => ({ id: g.id, exp: g.exp, fromLv: g.fromLv, lv: g.lv })), ...(camp?.ended ? { ended: true } : {}) };
+    const roster = rosterOf(S), benchUp = benchExp(S, roster), reward = chapterReward(S.chapter + 1);
+    camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster, bonds: S.bonds, difficulty: S.difficulty, gold: (camp?.gold ?? 0) + reward, bench: benchUp.map(g => ({ id: g.id, exp: g.exp, fromLv: g.fromLv, lv: g.lv })), ...(camp?.ended ? { ended: true } : {}) };
     markSeen(ch.outro); if (ch.interlude) markSeen(ch.interlude);
     inBattle = false; save();
     await playScene(ch.outro);
@@ -638,15 +644,15 @@ async function checkEnd(): Promise<boolean> {
     if (ch.ending) { await playEnding(true); return true; }
     const lost = camp.roster.filter(u => u.out && !S.bench.some(b => b.id === u.id)).map(u => u.name);
     const benchMsg = camp.bench?.length ? `　控えの${camp.bench.length}人も経験値 +${camp.bench[0].exp}${camp.bench.some(g => g.lv > g.fromLv) ? `（${camp.bench.filter(g => g.lv > g.fromLv).map(g => `${castName(g.id)} Lv${g.lv}`).join('、')}）` : ''}。` : '';
-    showCamp(chapterDef(camp.cleared - 1).title.replace(/\s+/g, '　') + '　クリア！' + (lost.length ? `　${lost.join('、')}は戦線離脱した。` : '') + benchMsg);
+    showCamp(chapterDef(camp.cleared - 1).title.replace(/\s+/g, '　') + `　クリア！　報酬 ${reward}銀。` + (lost.length ? `　${lost.join('、')}は戦線離脱した。` : '') + benchMsg);
   } else {
     await outcomeBanner(false);
     showDefeat();
   }
   return true;
 }
-/** The state at the start of the current chapter (from the camp, or a new game for chapter 1). */
-const chapterStart = () => newChapter(S.chapter, camp?.next === S.chapter ? camp.roster : undefined, camp?.next === S.chapter ? camp.bonds : undefined, S.difficulty);
+/** The state at the start of the current chapter (from the camp, or a new game for chapter 1), with the same members picked on the sortie screen. */
+const chapterStart = () => newChapter(S.chapter, camp?.next === S.chapter ? camp.roster : undefined, camp?.next === S.chapter ? camp.bonds : undefined, S.difficulty, camp?.next === S.chapter ? chapterPicks(S) : undefined);
 function showDefeat() {
   const classic = S.difficulty === 'classic';
   if (classic) { const st = S; S = chapterStart(); save(); S = st; } // クラシック：中断データも章の最初に戻す
@@ -811,7 +817,7 @@ function credits(): Promise<void> {
 }
 
 // ---------- between chapters ----------
-type CampTab = 'units' | 'bonds' | 'tent' | 'log';
+type CampTab = 'units' | 'shop' | 'bonds' | 'tent' | 'log';
 let campTab: CampTab = 'units';
 const esc = (t: string) => t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]!));
 const MTYPE_NAMES = { foot: '歩兵', armor: '重装', horse: '騎馬', fly: '飛行' } as const;
@@ -845,8 +851,11 @@ function renderCamp() {
   const tent = document.querySelector<HTMLButtonElement>('#campTabs button[data-tab="tent"]')!;
   tent.classList.toggle('unread', unreadWife().length > 0);
   renderWed();
+  $('campGold').hidden = false;
+  $('campGold').innerHTML = `所持金 <b>${camp!.gold}</b> 銀`;
   $('campBody').innerHTML = '';
-  if (campTab === 'units') renderUnits(); else if (campTab === 'bonds') renderBonds(); else if (campTab === 'tent') renderTent(); else renderLog();
+  if (campTab === 'shop') renderShop({ camp: camp!, body: $('campBody'), save, msg: campMsg, refresh: renderCamp, face: (u, cls) => faceHtml(u, cls) });
+  else if (campTab === 'units') renderUnits(); else if (campTab === 'bonds') renderBonds(); else if (campTab === 'tent') renderTent(); else renderLog();
 }
 function el(tag: string, cls: string, html = '') { const e = document.createElement(tag); if (cls) e.className = cls; e.innerHTML = html; return e; }
 function btn(label: string, fn: () => void, cls = '', disabled = false) {
@@ -860,9 +869,8 @@ function benchNote(u: Unit) {
 function unitCard(u: Unit) {
   const c = CLASSES[u.cls];
   const st = STAT_KEYS.map(k => `<div><span>${STAT_NAMES[k]}</span>${u.st[k]}</div>`).join('');
-  const wps = wpsText(u, false);
   const card = el('div', 'card' + (u.out ? ' out' : ''), `<div class="uhead"><b class="blue">${esc(u.name)}</b><span>${c.name}${tierOf(u.cls) === 2 ? '（上級職）' : ''}　Lv ${u.lv}　EXP ${u.exp}　移動 ${c.mov}</span>${u.out ? '<em class="outTag">戦線離脱（療養中）・出撃不可</em>' : ''}</div>
-    <div class="stats">${st}</div><div class="wps">武器：${wps}　／　使える武器種：${c.wtypes.map(t => WTYPE_NAMES[t]).join('・')}</div>${benchNote(u)}`);
+    <div class="stats">${st}</div><div class="wps">使える武器種：${c.wtypes.map(t => WTYPE_NAMES[t]).join('・')}</div>${benchNote(u)}`);
   const head = card.querySelector('.uhead')!, face = faceHtml(u, 'card' + (u.out ? ' out' : ''));
   if (face) head.insertAdjacentHTML('afterbegin', face);
   else { const icon = document.createElement('canvas'); icon.width = icon.height = 112; icon.className = 'uicon' + (u.out ? ' out' : ''); drawIcon(icon, u); head.prepend(icon); }
@@ -872,6 +880,7 @@ function renderUnits() {
   const body = $('campBody');
   for (const u of camp!.roster) {
     const card = unitCard(u), opts = promoOptions(u);
+    card.appendChild(invBlock(u, () => { save(); renderCamp(); }));
     if (opts.length) {
       const ok = opts.some(o => o.ok);
       card.appendChild(btn(ok ? 'クラスチェンジ' : 'クラスチェンジ（Lv10から）', () => renderPromo(u), ok ? 'primary' : '', !ok));
@@ -886,7 +895,7 @@ function renderPromo(u: Unit) {
     const c = CLASSES[o.to];
     const newTypes = c.wtypes.filter(t => !CLASSES[u.cls].wtypes.includes(t));
     const card = el('div', 'card', `<div class="uhead"><b>${c.name}</b><span>移動 ${c.mov}（${MTYPE_NAMES[c.mtype]}）　武器種 ${c.wtypes.map(t => WTYPE_NAMES[t]).join('・')}</span></div>
-      <p class="pdesc">${c.desc ?? ''}</p><p class="pgain">${gainText(c.bonus ?? {})}${c.crit ? `　必殺+${c.crit}` : ''}${newTypes.length ? `　新たに ${newTypes.map(t => WTYPE_NAMES[t]).join('・')} を使える` : ''}${c.gift && !u.wps.some(w => WEAPONS[w].type === WEAPONS[c.gift!].type) ? `（${WEAPONS[c.gift].name}を入手）` : ''}</p>`);
+      <p class="pdesc">${c.desc ?? ''}</p><p class="pgain">${gainText(c.bonus ?? {})}${c.crit ? `　必殺+${c.crit}` : ''}${newTypes.length ? `　新たに ${newTypes.map(t => WTYPE_NAMES[t]).join('・')} を使える` : ''}${c.gift && !u.wps.some(w => WEAPONS[w].type === WEAPONS[c.gift!].type) ? (u.wps.length < WEAPON_SLOTS ? `（${WEAPONS[c.gift].name}を入手）` : `（武器枠がいっぱいのため${WEAPONS[c.gift].name}はもらえない）`) : ''}</p>`);
     card.appendChild(btn(o.ok ? `${c.name}にする` : '条件を満たしていない', () => confirmPromo(u, o.to), o.ok ? 'primary' : '', !o.ok));
     body.appendChild(card);
   }
@@ -1009,7 +1018,7 @@ const shortStats = (u: Unit) => (['hp', 'str', 'mag', 'spd', 'def'] as const).ma
 function renderPrep() {
   const p = prep!, c = camp!, plan = p.plan;
   const fixedN = plan.fixed.filter(f => !f.guest).length, n = fixedN + p.picks.length;
-  $('campTabs').hidden = true; $('campBtns').hidden = true;
+  $('campTabs').hidden = true; $('campBtns').hidden = true; $('campGold').hidden = true;
   $('campTitle').textContent = `出撃準備　${chapterDef(p.index).title.replace(/\s+/g, '　')}`;
   const body = $('campBody'); body.innerHTML = '';
   body.appendChild(el('p', 'hint', `出撃できるのは${plan.cap}人まで。必ず出撃する仲間は固定で、残り${plan.free}枠を名簿から選ぶ。`));
@@ -1134,7 +1143,7 @@ function devStart(index: number, difficulty: Difficulty = 'casual') {
   if (!hasChapter(index)) return false;
   const roster = camp?.roster?.length ? camp.roster : devRoster();
   const bonds = initBonds(camp?.bonds);
-  camp = { next: index, cleared: Math.max(1, index), roster, bonds, difficulty, ...(camp?.ended ? { ended: true } : {}) };
+  camp = { next: index, cleared: Math.max(1, index), roster, bonds, difficulty, gold: camp?.gold ?? 0, ...(camp?.ended ? { ended: true } : {}) };
   void start(newChapter(index, roster, bonds, difficulty), true);
   return true;
 }
@@ -1224,7 +1233,7 @@ requestAnimationFrame(render);
   devChapter: (index: number) => devStart(index),
   startChapter: (n: number) => devStart(n - 1),
   /** Development: open the camp with the dev roster (after a fresh page), optionally as if `cleared` chapters were done. */
-  devCamp(cleared = 2) { camp = { next: cleared, cleared, roster: devRoster(), bonds: initBonds(), difficulty: 'casual' }; showCamp(); return camp; },
+  devCamp(cleared = 2, gold = 0) { camp = { next: cleared, cleared, roster: devRoster(), bonds: initBonds(), difficulty: 'casual', gold }; showCamp(); return camp; },
   /** Development: set a pair's bond (on the camp, and on the battle state when in a chapter). */
   setBond(a: string, b: string, pts: number, rank: number) {
     for (const bonds of [camp?.bonds, inBattle ? S?.bonds : undefined]) if (bonds) bonds[pairKey(a, b)] = { pts, rank };
