@@ -1,0 +1,38 @@
+[
+  {
+    "file": "sylphiette_normal.png",
+    "size": [
+      1086,
+      1448
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      255
+    ],
+    "bounds": [
+      0,
+      55,
+      1070,
+      1448
+    ]
+  },
+  {
+    "file": "sylphiette_dere.png",
+    "size": [
+      1086,
+      1448
+    ],
+    "mode": "RGBA",
+    "alpha_range": [
+      0,
+      255
+    ],
+    "bounds": [
+      0,
+      15,
+      1085,
+      1448
+    ]
+  }
+]
