@@ -1,0 +1,26 @@
+[
+  {
+    "file": "assets\\portraits\\sylphiette_dere.png",
+    "size": [
+      1086,
+      1448
+    ],
+    "mode": "RGBA",
+    "alpha": [
+      0,
+      255
+    ]
+  },
+  {
+    "file": "assets\\portraits\\roxy_dere.png",
+    "size": [
+      1086,
+      1448
+    ],
+    "mode": "RGBA",
+    "alpha": [
+      0,
+      255
+    ]
+  }
+]
