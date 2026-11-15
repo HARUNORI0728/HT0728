@@ -27,8 +27,11 @@
 | Q-07 | **ボス曲の鳴らし方の見直し**（合意済みの別件）：倒さなくてよいボスの章で鳴り続けないよう、ボスが絡む戦闘の間だけボス曲にする、または敵軍フェイズでは map_enemy に戻す | `src/audio/engine.ts`、`src/main.ts` の曲の切替 | 自動テストつきで実装 | 空き |
 | Q-08 | **宝箱と村の訪問**（plot.md §5 の M13）と、迷宮の石床・岩壁の専用の見た目（M9）。完成したら7・8章への反映方法を掲示板に書く | `src/logic.ts`、`src/main.ts`、`src/render/terrain*.ts` | テスト用の章で動作確認 | 迷宮の見た目は完了（Claude）。宝箱と村は空き |
 | Q-09 | **台本の2巡目の確認**：3〜10章と支援会話について、原作設定との食い違い、章をまたぐ伏線の回収漏れ、呼び方や一人称のぶれを確認し、指摘を掲示板に書く（文面の修正は Claude） | なし（指摘のみ） | 指摘の一覧 | 空き |
-| Q-10 | **スキル、店と所持品**（systems.md §2〜4）。無くても最後まで遊べる追加要素。着手前に、どこまで作るかを掲示板に書く | `src/logic.ts`、`src/main.ts`、`src/data.ts` | — | 空き・優先度低 |
-| Q-11 | **描いた地図**。下絵 `design/map-guides/chNN-guide.png` を入力に、配置を変えずに描き直す。発注文は `design/map-paint-prompts.md`。まず第8章と第1章の2枚を試作し、ユーザーの確認後に残り8章 | `assets/maps/` | grid 画像と見比べてずれが無いこと | 作業中（試作2枚共有・未採用。画風確認、寸法とゲーム内境界確認が残件） |
+| Q-10 | **スキル、店と所持品**（systems.md §2〜4）。無くても最後まで遊べる追加要素。着手前に、どこまで作るかを掲示板に書く | `src/logic.ts`、`src/main.ts`、`src/data.ts` | — | Claude が作業中（スキル。店と所持品は完了） |
+| Q-11 | **描いた地図**。下絵 `design/map-guides/chNN-guide.png` を入力に、配置を変えずに描き直す。発注文は `design/map-paint-prompts.md`。まず第8章と第1章の2枚を試作し、ユーザーの確認後に残り8章 | `assets/maps/` | grid 画像と見比べてずれが無いこと | 試作2枚は合格。**量産は Q-12 の画風決定まで保留** |
+| Q-12 | **地図の画風の候補出し（最優先）**。第1章の地図を画風違いで3〜4種類。詳細は BOARD 2026-11-15 15:10 UTC。採否は Claude が決める | `art-samples/q12-ch01-style-*.png` | 格子を重ねて境目が読めること | 空き・最優先 |
+| Q-13 | **ヒロイン6人のデレ顔の立ち絵**（sylphiette / roxy / eris / sara / linia / pursena の `_dere`）。詳細は BOARD 15:10 | `assets/portraits/` | 既存の立ち絵と構図・大きさが同じ | 空き |
+| Q-14 | **脇役の立ち絵**（hanna、toto、belt、adventurer、bandit、soldier、surveyor、envoy、beastkid、refugee_m、refugee_f）。詳細は BOARD 15:10 | `assets/portraits/` | 仲間の立ち絵と画風が同じ | 空き |
 
 ## 決まり（再掲）
 
