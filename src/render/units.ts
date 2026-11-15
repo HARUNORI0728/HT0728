@@ -303,6 +303,8 @@ export function setUnitImage(key: string, img: HTMLImageElement) { unitImages.se
 export function imageKey(u: UnitLike) {
   if (u.team !== 'red' || !CLASSES[u.id]) return u.id;
   if (u.boss) { const id = idForName(u.name); if (id && UNIT_ART[id]) return id; }
+  const monster: Record<string, string> = { wolf: 'enemy_monster_wolf', golem: 'enemy_monster_golem', bird: 'enemy_monster_bird', shade: 'enemy_monster_wraith', crystal: 'enemy_residue_crystal', bear: 'residue_bear' };
+  if (monster[u.cls]) return monster[u.cls];
   const role: Record<string, string> = { soldier: 'soldier', fighter: 'fighter', archer: 'archer', knight: 'knight', myrmidon: 'sword', cavalier: 'cavalier', mage: 'mage', healer: 'healer', mercenary: 'mercenary' };
   if (u.cls === 'mercenary' && !u.name?.startsWith('私兵の')) return 'enemy_mercenary';
   return `enemy_${u.name?.startsWith('私兵の') ? 'guard' : 'bandit'}_${role[u.cls] ?? u.cls}`;

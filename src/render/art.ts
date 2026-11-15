@@ -36,6 +36,8 @@ export function loadUnitArt() {
 export { idForName };
 /** Character id behind a map unit: cast members by id, named enemies (bosses) by name. */
 export function idForUnit(u: UnitLike): string | null {
+  // The enemy's face remains hidden until the screenplay reveals his identity after the final battle.
+  if (u.team === 'red' && u.boss && u.name === '使徒') return null;
   if (u.team !== 'red' && (CHARS[u.id] || CAST[u.id])) return u.id;
   return u.boss || u.team !== 'red' ? idForName(u.name) ?? (PORTRAIT_ART[u.id] ? u.id : null) : null;
 }

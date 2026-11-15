@@ -1,0 +1,93 @@
+[
+  {
+    "name": "enemy_monster_bird",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "sha256": "b871d8bbb245d9335b09ae9b326c50b843a26f0ec8a6768f7e0a38bd9448faa2"
+  },
+  {
+    "name": "enemy_monster_wraith",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "sha256": "740570ef86537cf0169898fee4fc7247878b305bfda0a1518e864c3cbd23d50b"
+  },
+  {
+    "name": "enemy_residue_crystal",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "sha256": "08ba66db4a03fbda55247380b93d6d91c6ca5eb8a4393fe6731c581148f1909d"
+  },
+  {
+    "name": "enemy_guard_knight",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "sha256": "c7e4e854f1d43427eb19488423c9fe50818c5ca5f761193b4a7604b794f93801"
+  },
+  {
+    "name": "residue_bear",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "sha256": "c381417e2def6783860e9bc60cf4ad655531cd2aef45a4fa70ea3193604e7a56"
+  },
+  {
+    "name": "forest_lord",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "sha256": "3e6a2761945fc5ee82c1b607824c92aad1d22f32a7e79f838c6fc1ba62a18b21"
+  },
+  {
+    "name": "barak",
+    "size": [
+      1254,
+      1254
+    ],
+    "mode": "RGBA",
+    "alpha_extrema": [
+      0,
+      255
+    ],
+    "sha256": "ddf95da5cd5ba064f4e01fa86de169c5b949103f7aa17368cbe8bc926329ce84"
+  }
+]

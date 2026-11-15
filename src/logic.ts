@@ -255,7 +255,7 @@ function side(s: State, att: Unit, w: Weapon, def: Unit, dw: Weapon | null): Sid
   const hit = Math.round(w.hit + att.st.skl * 2 + att.st.lck / 2 + tri * 15 + sa.hit - (def.st.spd * 2 + def.st.lck + (flying ? 0 : t.avo) + sd.avo));
   const crit = Math.round(w.crit + att.st.skl / 2 + (CLASSES[att.cls].crit ?? 0) + sa.crit - def.st.lck);
   const clamp = (v: number) => Math.max(0, Math.min(100, v));
-  return { dmg, hit: clamp(hit), crit: clamp(crit), double: att.st.spd - def.st.spd >= 4, w, sup: sa };
+  return { dmg, hit: clamp(hit), crit: w.noCrit ? 0 : clamp(crit), double: att.st.spd - def.st.spd >= 4, w, sup: sa };
 }
 
 /** The weapon the defender counters with: equipped if it reaches, else the first that does. Staves never counter. */
@@ -580,7 +580,7 @@ export function outcome(s: State): 'win' | 'lose' | 'stage' | null {
     case 'escape': won = blue.some(u => u.left) && !alive(s, 'blue').length; break;
     // Holding out also ends early once every enemy is down and no reinforcement is still due.
     case 'defend': case 'survive':
-      won = (s.turn > w.turns && s.phase === 'blue') || (!foesToBeat(s).length && !reinforcementsPending(s)) || (!!w.orBoss && s.units.some(u => u.team === 'red' && u.boss) && bossesDown(s));
+      won = (s.turn > w.turns && s.phase === 'blue') || (!w.strictTurns && ((!foesToBeat(s).length && !reinforcementsPending(s)) || (!!w.orBoss && s.units.some(u => u.team === 'red' && u.boss) && bossesDown(s))));
       break;
   }
   if (!won) return null;
@@ -676,8 +676,9 @@ const nameOf = (id: string) => CAST[id]?.name ?? CHARS[id]?.name ?? id;
 export function goalText(ch: Chapter, stage = 0): string {
   const w = stageWin(ch, stage);
   const orBoss = (w.type === 'survive' || w.type === 'defend') && w.orBoss ? '・ボスの撃破' : '';
+  const early = (w.type === 'survive' || w.type === 'defend') && w.strictTurns ? '' : `（敵の全滅${orBoss}でも勝利）`;
   const win = w.type === 'rout' ? '敵の全滅' : w.type === 'boss' ? 'ボスの撃破' : w.type === 'seize' ? (w.by && w.by !== 'rudeus' ? `${nameOf(w.by)}が` : '') + '指定地点（金の枠）の制圧'
-    : w.type === 'escape' ? '全員が離脱地点（金の枠）から離脱' : w.type === 'defend' ? `${w.turns}ターン守り切る（敵の全滅${orBoss}でも勝利）` : `${w.turns}ターン耐える（敵の全滅${orBoss}でも勝利）`;
+    : w.type === 'escape' ? '全員が離脱地点（金の枠）から離脱' : w.type === 'defend' ? `${w.turns}ターン守り切る${early}` : `${w.turns}ターン耐える${early}`;
   const lc = loseCond(ch, stage);
   const guests = [...ch.players.filter(p => p.guest).map(p => p.id), ...(ch.stages ?? []).slice(0, stage).flatMap(st => (st.allies ?? []).filter(a => a.guest).map(a => a.id))];
   const who = [...lc.units, ...guests.filter(id => !lc.units.includes(id))]; // guests always count
