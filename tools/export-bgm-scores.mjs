@@ -5,6 +5,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 const out = resolve(process.argv[2] ?? '../music-runtime/scores');
+// Forms are [total seconds, sections, optional musical seconds before release].
 // Sections are [source start bar, source end bar, expression]. Cadences are kept intact.
 const forms = {
   title: [120, [[0,26,.83],[2,18,.90],[10,26,1]]],
@@ -15,11 +16,22 @@ const forms = {
   crisis: [120, [[0,16,.82],[0,16,.9],[0,16,.98],[0,16,1],[8,16,.92]]],
   sad: [120, [[0,16,.84],[0,16,.96]]],
   daily: [90, [[0,16,.94],[0,16,1],[8,16,.90]]],
-  victory: [8, [[0,3,1]]],
-  defeat: [8, [[0,3,.86]]],
+  victory: [8, [[0,3,1]], 6],
+  defeat: [8, [[0,3,.86]], 6.4],
   family: [120, [[0,8,.80],[8,16,.90],[0,8,.92],[8,16,1],[8,16,.82]]],
   resolve: [120, [[0,8,.74],[0,8,.82],[8,16,.89],[8,16,.95],[16,23,1],[23,24,.72]]],
   mystery: [90, [[0,8,.78],[0,8,.86],[8,16,.94]]],
+  prologue: [120, [[0,8,.77],[0,8,.86],[0,16,.93]]],
+  comedy: [90, [[0,8,.90],[8,16,.92],[0,16,1],[8,16,.86]]],
+  map_resolve: [150, [[0,24,.91],[8,24,.96],[0,24,1],[8,24,.95]]],
+  romance: [120, [[0,16,.80],[0,16,.89],[0,16,.98]]],
+  orsted: [120, [[0,8,.82],[0,8,.92],[0,8,1]]],
+  final_boss: [150, [[0,24,.88],[0,24,.94],[0,24,.99],[8,24,1]]],
+  ending: [150, [[0,26,.82],[10,18,.93],[0,26,1]]],
+  map_final: [150, [[0,24,.91],[8,24,.96],[0,24,1],[8,24,.96]]],
+  levelup: [3, [[0,1,1]], 1.6],
+  classchange: [6, [[0,2,1]], 4.8],
+  support: [4, [[0,2,1]], 3],
 };
 const requested = process.argv.slice(3);
 const names = requested.length ? [...new Set(requested)] : Object.keys(forms);
@@ -34,10 +46,9 @@ for (const part of ['songs','theory']) {
 const { SONGS } = await import(pathToFileURL(join(out, 'songs.mjs')));
 const { compile } = await import(pathToFileURL(join(out, 'theory.mjs')));
 for (const name of names) {
-  const [duration, sections] = forms[name];
+  const [duration, sections, musicDuration = duration] = forms[name];
   const def = SONGS[name], score = compile(def), loop = def.loop !== false;
   const bars = sections.reduce((n, s) => n + s[1] - s[0], 0);
-  const musicDuration = loop ? duration : name === 'victory' ? 6 : 6.4;
   const unitSec = musicDuration / (bars * def.bar);
   const tracks = def.tracks;
   const octaveShift = new Map();
