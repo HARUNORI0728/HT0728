@@ -1,0 +1,36 @@
+import assert from 'node:assert/strict';
+import { build } from 'esbuild';
+const result = await build({ stdin: { contents: "export * from './src/logic'; export { DEV_CHAPTERS } from './src/chapters'; export { idForUnit } from './src/render/art';", resolveDir: process.cwd(), loader: 'ts' }, bundle: true, format: 'esm', write: false });
+const { newChapter, outcome, goalText, DEV_CHAPTERS, idForUnit, makeUnit, forecast } = await import('data:text/javascript;base64,' + Buffer.from(result.outputFiles[0].text).toString('base64'));
+const ch = DEV_CHAPTERS[90];
+ch.reinforce = [];
+for (const type of ['survive', 'defend']) {
+  ch.win = { type, turns: 6, strictTurns: true };
+  const s = newChapter(90);
+  for (const u of s.units) if (u.team === 'red') u.hp = 0;
+  assert.equal(outcome(s), null, 'rout must not skip strict holdout');
+  assert(!goalText(ch).includes('敵の全滅'));
+  s.turn = 6; s.phase = 'red'; assert.equal(outcome(s), null);
+  s.phase = 'blue'; assert.equal(outcome(s), null);
+  s.turn = 7; assert.equal(outcome(s), 'stage');
+  s.units.find(u => u.id === 'rudeus').hp = 0;
+  assert.equal(outcome(s), 'lose', 'loss still takes priority');
+  ch.win = { type, turns: 6 };
+  const legacy = newChapter(90);
+  for (const u of legacy.units) if (u.team === 'red') u.hp = 0;
+  assert.equal(outcome(legacy), 'stage', 'existing early rout behavior stays intact');
+  assert(goalText(ch).includes('敵の全滅'));
+}
+console.log('PASS: strict survive/defend timing, loss priority, goal text, legacy early clear');
+assert.equal(idForUnit({ id: 'mage', name: '使徒', team: 'red', boss: true }), null);
+assert.equal(idForUnit({ id: 'rudeus', name: 'ルーデウス', team: 'blue' }), 'rudeus');
+assert.equal(idForUnit({ id: 'mage', name: 'オルステッド', team: 'red', boss: true }), 'orsted');
+console.log('PASS: masked apostle portrait hidden without hiding other portraits');
+const finalState = newChapter(9);
+const dragon = finalState.units.find(u => u.team === 'red' && u.unkillable);
+const novice = makeUnit('rudeus'); novice.x=5; novice.y=12;
+finalState.units = [novice, dragon];
+const strike = forecast(finalState, dragon, 'dragonPalm', novice).a;
+assert.equal(strike.crit, 0);
+assert(strike.dmg < novice.st.hp, 'One palm strike must not kill a full-health starting Rudeus');
+console.log('PASS: Orsted palm has no critical one-hit kill against starting Rudeus');

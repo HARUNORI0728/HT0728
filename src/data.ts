@@ -11,7 +11,7 @@ export type Team = 'blue' | 'red';
  * heal = 杖の回復値（staff のみ）。eff = 特効（systems.md §2）：相手がその種類なら威力2倍。
  * 弓は書かなくても fly 特効、光魔術は monster 特効（logic.ts effective()）。
  */
-export interface Weapon { name: string; type: WType; mt: number; hit: number; crit: number; rng: [number, number]; heal?: number; eff?: ('fly' | 'armor' | 'horse' | 'monster')[] }
+export interface Weapon { name: string; type: WType; mt: number; hit: number; crit: number; rng: [number, number]; heal?: number; noCrit?: boolean; eff?: ('fly' | 'armor' | 'horse' | 'monster')[] }
 /**
  * tier 1 = base class, tier 2 = promoted. wtypes = weapon types the class may use.
  * bonus = stats added on promotion into this class; crit = class crit bonus; gift = weapon granted on promotion
@@ -60,7 +60,7 @@ export const WEAPONS: Record<string, Weapon> = {
   // 残滓の影の理魔術（M4）。
   shadeBolt: { name: '残滓の礫', type: 'anima', mt: 5, hit: 85, crit: 0, rng: [1, 2] },
   // オルステッド（10章。前半は敵、後半はゲスト）の仮の武器。数値は仮（ルーデウスを一撃で倒さない程度は章データ側で能力値を調整）。
-  dragonPalm: { name: '龍神の掌打', type: 'fang', mt: 10, hit: 95, crit: 0, rng: [1, 1] },
+  dragonPalm: { name: '龍神の掌打', type: 'fang', mt: 10, hit: 95, crit: 0, noCrit: true, rng: [1, 1] },
 };
 export const MAGIC: WType[] = ['anima', 'light', 'dark'];
 /** key beats value */
@@ -298,13 +298,13 @@ export type Tile = [number, number];
  * 勝利条件（systems.md §7）。rout = 全滅、boss = boss フラグの敵をすべて撃破（撤退も撃破に数える。撃破不可は除く）、
  * seize = ルーデウス（by を指定すればそのキャラ）が tiles で「制圧」、escape = 生存者全員が tiles から「離脱」、
  * defend = turns ターン守り切る（敵が lose.tile / lose.tiles に乗ると敗北）、survive = turns ターン目の敵軍フェイズを終えたら勝利。
- * defend / survive は、敵の全滅（撃破不可を除く。予定の増援が残っていないとき）でも勝利。
+ * defend / survive は、敵の全滅（撃破不可を除く。予定の増援が残っていないとき）でも勝利。strictTurns は早期勝利を無効にする。
  * orBoss = defend / survive で、boss の敵がすべて倒れた（撤退を含む）時点でも勝利（2章のドルガン）。
  */
 export type WinCond =
   | { type: 'rout' } | { type: 'boss' }
   | { type: 'seize'; tiles: Tile[]; by?: string } | { type: 'escape'; tiles: Tile[] }
-  | { type: 'defend'; turns: number; orBoss?: true } | { type: 'survive'; turns: number; orBoss?: true };
+  | { type: 'defend'; turns: number; orBoss?: true; strictTurns?: boolean } | { type: 'survive'; turns: number; orBoss?: true; strictTurns?: boolean };
 /**
  * 敗北条件：units の誰かが倒れる（ルーデウスとゲストは常に含む）、または敵が tile / tiles（防衛対象のマス）に乗る。
  * tileBy = そのボス（キャラID）が乗ったときだけ敗北（M7。7章のバラクの船着き場）。
@@ -364,6 +364,8 @@ export interface StageDef {
 export interface VisitDef { x: number; y: number; kind: 'chest' | 'village'; item?: string; talk?: SceneId }
 export interface Chapter {
   title: string; map: string[];
+  /** 物語上の目印。勝敗条件を持たず、盤面で位置と名前を表示する。 */
+  landmarks?: { tile: Tile; label: string }[];
   /** 必ず出撃する仲間（新規加入・物語上の必須メンバー）。guest は護衛対象など：倒れると敗北、次章へ持ち越さない。 */
   players: AllyDef[];
   /**

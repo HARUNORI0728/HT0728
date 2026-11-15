@@ -188,6 +188,18 @@ function render(now = performance.now()) {
       const mk = markedTiles(S), slow = 0.62 + 0.3 * Math.sin(sec * 2.4);
       for (const [x, y] of mk.goal) drawTile(ctx, 'goal', x, y, slow);
       for (const [x, y] of mk.guard) drawTile(ctx, 'guard', x, y, slow);
+      for (const { tile: [x, y], label } of chapterDef(S.chapter).landmarks ?? []) {
+        ctx.save();
+        ctx.translate((x + 0.5) * T, (y + 0.5) * T);
+        ctx.strokeStyle = '#35592a'; ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(0, 14); ctx.lineTo(0, -12); ctx.stroke();
+        ctx.fillStyle = '#79b451';
+        ctx.beginPath(); ctx.ellipse(-9, -10, 12, 6, 0.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(8, -17, 12, 6, -0.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#173025'; ctx.fillRect(-29, 17, 58, 22);
+        ctx.fillStyle = '#fff5d4'; ctx.textAlign = 'center'; ctx.font = '16px sans-serif'; ctx.fillText(label, 0, 34);
+        ctx.restore();
+      }
     }
     if (mode === 'target') for (const t of targets) tile(key(t.x, t.y), 'target', t === picked ? 1 : pulse);
     if (mode === 'heal') for (const t of targets) tile(key(t.x, t.y), 'heal', t === picked ? 1 : pulse);
@@ -597,8 +609,8 @@ async function checkEnd(): Promise<boolean> {
     inBattle = false; save();
     await playScene(ch.outro);
     if (ch.interlude) await playScene(ch.interlude);
-    if (ch.ending) { await playEnding(true); return true; }
     await supportTalks(camp);
+    if (ch.ending) { await playEnding(true); return true; }
     const lost = camp.roster.filter(u => u.out && !S.bench.some(b => b.id === u.id)).map(u => u.name);
     showCamp(chapterDef(camp.cleared - 1).title.replace(/\s+/g, '　') + '　クリア！' + (lost.length ? `　${lost.join('、')}は戦線離脱した。` : ''));
   } else {
@@ -779,6 +791,7 @@ const esc = (t: string) => t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt
 const MTYPE_NAMES = { foot: '歩兵', armor: '重装', horse: '騎馬', fly: '飛行' } as const;
 const gainText = (g: Partial<Stats>) => STAT_KEYS.filter(k => g[k]).map(k => `${STAT_NAMES[k]}+${g[k]}`).join(' ');
 function campMsg(t: string) { $('campMsg').textContent = t; }
+const pendingFinale = () => !!camp && !camp.ended && !!chapterDef(camp.cleared - 1)?.ending;
 function showCamp(msg = '') {
   if (!camp) return;
   mode = 'busy'; campTab = 'units';
@@ -787,7 +800,7 @@ function showCamp(msg = '') {
   campMsg(msg);
   const has = hasChapter(camp.next);
   const nb = $<HTMLButtonElement>('btnNext');
-  nb.disabled = !has; nb.textContent = has ? '次の章へ' : camp.ended ? '物語は完結した' : `第${camp.next + 1}章は制作中です`;
+  nb.disabled = !has && !pendingFinale(); nb.textContent = pendingFinale() ? '結末へ進む' : has ? '次の章へ' : camp.ended ? '物語は完結した' : `第${camp.next + 1}章は制作中です`;
   $('title').hidden = true; $('camp').hidden = false;
   audio.bgm('camp');
   renderCamp();
@@ -943,7 +956,17 @@ async function replay(go: () => Promise<unknown>) { const y = $('camp').scrollTo
 /** The sortie screen's state: which chapter, its plan, and the ids picked for the free slots. */
 let prep: { index: number; plan: SortiePlan; picks: string[] } | null = null;
 /** 「次の章へ」: opens the sortie screen when there is a choice to make, otherwise starts right away. */
-function goNext() {
+async function goNext() {
+  if (camp && pendingFinale()) {
+    $<HTMLButtonElement>('btnNext').disabled = true;
+    $('camp').hidden = true;
+    const ch = chapterDef(camp.cleared - 1);
+    await playScene(ch.outro);
+    if (ch.interlude) await playScene(ch.interlude);
+    await supportTalks(camp);
+    await playEnding(true);
+    return;
+  }
   if (!camp || !hasChapter(camp.next)) return;
   const plan = sortiePlan(camp.next, camp.roster);
   if (!plan.choose) { start(newChapter(camp.next, camp.roster, camp.bonds, camp.difficulty), true); return; }

@@ -18,9 +18,9 @@
 
 | ID | 作業 | 触るファイル | 完了の目安 | 状態 |
 |---|---|---|---|---|
-| Q-01 | **第9・10章の章データ**。2段構成（9章：防衛→制圧、10章：オルステッド戦の耐久→使徒戦）、ペルギウス加入、オルステッドのゲスト参戦、`ending: true`。仕様は handoff-to-codex.md。見本は `ch05.ts`・`ch06.ts`・`dev.ts` | `src/chapters/ch09.ts`、`ch10.ts` | 自動プレイで通しクリア、会話が全部発生、地図画像を保存 | 作業中（Codex/SOL） |
-| Q-02 | **3章以降の敵のマップ用絵**：鳥、残滓の影、残滓の結晶、私兵の重騎士、残光の大熊、森の主、頭目バラク。プロンプトは `design/plot.md §6.1〜6.2`、絵柄の仕様は `design/map-and-enemy-prompts.md §1`（既存の `assets/units/*.png` と絵柄をそろえる） | `assets/units/` | 7点を納品。ファイル名は plot.md の指定どおり | 作業中（Codex/SOL） |
-| Q-03 | **残りのBGM**：優先順に prologue、comedy、map_resolve、romance、orsted、final_boss、ending、map_final、ジングルの levelup・classchange・support。仕様は `design/asset-orders.md §1` | `assets/audio/bgm/` | 数値検品つきで納品 | 作業中（Codex/SOL） |
+| Q-01 | **第9・10章の章データ**。2段構成（9章：防衛→制圧、10章：オルステッド戦の耐久→使徒戦）、ペルギウス加入、オルステッドのゲスト参戦、`ending: true`。仕様は handoff-to-codex.md。見本は `ch05.ts`・`ch06.ts`・`dev.ts` | `src/chapters/ch09.ts`、`ch10.ts` | 自動プレイで通しクリア、会話が全部発生、地図画像を保存 | 完了（実装・自動検証済み、通常速度の通しプレイは残件） |
+| Q-02 | **3章以降の敵のマップ用絵**：鳥、残滓の影、残滓の結晶、私兵の重騎士、残光の大熊、森の主、頭目バラク。プロンプトは `design/plot.md §6.1〜6.2`、絵柄の仕様は `design/map-and-enemy-prompts.md §1`（既存の `assets/units/*.png` と絵柄をそろえる） | `assets/units/` | 7点を納品。ファイル名は plot.md の指定どおり | 完了（7点・透過/縮小確認・ゲーム取り込み済み） |
+| Q-03 | **残りのBGM**：優先順に prologue、comedy、map_resolve、romance、orsted、final_boss、ending、map_final、ジングルの levelup・classchange・support。仕様は `design/asset-orders.md §1` | `assets/audio/bgm/` | 数値検品つきで納品 | 完了（素材納品・数値検品済み、実聴取は残件） |
 | Q-04 | **会話の背景**：優先順に forest、forest_residue、buena_hill、riverside、ruined_city、battlefield_dusk、labyrinth、noble_camp、sky_fortress、white_void、rebuilt_village、home_inside、camp_sunset、camp_dawn。仕様は `design/asset-orders.md §2` と `design/plot.md §6.4` | `assets/backgrounds/` | 納品 | 空き |
 | Q-05 | **一枚絵**：優先順に ev_sylphie_reveal（4章）、ev_eris_memorial（9章）、告白7枚、ev_orsted_farewell、ev_epilogue_all、嫁同士1枚。仕様は `design/plot.md §6.3` と `design/portrait-prompts.md` | `assets/events/` | 納品 | 空き |
 | Q-06 | **完成済みの章の通しプレイとバランスの記録**：序章〜2章、5・6章を通常の成長で進め、章ごとの勝率・ターン数・倒れやすい仲間・レベルの伸びを記録する。数値を直す提案は掲示板に書く（章のファイルを直す場合は、その章の担当が空いているか確認） | 記録は `design/review-board/` に新規ファイル | 記録と提案 | 空き |

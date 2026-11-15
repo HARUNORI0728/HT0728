@@ -1,0 +1,167 @@
+{
+  "seeds": 24,
+  "method": "Rule-level simulation; normal addExp growth to scenario entry levels; not a chapter 1–10 campaign or UI playthrough",
+  "chapters": [
+    {
+      "chapter": 9,
+      "counts": {
+        "win": 20,
+        "lose": 4
+      },
+      "winningTurns": [
+        13,
+        13,
+        14,
+        14,
+        14,
+        14,
+        15,
+        15,
+        15,
+        15,
+        16,
+        16,
+        16,
+        16,
+        16,
+        17,
+        17,
+        18,
+        19,
+        19
+      ],
+      "triggeredBattleScenes": [
+        "ch9.battle1",
+        "ch9.battle2",
+        "ch9.battle3",
+        "ch9.battle4",
+        "ch9.battle5",
+        "ch9.battle6",
+        "ch9.battle7",
+        "ch9.battle8",
+        "ch9.battle9"
+      ],
+      "falls": {
+        "ghislaine": 3,
+        "zanoba": 8,
+        "cliff": 18,
+        "ruijerd": 2,
+        "paul": 5,
+        "sylphiette": 1,
+        "rudeus": 3,
+        "eris": 2,
+        "ariel": 1,
+        "perugius": 1
+      }
+    },
+    {
+      "chapter": 10,
+      "counts": {
+        "win": 21,
+        "lose": 3
+      },
+      "winningTurns": [
+        12,
+        12,
+        12,
+        12,
+        12,
+        13,
+        13,
+        13,
+        13,
+        13,
+        13,
+        14,
+        14,
+        15,
+        15,
+        15,
+        15,
+        16,
+        16,
+        17,
+        21
+      ],
+      "triggeredBattleScenes": [
+        "ch10.battle1",
+        "ch10.battle2",
+        "ch10.battle3",
+        "ch10.battle4",
+        "ch10.battle5",
+        "ch10.battle6",
+        "ch10.battle7",
+        "ch10.battle8",
+        "ch10.battle9"
+      ],
+      "falls": {
+        "zanoba": 21,
+        "cliff": 22,
+        "roxy": 8,
+        "paul": 4,
+        "sylphiette": 4,
+        "eris": 2,
+        "ghislaine": 5,
+        "orsted": 1,
+        "rudeus": 2,
+        "ruijerd": 1
+      }
+    }
+  ],
+  "linked": [
+    {
+      "seed": 1,
+      "chapter9": "win",
+      "chapter10": "win",
+      "turns": [
+        14,
+        13
+      ]
+    },
+    {
+      "seed": 2,
+      "chapter9": "win",
+      "chapter10": "win",
+      "turns": [
+        15,
+        13
+      ]
+    },
+    {
+      "seed": 3,
+      "chapter9": "win",
+      "chapter10": "win",
+      "turns": [
+        13,
+        13
+      ]
+    },
+    {
+      "seed": 4,
+      "chapter9": "win",
+      "chapter10": "win",
+      "turns": [
+        16,
+        11
+      ]
+    },
+    {
+      "seed": 5,
+      "chapter9": "win",
+      "chapter10": "win",
+      "turns": [
+        19,
+        12
+      ]
+    },
+    {
+      "seed": 6,
+      "chapter9": "win",
+      "chapter10": "win",
+      "turns": [
+        17,
+        12
+      ]
+    }
+  ]
+}

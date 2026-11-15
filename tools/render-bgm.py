@@ -21,12 +21,13 @@ PROGRAM = {'piano':0, 'celesta':8, 'glock':9, 'xylo':13, 'organ':19,
            'guitar':24, 'bass':43, 'sub':43, 'violin':40, 'cello':42,
            'pizz':45, 'harp':46, 'timp':47, 'strings':48, 'stacc':48,
            'pad':49, 'brass':61, 'horn':60, 'tuba':58, 'oboe':68,
-           'clarinet':71, 'flute':73, 'recorder':74, 'harmonic':48, 'swell':49}
+           'clarinet':71, 'flute':73, 'recorder':74, 'harmonic':48, 'swell':49,
+           'rain':122}  # GM seashore provides a soft noise bed for the prologue.
 DRUM = {'kick':36, 'snare':38, 'hat':42, 'tick':76, 'shaker':82,
         'taiko':41, 'tamb':54, 'cym':49, 'heart':36}
 LEVEL = {'pad':.27, 'strings':.64, 'stacc':.72, 'brass':.62, 'horn':.72,
          'bass':.65, 'sub':.5, 'glock':.42, 'pizz':.85, 'harp':.95,
-         'flute':.85, 'recorder':.72, 'cello':.80, 'guitar':.90, 'timp':.65}
+         'flute':.85, 'recorder':.72, 'cello':.80, 'guitar':.90, 'timp':.65, 'rain':.07}
 
 
 def bind(lib, name, result, *args):
