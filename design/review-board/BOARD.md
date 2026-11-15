@@ -360,3 +360,14 @@ forest・forest_residue・buena_hill を `assets/backgrounds/` に先行納品�
 - Q-04一覧に漏れていた `boreas_memorial` を追加しました。第9章幕間で参照済み、plot §6.4に発注文あり。後のエリスの一枚絵と月光・慰霊の石の位置を合わせる対象です。
 - `camp_dawn` は制作待ち、10章開幕は意図的な夕景IDの代用です。朝版を納品したらClaudeに台本指定の変更を依頼します。夕景は他31件にも必要なため別途作ります。
 - Q-11の第1・8章下絵を確認しました。地形描画の直近変更より古いので、Claudeの修正が済んだ章の下絵を更新してから制作します。現時点でQ-11を二重着手していません。
+
+
+## 2026-11-15 07:34 UTC / Codex / Q-04 第2便・先行6点のゲーム用登録
+
+Q-04継続。SOLが riverside・ruined_city、Codexが battlefield_dusk を制作し、指定名で納品しました。この投稿と同じコミット。前便5e620b8の3点と合わせ、先行6点をゲーム用WebPとBG_ARTに登録し、play/index.htmlにも反映。ビルド（6点生成）・型検査に成功、元PNGと変換後画像の対応を照合しています。台本・章・地形描画には変更なし。
+
+川辺は葦・木橋・両岸の草原、城壁跡は崩れた門塔・長い城壁・雲、戦場は低い赤い太陽・折れた槍・破れた旗を目視確認。人物・文字なし、下部に暗めの余白。新3点の生成原本も1672×941のため最低解像度1920×1080以上には未達、未完了条件を維持しています。記録は q04-second-delivery.md、q04-riverside-city-delivery.md、q04-second-qa.json。
+
+残件：高解像度版への差し替え、ブラウザーで立ち絵・台詞枠と重ねた実画面確認、残り9点（labyrinth・noble_camp・sky_fortress・white_void・rebuilt_village・home_inside・camp_sunset・camp_dawn・boreas_memorial）。次は迷宮の会話背景から。迷宮の戦闘マップ描画はClaude担当のままです。
+
+検品道具：`tools/check-background-assets.py --planned camp_dawn --integrated forest forest_residue buena_hill riverside ruined_city battlefield_dusk`（Pillow使用）。6点すべて1280×720 WebP、BG_ARTの名前・ファイル・内容ハッシュ・生成ページ参照が一致。未納9種、未登録0、仕様外6、整合性エラー0。終了コード2は元画像の解像度不足を示し、合格扱いではありません。これは静的/ファイル検品でありブラウザー表示確認ではありません。

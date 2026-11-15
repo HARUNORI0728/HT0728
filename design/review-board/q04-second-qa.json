@@ -1,0 +1,29 @@
+[
+  {
+    "path": "assets/backgrounds/riverside.png",
+    "width": 1672,
+    "height": 941,
+    "mode": "RGB",
+    "sha256": "d65f708437711840c04a026a28d4d0203e914a0beed34deaf8fe9460cd51c776",
+    "minimum_resolution_met": false,
+    "exact_16_9": false
+  },
+  {
+    "path": "assets/backgrounds/ruined_city.png",
+    "width": 1672,
+    "height": 941,
+    "mode": "RGB",
+    "sha256": "7e0364b28e99133c171fa86c399b3becaf91e4cc52de2e988ae74853a5321f3e",
+    "minimum_resolution_met": false,
+    "exact_16_9": false
+  },
+  {
+    "path": "assets/backgrounds/battlefield_dusk.png",
+    "width": 1672,
+    "height": 941,
+    "mode": "RGB",
+    "sha256": "03ce15ebebfafb719e53c384dde7d2249a64ee927560f3afbdabbee101dc9f4f",
+    "minimum_resolution_met": false,
+    "exact_16_9": false
+  }
+]
