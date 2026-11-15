@@ -1,0 +1,56 @@
+[
+  {
+    "id": "labyrinth",
+    "source": {
+      "path": "assets/backgrounds/labyrinth.png",
+      "width": 1672,
+      "height": 941,
+      "mode": "RGB",
+      "sha256": "4f92e0d16e8c7b46523f270033e628e1a891122089a83ba8f45870ff137d65ae"
+    },
+    "runtime": {
+      "path": "play/assets/backgrounds/labyrinth.webp",
+      "width": 1280,
+      "height": 720,
+      "mode": "RGB",
+      "sha256": "d8d06a982b0b3edb4b78dcbc0a70e1d8c905f2addb935a627c703941ae92fc37"
+    },
+    "accepted_spec_met": true
+  },
+  {
+    "id": "noble_camp",
+    "source": {
+      "path": "assets/backgrounds/noble_camp.png",
+      "width": 1672,
+      "height": 941,
+      "mode": "RGB",
+      "sha256": "dda315f64f27a2deddfeb819a318ce4bbc54b67cc8ea2f035e1ad57b4719a8c9"
+    },
+    "runtime": {
+      "path": "play/assets/backgrounds/noble_camp.webp",
+      "width": 1280,
+      "height": 720,
+      "mode": "RGB",
+      "sha256": "ce2d0eec723db3b0c276cbd1a45c75c734c4bdc5a72012d9be33b23a92c3083b"
+    },
+    "accepted_spec_met": true
+  },
+  {
+    "id": "sky_fortress",
+    "source": {
+      "path": "assets/backgrounds/sky_fortress.png",
+      "width": 1672,
+      "height": 941,
+      "mode": "RGB",
+      "sha256": "20d762130bbbe6642919107ae7d39d3e8eca1bf2603c02ed32a03594c08c0086"
+    },
+    "runtime": {
+      "path": "play/assets/backgrounds/sky_fortress.webp",
+      "width": 1280,
+      "height": 720,
+      "mode": "RGB",
+      "sha256": "78b71ad58cee76441da320d20c55dc529302f1529ddd18951ca5472f8963d9e8"
+    },
+    "accepted_spec_met": true
+  }
+]

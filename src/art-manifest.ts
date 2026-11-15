@@ -90,9 +90,12 @@ export const BG_ART: Record<string, string> = {
   forest: 'assets/backgrounds/forest.webp?v=4c009e28',
   forest_residue: 'assets/backgrounds/forest_residue.webp?v=18cb68f4',
   grassland_day: 'assets/backgrounds/grassland_day.webp?v=74e1292f',
+  labyrinth: 'assets/backgrounds/labyrinth.webp?v=00dc650c',
+  noble_camp: 'assets/backgrounds/noble_camp.webp?v=662f6d78',
   riverside: 'assets/backgrounds/riverside.webp?v=add5204f',
   ruined_city: 'assets/backgrounds/ruined_city.webp?v=496d281b',
   ruined_village: 'assets/backgrounds/ruined_village.webp?v=471efad6',
+  sky_fortress: 'assets/backgrounds/sky_fortress.webp?v=74c7f16c',
   tent_inside: 'assets/backgrounds/tent_inside.webp?v=dac09c48',
   title: 'assets/backgrounds/title.webp?v=a3b013e8',
 };

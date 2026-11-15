@@ -74,7 +74,7 @@ Instrumental only, no vocals, no lyrics. Soundtrack for a medieval-fantasy tacti
 
 | 項目 | 指定 |
 |---|---|
-| 縦横比 | 16:9、1920×1080px 以上 |
+| 縦横比 | およそ16:9、幅1600px以上（1672×941px可。BOARD 2026-11-15 08:55 UTCの合意） |
 | 内容 | **人物なし・文字なし**。手前に立ち絵と台詞枠が重なるので、画面の下3分の1は情報を少なく、少し暗めに |
 | 絵柄 | 立ち絵と同じアニメ調の背景画 |
 | 置き場所 | `assets/backgrounds/<ファイル名>.png` |

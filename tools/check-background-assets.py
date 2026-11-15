@@ -55,8 +55,8 @@ def source_description(source):
         return 'missing', False
     width, height = source
     notes = []
-    if width < 1920 or height < 1080:
-        notes.append('below 1920x1080')
+    if width < 1600:
+        notes.append('width below 1600 (Q-04 accepted source spec)')
     # Allow rounding the 16:9 height to the nearest whole pixel.
     if abs(width * 9 - height * 16) > 8:
         notes.append('aspect differs from 16:9')
