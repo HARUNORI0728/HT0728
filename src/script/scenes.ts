@@ -86,6 +86,9 @@ export type SceneId =
   | "ch7.battle5"
   | "ch7.battle6"
   | "ch7.battle7"
+  | "ch7.battle8"
+  | "ch7.battle9"
+  | "ch7.battle10"
   | "ch7.outro"
   | "ch7.interlude"
   | "ch8.intro"
@@ -156,7 +159,7 @@ export type SceneId =
   | "frag:差し替え・ルーク"
   | "epilogue.close";
 /** Scene ids in screenplay order. */
-export const SCENE_ORDER: SceneId[] = ["prologue", "ch1.intro", "ch1.battle1", "ch1.battle2", "ch1.battle3", "ch1.battle4", "ch1.battle5", "ch1.battle6", "ch1.battle7", "ch1.battle8", "ch1.battle9", "ch1.battle10", "ch1.battle11", "ch1.battle12", "ch1.outro", "ch1.interlude", "ch2.intro", "ch2.battle1", "ch2.battle2", "ch2.battle3", "ch2.battle4", "ch2.battle5", "ch2.battle6", "ch2.battle7", "ch2.battle8", "ch2.outro", "ch2.interlude", "ch3.intro", "ch3.battle1", "ch3.battle2", "ch3.battle3", "ch3.battle4", "ch3.battle5", "ch3.battle6", "ch3.battle7", "ch3.outro", "ch3.interlude", "ch4.intro", "ch4.battle1", "ch4.battle2", "ch4.battle3", "ch4.battle4", "ch4.battle5", "ch4.battle6", "ch4.battle7", "ch4.outro", "ch4.interlude", "ch5.intro", "ch5.battle1", "ch5.battle2", "ch5.battle3", "ch5.battle4", "ch5.battle5", "ch5.battle6", "ch5.battle7", "ch5.outro", "ch5.interlude", "ch6.intro", "ch6.battle1", "ch6.battle2", "ch6.battle3", "ch6.battle4", "ch6.battle5", "ch6.battle6", "ch6.battle7", "ch6.battle8", "ch6.outro", "ch6.interlude", "ch7.intro", "ch7.battle1", "ch7.battle2", "ch7.battle3", "ch7.battle4", "ch7.battle5", "ch7.battle6", "ch7.battle7", "ch7.outro", "ch7.interlude", "ch8.intro", "ch8.battle1", "ch8.battle2", "ch8.battle3", "ch8.battle4", "ch8.battle5", "ch8.battle6", "ch8.battle7", "ch8.outro", "ch8.interlude", "ch9.intro", "ch9.battle1", "ch9.battle2", "ch9.battle3", "ch9.battle4", "ch9.battle5", "ch9.battle9", "ch9.battle6", "ch9.battle7", "ch9.battle8", "ch9.outro", "ch9.interlude", "ch10.intro", "ch10.battle1", "ch10.battle2", "ch10.battle9", "ch10.battle3", "ch10.battle4", "ch10.battle5", "ch10.battle6", "ch10.battle7", "ch10.battle8", "ch10.outro", "confess.sylphiette", "confess.roxy", "confess.eris", "confess.sara", "confess.linia", "confess.pursena", "confess.ariel", "epilogue.open", "after.sylphiette.wed", "after.sylphiette.friend", "after.roxy.wed", "after.roxy.friend", "after.eris.wed", "after.eris.friend", "after.sara.wed", "after.sara.friend", "after.linia.wed", "after.linia.friend", "after.pursena.wed", "after.pursena.friend", "after.ariel.wed", "after.ariel.friend", "frag:差し替え・サラ（仲間）", "frag:差し込み・療養中", "frag:差し込み・シルフィエットとエリス", "frag:差し込み・シルフィエットとロキシー", "frag:差し込み・シルフィエットとアリエル", "frag:差し込み・エリスとロキシー", "frag:差し込み・エリスとアリエル", "frag:差し込み・リニアとプルセナ（結婚）", "frag:差し込み・リニアとプルセナ（仲間）", "frag:差し替え・エリナリーゼ", "frag:差し替え・ルーク", "epilogue.close"];
+export const SCENE_ORDER: SceneId[] = ["prologue", "ch1.intro", "ch1.battle1", "ch1.battle2", "ch1.battle3", "ch1.battle4", "ch1.battle5", "ch1.battle6", "ch1.battle7", "ch1.battle8", "ch1.battle9", "ch1.battle10", "ch1.battle11", "ch1.battle12", "ch1.outro", "ch1.interlude", "ch2.intro", "ch2.battle1", "ch2.battle2", "ch2.battle3", "ch2.battle4", "ch2.battle5", "ch2.battle6", "ch2.battle7", "ch2.battle8", "ch2.outro", "ch2.interlude", "ch3.intro", "ch3.battle1", "ch3.battle2", "ch3.battle3", "ch3.battle4", "ch3.battle5", "ch3.battle6", "ch3.battle7", "ch3.outro", "ch3.interlude", "ch4.intro", "ch4.battle1", "ch4.battle2", "ch4.battle3", "ch4.battle4", "ch4.battle5", "ch4.battle6", "ch4.battle7", "ch4.outro", "ch4.interlude", "ch5.intro", "ch5.battle1", "ch5.battle2", "ch5.battle3", "ch5.battle4", "ch5.battle5", "ch5.battle6", "ch5.battle7", "ch5.outro", "ch5.interlude", "ch6.intro", "ch6.battle1", "ch6.battle2", "ch6.battle3", "ch6.battle4", "ch6.battle5", "ch6.battle6", "ch6.battle7", "ch6.battle8", "ch6.outro", "ch6.interlude", "ch7.intro", "ch7.battle1", "ch7.battle2", "ch7.battle3", "ch7.battle4", "ch7.battle5", "ch7.battle6", "ch7.battle7", "ch7.battle8", "ch7.battle9", "ch7.battle10", "ch7.outro", "ch7.interlude", "ch8.intro", "ch8.battle1", "ch8.battle2", "ch8.battle3", "ch8.battle4", "ch8.battle5", "ch8.battle6", "ch8.battle7", "ch8.outro", "ch8.interlude", "ch9.intro", "ch9.battle1", "ch9.battle2", "ch9.battle3", "ch9.battle4", "ch9.battle5", "ch9.battle9", "ch9.battle6", "ch9.battle7", "ch9.battle8", "ch9.outro", "ch9.interlude", "ch10.intro", "ch10.battle1", "ch10.battle2", "ch10.battle9", "ch10.battle3", "ch10.battle4", "ch10.battle5", "ch10.battle6", "ch10.battle7", "ch10.battle8", "ch10.outro", "confess.sylphiette", "confess.roxy", "confess.eris", "confess.sara", "confess.linia", "confess.pursena", "confess.ariel", "epilogue.open", "after.sylphiette.wed", "after.sylphiette.friend", "after.roxy.wed", "after.roxy.friend", "after.eris.wed", "after.eris.friend", "after.sara.wed", "after.sara.friend", "after.linia.wed", "after.linia.friend", "after.pursena.wed", "after.pursena.friend", "after.ariel.wed", "after.ariel.friend", "frag:差し替え・サラ（仲間）", "frag:差し込み・療養中", "frag:差し込み・シルフィエットとエリス", "frag:差し込み・シルフィエットとロキシー", "frag:差し込み・シルフィエットとアリエル", "frag:差し込み・エリスとロキシー", "frag:差し込み・エリスとアリエル", "frag:差し込み・リニアとプルセナ（結婚）", "frag:差し込み・リニアとプルセナ（仲間）", "frag:差し替え・エリナリーゼ", "frag:差し替え・ルーク", "epilogue.close"];
 export const SCENES: Record<SceneId, Scene> = {
   "prologue": {
     title: "序章「ふたたびの産声」", chapter: 0,
@@ -1372,6 +1375,41 @@ export const SCENES: Record<SceneId, Scene> = {
       {"who":"バラク","text":"金は伯爵の……いや、伯爵に金を回してるのは、白い旦那で……","face":"normal"},
       {"who":"ルーデウス","text":"白い旦那？ 誰です、それは。","face":"normal"},
       {"who":"バラク","text":"知るか！ 顔を……くそ、何度も会ってるのに、顔が出てこねえんだよ！","face":"angry"},
+    ],
+  },
+  "ch7.battle8": {
+    title: "第7章　戦闘中⑧", chapter: 7,
+    cond: "北西の檻（9,5）を訪問したとき（訪問マス。中身は200銀）", bg: "none",
+    lines: [
+      {"who":"","text":"錠前が外れると、檻の隅で丸くなっていた小さな影が、びくりと耳を伏せた。"},
+      {"who":"獣族の子","text":"……来ないで。売られるのは、いや。","art":false},
+      {"who":"リニア","text":"売らない売らない。あたしの耳と尻尾、よく見るニャ。同じ森の匂いがするでしょ？","face":"smile"},
+      {"who":"獣族の子","text":"……ほんとだ。お姉ちゃん、ドルディアの人？","art":false},
+      {"who":"リニア","text":"そう。だからもう大丈夫。西の茂みに仲間が隠れてる。走れるニャ？","face":"normal"},
+      {"who":"","text":"子どもは小さくうなずき、檻の脇に積まれた革袋を指さした。密猟者が旅人から奪った銀だという。"},
+    ],
+  },
+  "ch7.battle9": {
+    title: "第7章　戦闘中⑨", chapter: 7,
+    cond: "北東の檻（13,5）を訪問したとき（訪問マス。中身は傷薬と100銀）", bg: "none",
+    lines: [
+      {"who":"","text":"檻の中では、年長の子が年下の子を背中にかばっていた。"},
+      {"who":"獣族の子","text":"ぼくが先だ。この子には、さわるな。","art":false},
+      {"who":"プルセナ","text":"……えらいの。でも、もう守らなくていいの。","face":"normal"},
+      {"who":"ルーデウス","text":"怪我は……かすり傷ですね。少し待って。","face":"smile"},
+      {"who":"","text":"手当てが済むと、年長の子は見張りの天幕からくすねたという薬瓶と銀貨を、黙って差し出した。"},
+      {"who":"プルセナ","text":"お礼は、あとでお肉でいいの。……これは、もらっておくの。","face":"smile"},
+    ],
+  },
+  "ch7.battle10": {
+    title: "第7章　戦闘中⑩", chapter: 7,
+    cond: "南の檻（9,9）を訪問したとき（訪問マス。中身は250銀）", bg: "none",
+    lines: [
+      {"who":"","text":"最後の檻には、泣き疲れて眠った子が三人、毛布もなく寄り添っていた。"},
+      {"who":"獣族の子","text":"……おうちに、かえれる？","art":false},
+      {"who":"リニア","text":"……ああ。帰れるニャ。あたしたちが、大森林まで連れてく。約束する。","face":"sad"},
+      {"who":"ルーデウス","text":"（約束、か。軽く言える言葉じゃない。……リニアさんも、それは分かっているはずだ）","face":"normal"},
+      {"who":"","text":"檻の床板の下には、密猟団が隠していた売り上げの一部が埋まっていた。"},
     ],
   },
   "ch7.outro": {

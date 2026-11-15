@@ -59,6 +59,12 @@ export const ch07: Chapter = {
     { turn: 4, units: [hound(11, 8, 14, 'charge'), hound(11, 9, 14, 'charge'), hound(11, 10, 14, 'charge')] },
     { turn: 6, units: [lance(10, 13, 0, 'charge'), axe(10, 12, 1, 'charge'), archer(10, 13, 1, 'charge')] },
   ],
+  // 檻3つ（M13の訪問マス。地形は家屋のまま、檻の絵を重ねる）。訪問すると子どもを助ける短い会話と、奪われた荷（銀・傷薬）。
+  visits: [
+    { x: 9, y: 5, kind: 'village', gold: 200, talk: 'ch7.battle8' },
+    { x: 13, y: 5, kind: 'village', item: 'potion', gold: 100, talk: 'ch7.battle9' },
+    { x: 9, y: 9, kind: 'village', gold: 250, talk: 'ch7.battle10' },
+  ],
   intro: 'ch7.intro', outro: 'ch7.outro', interlude: 'ch7.interlude',
   talks: [
     { scene: 'ch7.battle1', when: { type: 'firstFight', unit: 'linia' } },

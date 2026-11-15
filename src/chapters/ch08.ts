@@ -73,6 +73,12 @@ export const ch08: Chapter = {
     { turn: 7, tiles: band(10, 12), to: 'Q' },
     { turn: 10, tiles: band(7, 9), to: 'Q' },
   ],
+  // 西の遠回りの宝箱3つ（M13）。下の坑道の箱は7ターン目の崩落で失われる。縦穴の箱は狼と岩人形の間、上の坑道の箱は北西の隅。
+  visits: [
+    { x: 1, y: 12, kind: 'chest', gold: 500 },
+    { x: 1, y: 8, kind: 'chest', item: 'radiance' },
+    { x: 2, y: 2, kind: 'chest', item: 'keenSword' },
+  ],
   intro: 'ch8.intro', outro: 'ch8.outro', interlude: 'ch8.interlude',
   talks: [
     { scene: 'ch8.battle1', when: { type: 'turn', turn: 1, phase: 'blue' } },

@@ -4,7 +4,7 @@ import {
   DIFFICULTY_NAMES, levelName, POTION_HEAL, addExp, alive, bondStatus, canEscape, canSeize, dist, expGain, fight, forecast, gainBonds, goalText, heal, healAmount, healExp, healTargets,
   initBonds, inRange, key, loseCond, makeEnemy, makeUnit, maxRank, newChapter, nextNeed, outcome, pairKey, planEnemy, promote, promoOptions, rankName, rankUp, readyPairs,
   WEAPON_SLOTS, benchExp, chapterPicks, rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
-  bossId, dueTalks, fightTalks, onMap, talkKey, clearSlow, expBoost, familiarHeal, hasSkill, healingWind, skillsOf,
+  bossId, dueTalks, fightTalks, onMap, talkKey, clearSlow, expBoost, familiarHeal, hasSkill, healingWind, skillsOf, shownVisits, visitFlag, visitsFor,
   CANDIDATES, advanceStage, answerConfession, applyAiSwitch, applyTerrainChanges, ensureMarried, isConfession, markedTiles, marriedTo, seizeFlag, stageBgm, stageOf,
   type Bonds, type Difficulty, type SortiePlan, type State, type Unit,
 } from './logic';
@@ -12,11 +12,12 @@ import { confessionScene, endingSequence, placeholderTalk, sceneById, supportSce
 import { WIFE_TALKS } from './script/scenes';
 import { artLog, cueBgm, play, setOnCg } from './ui/dialogue';
 import { invBlock, renderShop } from './ui/shop-ui';
-import { chapterReward } from './shop';
+import { chapterReward, shopName, takeLoot } from './shop';
 import { BG_ART } from './art-manifest';
 import { RES, T } from './render/common';
 import { FLOAT_LIFE, drawCursor, drawEdgeMarks, drawFloat, drawTile, drawVignette, type Float } from './render/fx';
 import { drawTerrain } from './render/terrain';
+import { drawVisit } from './render/visits';
 import { drawIcon, drawUnit } from './render/units';
 import { SCENES, SCENE_ORDER, type SceneId } from './script/scenes';
 import { faceHtml, idForName, idForUnit, loadMapArt, loadUnitArt, mapArtUrl, portraitUrl, preloadPortrait, spriteUrl } from './render/art';
@@ -230,6 +231,7 @@ function render(now = performance.now()) {
         ctx.fillStyle = '#fff5d4'; ctx.textAlign = 'center'; ctx.font = '16px sans-serif'; ctx.fillText(label, 0, 34);
         ctx.restore();
       }
+      for (const { v, open } of shownVisits(S)) drawVisit(ctx, v.kind, v.x, v.y, open, sec); // 宝箱・檻（M13）
     }
     if (mode === 'target') for (const t of targets) tile(key(t.x, t.y), 'target', t === picked ? 1 : pulse);
     if (mode === 'heal') for (const t of targets) tile(key(t.x, t.y), 'heal', t === picked ? 1 : pulse);
@@ -436,10 +438,29 @@ function openMenu() {
   }
   if (canSeize(S, u)) items.push(['制圧', () => { S.flags[seizeFlag(S)] = true; audio.sfx('decide'); finish(u); }, 'primary']);
   if (canEscape(S, u)) items.push(['離脱', () => { u.left = true; float(u, '離脱', '#e8c56a'); finish(u); }, 'primary']);
+  const vs = visitsFor(S, u);
+  for (const v of vs) items.push([(v.kind === 'chest' ? '開ける' : '訪問') + (vs.length > 1 ? `（${v.x},${v.y}）` : ''), () => void doVisit(u, v), 'primary']);
   if (u.potions > 0 && u.hp < u.st.hp) items.push([`傷薬（残り${u.potions}）`, () => { u.potions--; u.hp = Math.min(u.st.hp, u.hp + POTION_HEAL); float(u, `+${POTION_HEAL}`, '#8fe0a0'); audio.sfx('heal'); finish(u); }]);
   items.push(['待機', () => finish(u)]);
   items.push(['もどる', () => { u.x = origin.x; u.y = origin.y; u.mv = 0; selectUnit(u); }]);
   info(unitHtml(u)); menu(items);
+}
+/** 宝箱を開ける・訪問する（M13）：会話（あれば）→中身を受け取る→行動終了。銀は flags.loot にためて章クリア時に所持金へ。 */
+async function doVisit(u: Unit, v: NonNullable<ReturnType<typeof chapterDef>['visits']>[number]) {
+  mode = 'busy'; menu([]); hud();
+  S.flags[visitFlag(v)] = true;
+  audio.sfx('decide');
+  if (v.talk) { await playScene(v.talk, true); mapMusic(); }
+  const others = [...S.units.filter(o => o.team === 'blue' && !o.guest && onMap(o)), ...S.bench.filter(o => !o.out && !o.guest)];
+  const got = takeLoot(u, v.item, v.gold, others);
+  if (got.silver) S.flags.loot = (Number(S.flags.loot) || 0) + got.silver;
+  const parts: string[] = [];
+  if (got.item) parts.push(got.to ? `${shopName(got.item)}（${got.to.name}へ）` : `${shopName(got.item)}は持てる者がいないので銀に換えた`);
+  if (got.silver) parts.push(`${got.silver}銀`);
+  float(u, got.item && got.to ? shopName(got.item) : got.silver ? `+${got.silver}銀` : v.kind === 'chest' ? '開けた' : '訪問', '#e8c56a');
+  info(`<p>${esc(parts.join('、') || '何もなかった')}を手に入れた。</p>`);
+  await banner(got.item && got.to ? `${shopName(got.item)}を手に入れた` : got.silver ? `${got.silver}銀を手に入れた` : '空っぽだった', 1100);
+  finish(u);
 }
 function chooseTarget(wid: string, ts: Unit[]) {
   mode = 'target'; curW = wid; targets = ts; picked = null;
