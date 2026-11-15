@@ -436,8 +436,14 @@ export interface StageDef {
   remove?: string[] | 'all'; allies?: AllyDef[]; enemies?: EnemyDef[]; reinforce?: Reinforce[];
   bgm?: { blue?: string; red?: string; boss?: string };
 }
-/** 宝箱・村の訪問（M13）。TODO：未実装。型だけ置いてある（7章の檻、8章の宝箱）。 */
-export interface VisitDef { x: number; y: number; kind: 'chest' | 'village'; item?: string; talk?: SceneId }
+/**
+ * 宝箱・訪問マス（M13。村・檻）。地形は変えず、マーカーを地形の上に重ねて描く。
+ * 味方がそのマスで「開ける」（宝箱）「訪問」（村）を選ぶと行動終了。章ごとに一度だけ（開けたかは State.flags の `visit:x,y`）。
+ * - item：中身の品（src/shop.ts の SHOP の ID）。持てなければ同行の仲間へ、誰も持てなければ店の値段の銀に換える。
+ * - gold：中身の銀（item と両方あれば両方）。talk：訪問・開けたときの会話（任意）。
+ * - 宝箱はリニア（鍵開け）なら隣のマスからでも開けられる。敵は開けない。崩落などでマスが通れなくなると失われる。
+ */
+export interface VisitDef { x: number; y: number; kind: 'chest' | 'village'; item?: string; gold?: number; talk?: SceneId }
 export interface Chapter {
   title: string; map: string[];
   /** 物語上の目印。勝敗条件を持たず、盤面で位置と名前を表示する。 */
@@ -456,7 +462,7 @@ export interface Chapter {
   stages?: StageDef[];
   /** 地形の変化（M5）。 */
   terrainChanges?: TerrainChange[];
-  /** TODO（M13）：宝箱・村の訪問。今は読まない。 */
+  /** 宝箱・訪問マス（M13。VisitDef）。 */
   visits?: VisitDef[];
   /**
    * 会話（場面ID。本文は design/script-*.md → src/script/scenes.ts）。prologue = ニューゲーム時に開幕より前に一度だけ。
