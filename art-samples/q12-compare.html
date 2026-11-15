@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Q-12 第1章・画風比較</title>
+<style>
+body{margin:20px;background:#20252b;color:#eee;font:16px system-ui}header{position:sticky;top:0;background:#20252bf5;padding:12px;z-index:2}h1{font-size:22px;margin:0 0 12px}button,label{margin-right:12px}main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}figure{margin:0}figcaption{padding:10px}.map{position:relative;aspect-ratio:16/11}.map img{width:100%;height:100%;display:block}.grid{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(to right,#ffefb988 1px,transparent 1px),linear-gradient(to bottom,#ffefb988 1px,transparent 1px);background-size:6.25% 9.090909%}.off .grid{display:none}main.single{grid-template-columns:1fr}output{display:block;padding:10px;color:#ffe19c}a{color:#a9d6ff}@media(max-width:800px){main{grid-template-columns:1fr}}
+</style>
+<header><h1>Q-12 第1章・画風比較</h1><label><input id="grid" type="checkbox" checked>16×11の格子</label><label><input id="single" type="checkbox">大きく表示</label><a href="../design/map-guides/ch01-grid.png">下絵の格子版</a><output id="cell">地図にカーソルを合わせると座標を表示します（左上0,0）。</output></header>
+<main id="maps"></main>
+<script>
+const names={A:'手描き（採用済み試作）',B:'輪郭明瞭',C:'水彩',D:'写実寄り'};
+for(const [id,name] of Object.entries(names)){
+ const figure=document.createElement('figure');
+ figure.innerHTML=`<figcaption>${id}：${name}</figcaption><div class="map"><img src="q12-ch01-style-${id}.png" alt="${name}の第1章地図"><div class="grid"></div></div>`;
+ figure.querySelector('.map').addEventListener('pointermove',e=>{const r=e.currentTarget.getBoundingClientRect();document.querySelector('#cell').textContent=`${id}：(${Math.min(15,Math.floor((e.clientX-r.left)/r.width*16))}, ${Math.min(10,Math.floor((e.clientY-r.top)/r.height*11))})`;});
+ document.querySelector('#maps').append(figure);
+}
+document.querySelector('#grid').onchange=e=>document.querySelector('#maps').classList.toggle('off',!e.target.checked);
+document.querySelector('#single').onchange=e=>document.querySelector('#maps').classList.toggle('single',e.target.checked);
+</script></html>

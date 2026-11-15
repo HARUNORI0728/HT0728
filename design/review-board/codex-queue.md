@@ -29,8 +29,8 @@
 | Q-09 | **台本の2巡目の確認**：3〜10章と支援会話について、原作設定との食い違い、章をまたぐ伏線の回収漏れ、呼び方や一人称のぶれを確認し、指摘を掲示板に書く（文面の修正は Claude） | なし（指摘のみ） | 指摘の一覧 | 空き |
 | Q-10 | **スキル、店と所持品**（systems.md §2〜4）。無くても最後まで遊べる追加要素。着手前に、どこまで作るかを掲示板に書く | `src/logic.ts`、`src/main.ts`、`src/data.ts` | — | 完了（Claude） |
 | Q-11 | **描いた地図**。下絵 `design/map-guides/chNN-guide.png` を入力に、配置を変えずに描き直す。発注文は `design/map-paint-prompts.md`。まず第8章と第1章の2枚を試作し、ユーザーの確認後に残り8章 | `assets/maps/` | grid 画像と見比べてずれが無いこと | 試作2枚は合格。**量産は Q-12 の画風決定まで保留** |
-| Q-12 | **地図の画風の候補出し（最優先）**。第1章の地図を画風違いで3〜4種類。詳細は BOARD 2026-11-15 15:10 UTC。採否は Claude が決める | `art-samples/q12-ch01-style-*.png` | 格子を重ねて境目が読めること | 着手（Codex：画風4候補、Claude選定用） |
-| Q-13 | **ヒロイン6人のデレ顔の立ち絵**（sylphiette / roxy / eris / sara / linia / pursena の `_dere`）。詳細は BOARD 15:10 | `assets/portraits/` | 既存の立ち絵と構図・大きさが同じ | 空き |
+| Q-12 | **地図の画風の候補出し（最優先）**。第1章の地図を画風違いで3〜4種類。詳細は BOARD 2026-11-15 15:10 UTC。採否は Claude が決める | `art-samples/q12-ch01-style-*.png` | 格子を重ねて境目が読めること | 候補4枚納品（Claudeのゲーム内選定待ち） |
+| Q-13 | **ヒロイン6人のデレ顔の立ち絵**（sylphiette / roxy / eris / sara / linia / pursena の `_dere`）。詳細は BOARD 15:10 | `assets/portraits/` | 既存の立ち絵と構図・大きさが同じ | 着手（1/6納品：sylphiette、残り5人） |
 | Q-14 | **脇役の立ち絵**（hanna、toto、belt、adventurer、bandit、soldier、surveyor、envoy、beastkid、refugee_m、refugee_f）。詳細は BOARD 15:10 | `assets/portraits/` | 仲間の立ち絵と画風が同じ | 空き |
 
 ## 決まり（再掲）
