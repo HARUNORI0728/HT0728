@@ -1,8 +1,8 @@
 // Story assembly with no DOM: which support / confession / wife conversation to play, and the ending sequence
 // (epilogue → 7 afterwords, married or companion version → closing) with the screenplay's 差し替え・差し込み applied.
 import { CAST, type Line, type SupportPair, type SupportRank } from './data';
-import { CANDIDATES, pairKey, type Bonds } from './logic';
-import { SCENES, SUPPORT_SCENES, WIFE_TALKS, type Scene, type SceneId, type WifeTalk } from './script/scenes';
+import { CANDIDATES, dist, marriedTo, onMap, pairKey, type Bonds, type State, type Unit } from './logic';
+import { BATTLE_BARKS, DATE_TALKS, SCENES, SUPPORT_SCENES, WIFE_TALKS, type DateTalk, type Scene, type SceneId, type WifeTalk } from './script/scenes';
 
 const nameOf = (id: string) => CAST[id]?.name ?? id;
 /** A scene by id when the screenplay has it (ids of the ending documents are not checked at compile time). */
@@ -38,6 +38,55 @@ export function wifeLines(w: WifeTalk, married: string[]): Line[] {
   const unwed = new Set(CANDIDATES.filter(id => !married.includes(id)).map(nameOf));
   return w.scene.lines.filter(l => !unwed.has(l.who));
 }
+
+// ---------- ふたりの時間・戦闘中のひとこと (design/script-romance.md) ----------
+
+/** The seen key that records when Rudeus answered a confession: `wed:<id>:<camp.cleared>`. */
+export const wedKey = (id: string, cleared: number) => `wed:${id}:${cleared}`;
+/** camp.cleared at the time each partner's confession was answered, read from the seen keys. */
+export function wedChapters(seen: string[]): Record<string, number> {
+  const at: Record<string, number> = {};
+  for (const k of seen) { const m = k.match(/^wed:(\w+):(\d+)$/); if (m && at[m[1]] === undefined) at[m[1]] = Number(m[2]); }
+  return at;
+}
+/**
+ * ふたりの時間 that can be watched now: married partners only; afterWed chapters after the confession and from
+ * minCleared on; each one after the partner's previous one was watched. After the ending (ended) all of them.
+ */
+export function dateTalksAvailable(married: string[], cleared: number, seen: string[], ended = false): DateTalk[] {
+  const wedAt = wedChapters(seen);
+  return DATE_TALKS.filter(d => married.includes(d.who) && (ended
+    || (cleared >= (wedAt[d.who] ?? cleared) + d.afterWed && (d.minCleared === undefined || cleared >= d.minCleared)
+      && (d.no === 1 || seen.includes(`date.${d.who}.${d.no - 1}`)))));
+}
+/** A battle line's speakers who are cast members must be on the map (the fallen partner herself always speaks). */
+function barkLines(s: State, key: string, speaker: string): Line[] | null {
+  const lines = BATTLE_BARKS[key];
+  if (!lines) return null;
+  return lines.filter(l => {
+    const id = Object.keys(CAST).find(k => CAST[k].name === l.who);
+    return !id || id === speaker || s.units.some(u => u.team === 'blue' && u.id === id && onMap(u));
+  });
+}
+/**
+ * 隣接：a fight by Rudeus or a partner he married while the two stand side by side (once per partner per chapter;
+ * the flag `rom:adj:<id>` is set here). null when nothing plays.
+ */
+export function adjacentBark(s: State, att: Unit, def: Unit): Line[] | null {
+  const wed = marriedTo(s.bonds), rud = s.units.find(u => u.team === 'blue' && u.id === 'rudeus' && onMap(u));
+  if (!rud || !wed.length) return null;
+  const near = (v: Unit) => v.team === 'blue' && wed.includes(v.id) && onMap(v) && dist(v, rud) === 1 && !s.flags[`rom:adj:${v.id}`];
+  for (const u of [att, def]) {
+    if (u.team !== 'blue' || !onMap(u)) continue;
+    const partner = u.id === 'rudeus' ? s.units.find(near) : near(u) ? u : undefined;
+    if (!partner) continue;
+    s.flags[`rom:adj:${partner.id}`] = true;
+    return barkLines(s, `${partner.id}:adj`, partner.id);
+  }
+  return null;
+}
+/** 撤退：a partner Rudeus married has fallen. */
+export const fallBark = (s: State, u: Unit): Line[] | null => (marriedTo(s.bonds).includes(u.id) ? barkLines(s, `${u.id}:fall`, u.id) : null);
 
 // ---------- the ending (plot.md §3, script-endings.md) ----------
 

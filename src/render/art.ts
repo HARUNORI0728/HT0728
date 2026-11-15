@@ -43,10 +43,13 @@ export function idForUnit(u: UnitLike): string | null {
 }
 
 // ---------- portraits ----------
-/** URL of a portrait, falling back to the normal face; null when the character has none. */
+/**
+ * URL of a portrait; a missing expression falls back to smile for dere (not drawn for everyone yet), then to normal.
+ * null when the character has none.
+ */
 export function portraitUrl(id: string | null, face: Face = 'normal'): string | null {
   const p = id ? PORTRAIT_ART[id] : undefined;
-  return p?.[face] ?? p?.normal ?? null;
+  return p?.[face] ?? (face === 'dere' ? p?.smile : undefined) ?? p?.normal ?? null;
 }
 export const hasPortrait = (id: string | null) => !!portraitUrl(id);
 /** Starts loading portraits ahead of time (a conversation's speakers) so face changes do not flicker. */

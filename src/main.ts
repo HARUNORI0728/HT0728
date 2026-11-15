@@ -9,7 +9,8 @@ import {
   type Bonds, type Difficulty, type SortiePlan, type State, type Unit,
 } from './logic';
 import { confessionScene, endingSequence, placeholderTalk, sceneById, supportScene, wifeLines, wifeTalksAvailable } from './story';
-import { WIFE_TALKS } from './script/scenes';
+import { adjacentBark, dateTalksAvailable, fallBark, wedChapters, wedKey } from './story';
+import { DATE_TALKS, WIFE_TALKS, type DateTalk } from './script/scenes';
 import { artLog, cueBgm, play, setOnCg } from './ui/dialogue';
 import { invBlock, renderShop } from './ui/shop-ui';
 import { chapterReward, shopName, takeLoot } from './shop';
@@ -649,8 +650,10 @@ async function battle(att: Unit, wid: string, def: Unit) {
   for (const g of gainBonds(S, [att, def])) float(g.partner, g.ready ? '支援会話あり' : `絆+${g.added}`, '#ff8fa8');
   const fallen = [att, def].find(u => u.team === 'blue' && u.hp <= 0);
   if (fallen && !fallen.guest && !loseCond(chapterDef(S.chapter)).units.includes(fallen.id)) {
+    const words = fallBark(S, fallen); // 結ばれた相手が倒れたときのひとこと（design/script-romance.md）
+    if (words?.length) await play(words);
     await banner(S.difficulty === 'classic' ? `${fallen.name}は重傷を負い、戦線離脱した` : `${fallen.name}は重傷を負い、撤退した（次の章で復帰）`, 1500);
-  }
+  } else if (!fallen) { const words = adjacentBark(S, att, def); if (words?.length) await play(words); } // 隣で戦うひとこと
   const me = att.team === 'blue' ? att : def, foe = me === att ? def : att;
   if (me.hp > 0 && me.gr) {
     const gains = addExp(me, expBoost(S, me, expGain(me, foe, strikes)));
@@ -820,6 +823,7 @@ async function confession(c: Camp, p: SupportPair) {
     { bg: sc?.bg, choice: sc?.choice ?? { options: ['応える', '応えられない'], branches: [[], []] } });
   const accept = k === 0;
   answerConfession(c.bonds, p, accept, c.cleared);
+  if (accept) markSeen(wedKey(id, c.cleared)); // ふたりの時間の解放に使う
   save();
   if (accept) { audio.jingle('support'); await banner(`${castName(id)}と結婚の約束を交わした！（${marriedTo(c.bonds).length} / ${sLimit('rudeus')}人）`, 1600); }
   else await banner(`返事は保留した。次の章のあとで、もう一度向き合おう。`, 1400);
@@ -891,8 +895,19 @@ function renderWed() {
   e.hidden = !w.length;
   e.innerHTML = w.length ? `<span>結婚</span>${w.map(id => `${faceHtml({ id, name: castName(id), cls: CAST[id]?.cls ?? '', team: 'blue' }, 'pair')}<b>${esc(castName(id))}</b>`).join('')}` : '';
 }
-/** Wife talks watchable now and not yet watched (the 天幕 tab shows a mark). */
-const unreadWife = () => (camp ? wifeTalksAvailable(marriedTo(camp.bonds), camp.cleared).filter(w => !seen.includes(w.id)) : []);
+/** Wife talks and ふたりの時間 watchable now and not yet watched (the 天幕 tab shows a mark). */
+const unreadWife = () => (camp ? [...wifeTalksAvailable(marriedTo(camp.bonds), camp.cleared), ...availableDates()].filter(w => !seen.includes(w.id)) : []);
+/** ふたりの時間 watchable now. A partner married before the confession date was recorded counts from this camp. */
+function availableDates(): DateTalk[] {
+  if (!camp) return [];
+  const wed = marriedTo(camp.bonds), at = wedChapters(seen);
+  for (const id of wed) if (at[id] === undefined) markSeen(wedKey(id, camp.cleared));
+  return dateTalksAvailable(wed, camp.cleared, seen, !!camp.ended);
+}
+async function playDate(d: DateTalk) {
+  audio.bgm('romance'); if (d.scene.bgm) cueBgm(d.scene.bgm);
+  await play(d.scene.lines, { bg: d.scene.bg });
+}
 function renderCamp() {
   for (const b of document.querySelectorAll<HTMLButtonElement>('#campTabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === campTab));
   const tent = document.querySelector<HTMLButtonElement>('#campTabs button[data-tab="tent"]')!;
@@ -989,6 +1004,22 @@ function bondRow(p: SupportPair, bonds: Bonds) {
 /** 天幕：嫁同士の会話（world.md §5.2）。結婚した相手の組み合わせが条件を満たすと見られる。未読には印。 */
 function renderTent() {
   const body = $('campBody'), c = camp!, wed = marriedTo(c.bonds);
+  // ふたりの時間（design/script-romance.md）：結ばれた相手との短い場面。章が進むと続きが解放される。
+  body.appendChild(el('h3', 'prepHead', 'ふたりの時間'));
+  const dates = availableDates(), dbox = el('div', 'logList');
+  body.appendChild(el('p', 'hint', wed.length ? `結ばれた相手と過ごす、章の合間のひととき。${wed.map(id => {
+    const all = DATE_TALKS.filter(d => d.who === id), got = all.filter(d => seen.includes(d.id)).length;
+    return `${castName(id)} ${got}/${all.length}`;
+  }).join('　')}（続きは章が進むと見られる）` : '告白に応えた相手と、ここで二人の時間を過ごせる。'));
+  for (const d of dates) {
+    const unread = !seen.includes(d.id);
+    dbox.appendChild(btn(`${unread ? '● ' : ''}${castName(d.who)}　${d.no}「${d.scene.title}」`, () => replay(async () => {
+      markSeen(d.id); playedLog.push(d.id); save();
+      await playDate(d);
+    }).then(renderCamp), 'logItem' + (unread ? ' unread' : '')));
+  }
+  body.appendChild(dbox);
+  body.appendChild(el('h3', 'prepHead', '嫁どうしの会話'));
   const list = wifeTalksAvailable(wed, c.cleared);
   body.appendChild(el('p', 'hint', wed.length >= 2 ? '天幕の奥から、にぎやかな声が聞こえる。結婚した相手どうしの会話を見られる。' : `結婚した相手が2人以上になると、ここで嫁どうしの会話を見られる（いまは${wed.length}人）。`));
   const box = el('div', 'logList');
@@ -1031,6 +1062,9 @@ function renderLog() {
   const wives = WIFE_TALKS.filter(w => seen.includes(w.id));
   if (wives.length) list.appendChild(el('h3', 'prepHead', '嫁どうしの会話'));
   for (const w of wives) list.appendChild(btn(w.scene.title, () => replay(async () => { audio.bgm('daily'); if (w.scene.bgm) cueBgm(w.scene.bgm); await play(wifeLines(w, marriedTo(camp!.bonds)), { bg: w.scene.bg }); }), 'logItem'));
+  const dates = DATE_TALKS.filter(d => seen.includes(d.id));
+  if (dates.length) list.appendChild(el('h3', 'prepHead', 'ふたりの時間'));
+  for (const d of dates) list.appendChild(btn(`${castName(d.who)}　${d.no}「${d.scene.title}」`, () => replay(() => playDate(d)), 'logItem'));
   const cgs = seen.filter(k => k.startsWith('cg:'));
   if (cgs.length) list.appendChild(el('h3', 'prepHead', '思い出（一枚絵）'));
   cgs.forEach((k, i) => list.appendChild(btn(`一枚絵 ${i + 1}`, () => replay(async () => { await play([{ who: '', text: '', cg: k.slice(3) }, { who: '', text: '（思い出の一場面）' }]); }), 'logItem')));
