@@ -1,0 +1,29 @@
+[
+  {
+    "path": "assets/backgrounds/forest.png",
+    "width": 1672,
+    "height": 941,
+    "mode": "RGB",
+    "sha256": "c0d8ab258176fed455bb833ef0e34bb803ac906fa26cf8489f095ddfdc415d29",
+    "minimum_resolution_met": false,
+    "exact_16_9": false
+  },
+  {
+    "path": "assets/backgrounds/forest_residue.png",
+    "width": 1672,
+    "height": 941,
+    "mode": "RGB",
+    "sha256": "f9e7aca7939fe9882f4c682137f12389327e3485dade708ce813fed4d1185bc6",
+    "minimum_resolution_met": false,
+    "exact_16_9": false
+  },
+  {
+    "path": "assets/backgrounds/buena_hill.png",
+    "width": 1672,
+    "height": 941,
+    "mode": "RGB",
+    "sha256": "72b4edd031887fcd51d5832994f83e2f6a12a8329b211534e7b8e0ea03982509",
+    "minimum_resolution_met": false,
+    "exact_16_9": false
+  }
+]
