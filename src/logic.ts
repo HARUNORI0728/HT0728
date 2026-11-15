@@ -296,9 +296,10 @@ export function fight(s: State, att: Unit, wid: string, def: Unit, rnd = Math.ra
 
 /** Experience a player unit earns from a round against `foe`. */
 export function expGain(u: Unit, foe: Unit, strikes: Strike[]): number {
-  const diff = effLv(foe) - effLv(u);
-  if ((foe.hp <= 0 || foe.retreated) && strikes.some(k => k.from === u && k.hit)) return Math.max(15, Math.min(100, 40 + diff * 5 + (foe.boss ? 30 : 0)));
-  if (strikes.some(k => k.from === u && k.dmg > 0)) return Math.max(5, Math.min(30, 12 + diff * 2));
+  // 格上の相手ほど多く（追いつきやすく）、格下は控えめに（balance-report.md）。
+  const diff = effLv(foe) - effLv(u), up = Math.max(0, diff), down = Math.min(0, diff);
+  if ((foe.hp <= 0 || foe.retreated) && strikes.some(k => k.from === u && k.hit)) return Math.max(15, Math.min(100, 40 + up * 8 + down * 5 + (foe.boss ? 30 : 0)));
+  if (strikes.some(k => k.from === u && k.dmg > 0)) return Math.max(5, Math.min(36, 12 + up * 3 + down * 2));
   return 1;
 }
 

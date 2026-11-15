@@ -1,6 +1,6 @@
 import type { Chapter, EnemyAI, EnemyDef, Tile } from '../data';
 
-// 船着き場の桟橋の先（バラクが乗ると敗北）。6ターン目の敵軍フェイズから、バラクはここを目指す。
+// 船着き場の桟橋の先（バラクが乗ると敗北）。7ターン目の敵軍フェイズから、バラクはここを目指す。
 const DOCK: Tile = [19, 11];
 const foe = (cls: string, wp: string, prefix = '密猟者の') => (lv: number, x: number, y: number, ai: EnemyAI): EnemyDef =>
   ({ cls, lv, x, y, wps: [wp], ai, prefix });
@@ -11,7 +11,7 @@ const hound = foe('wolf', 'wolfFang', '密猟団の');
 
 export const ch07: Chapter = {
   // 7章（plot.md §2・systems.md §6）：ボス撃破（バラク）。ルーデウスが倒れるか、バラクが東の船着き場に着くと敗北。
-  // 出撃8（ルーデウス・リニア・プルセナ＋5）。最初の敵17＋増援6（4ターン目に南の森から猟犬3、7ターン目に北の獣道から密猟者3）＝23。
+  // 出撃8（ルーデウス・リニア・プルセナ＋5）。最初の敵19＋増援6（4ターン目に南の森から猟犬3、6ターン目に北の獣道から密猟者3）＝25。
   title: '第7章　獣の牙',
   win: { type: 'boss' }, lose: { units: ['rudeus'], tile: DOCK, tileBy: 'barak' },
   // 22×15。川沿いの湿地と森にある密猟団の野営地。西の街道から本隊が入る。
@@ -46,17 +46,18 @@ export const ch07: Chapter = {
     // 北の門と獣道（森の猟犬が先に来る）
     lance(10, 11, 5, 'guard'), hound(10, 8, 2, 'charge'), hound(10, 9, 3, 'charge'), axe(10, 6, 2, 'hold'),
     // 野営地の中（頭目の囲いの入口を斧が固める）
-    axe(10, 13, 7, 'guard'), lance(10, 13, 8, 'guard'), archer(10, 14, 6, 'hold'), mage(10, 9, 8, 'hold'), healer(10, 12, 9, 'hold'),
+    axe(11, 13, 7, 'guard'), lance(11, 13, 8, 'guard'), archer(10, 14, 6, 'hold'), mage(10, 9, 8, 'hold'), healer(10, 12, 9, 'hold'),
+    axe(11, 14, 9, 'hold'), lance(11, 10, 9, 'guard'),
     // 北東の丘の見張り、南の沼、船着き場への木道
-    archer(10, 17, 2, 'hold'), axe(10, 9, 11, 'hold'), hound(10, 12, 11, 'charge'), lance(10, 17, 12, 'guard'),
+    archer(10, 17, 2, 'hold'), axe(10, 9, 11, 'hold'), hound(11, 12, 11, 'charge'), lance(10, 17, 12, 'guard'),
     { cls: 'mercenary', lv: 15, x: 11, y: 7, wps: ['steelSword'], ai: 'guard',
       // 頭目は打たれ強いが鈍い（ルーデウスを一度の戦闘で倒しきらない程度に力と速さを抑える）
-      st: { hp: 48, str: 13, mag: 0, skl: 12, spd: 9, lck: 5, def: 12, res: 5 }, boss: '密猟団の頭目バラク', defeat: 'captured',
-      aiFrom: { turn: 6, ai: 'target', goal: DOCK } },
+      st: { hp: 60, str: 13, mag: 0, skl: 12, spd: 9, lck: 5, def: 13, res: 9 }, boss: '密猟団の頭目バラク', defeat: 'captured',
+      aiFrom: { turn: 7, ai: 'target', goal: DOCK } },
   ],
   reinforce: [
-    { turn: 4, units: [hound(10, 8, 14, 'charge'), hound(10, 9, 14, 'charge'), hound(10, 10, 14, 'charge')] },
-    { turn: 7, units: [lance(10, 13, 0, 'charge'), axe(10, 12, 1, 'charge'), archer(10, 13, 1, 'charge')] },
+    { turn: 4, units: [hound(11, 8, 14, 'charge'), hound(11, 9, 14, 'charge'), hound(11, 10, 14, 'charge')] },
+    { turn: 6, units: [lance(10, 13, 0, 'charge'), axe(10, 12, 1, 'charge'), archer(10, 13, 1, 'charge')] },
   ],
   intro: 'ch7.intro', outro: 'ch7.outro', interlude: 'ch7.interlude',
   talks: [
@@ -65,7 +66,7 @@ export const ch07: Chapter = {
     { scene: 'ch7.battle3', when: { type: 'turn', turn: 3, phase: 'blue' } },
     { scene: 'ch7.battle4', when: { type: 'reinforce', wave: 0 } },
     { scene: 'ch7.battle5', when: { type: 'bossFight', boss: 'barak' } },
-    { scene: 'ch7.battle6', when: { type: 'turn', turn: 6, phase: 'red' }, needs: ['barak'] },
+    { scene: 'ch7.battle6', when: { type: 'turn', turn: 7, phase: 'red' }, needs: ['barak'] },
     { scene: 'ch7.battle7', when: { type: 'bossDefeat', boss: 'barak' } },
   ],
 };

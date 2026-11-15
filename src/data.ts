@@ -219,7 +219,7 @@ const S = (hp: number, str: number, mag: number, skl: number, spd: number, lck: 
 
 export const CHARS: Record<string, CharDef> = {
   rudeus: { id: 'rudeus', name: 'ルーデウス', cls: 'sorcerer', lv: 1, st: S(20, 2, 9, 7, 7, 5, 4, 6), gr: S(60, 15, 70, 55, 45, 40, 30, 50), wps: ['stoneCannon', 'waterBall'], hair: '#b08a5a' },
-  eris: { id: 'eris', name: 'エリス', cls: 'myrmidon', lv: 1, st: S(21, 8, 0, 8, 10, 5, 5, 2), gr: S(75, 60, 5, 55, 65, 40, 35, 20), wps: ['ironSword'], hair: '#c22a2a' },
+  eris: { id: 'eris', name: 'エリス', cls: 'myrmidon', lv: 3, st: S(23, 9, 0, 9, 11, 6, 6, 2), gr: S(75, 60, 5, 55, 65, 40, 35, 20), wps: ['steelSword'], hair: '#c22a2a' },
   ruijerd: { id: 'ruijerd', name: 'ルイジェルド', cls: 'superd', lv: 8, st: S(30, 11, 2, 12, 10, 4, 9, 6), gr: S(60, 35, 10, 40, 35, 20, 35, 30), wps: ['whiteSpear'], hair: '#2f9a63' },
   ghislaine: { id: 'ghislaine', name: 'ギレーヌ', cls: 'swordKing', lv: 10, st: S(32, 13, 0, 12, 12, 5, 8, 3), gr: S(65, 40, 0, 40, 40, 25, 30, 15), wps: ['steelSword'], hair: '#b9b4ac' },
   // ---- 2章以降に加入（能力値・成長率はすべて仮。加入Lvは systems.md §6 の「味方の平均Lv」、年長者は +2〜3） ----
@@ -232,7 +232,7 @@ export const CHARS: Record<string, CharDef> = {
   sylphiette: { id: 'sylphiette', name: 'シルフィエット', cls: 'magicGuard', lv: 6, st: S(25, 4, 9, 9, 11, 7, 6, 8), gr: S(65, 25, 55, 45, 55, 45, 35, 40), wps: ['wind', 'healStaff'], hair: '#eeeef4' },
   luke: { id: 'luke', name: 'ルーク', cls: 'horseKnight', lv: 6, st: S(26, 9, 0, 8, 9, 6, 7, 3), gr: S(65, 45, 5, 40, 40, 35, 35, 20), wps: ['ironSword', 'ironLance'], hair: '#8a6440' },
   // 打たれ弱い指揮役。
-  ariel: { id: 'ariel', name: 'アリエル', cls: 'princess', lv: 6, st: S(20, 7, 4, 9, 10, 10, 4, 7), gr: S(50, 35, 25, 50, 50, 60, 20, 40), wps: ['rapier'], hair: '#f2c94c' },
+  ariel: { id: 'ariel', name: 'アリエル', cls: 'princess', lv: 6, st: S(24, 9, 5, 11, 12, 11, 6, 8), gr: S(60, 45, 25, 50, 50, 60, 30, 40), wps: ['rapier'], hair: '#f2c94c' },
   // 5章（平均Lv7）。
   sara: { id: 'sara', name: 'サラ', cls: 'archer', lv: 7, st: S(25, 9, 0, 11, 11, 6, 6, 3), gr: S(60, 45, 5, 55, 50, 35, 25, 20), wps: ['ironBow'], hair: '#e6cf7a' },
   // 6章（平均Lv9）。ザノバは力と守備が突出、速さは最低。

@@ -34,14 +34,14 @@ export const ch02: Chapter = {
     { cls: 'fighter', lv: 3, x: 7, y: 1, wps: ['ironAxe'], ai: 'charge' },
     { cls: 'fighter', lv: 2, x: 11, y: 1, wps: ['ironAxe'], ai: 'charge' },
     { cls: 'soldier', lv: 2, x: 4, y: 2, wps: ['ironLance'], ai: 'charge' },
-    { cls: 'archer', lv: 3, x: 8, y: 1, wps: ['ironBow'], ai: 'hold' },
+    { cls: 'archer', lv: 3, x: 8, y: 1, wps: ['ironBow'], ai: 'hold', aiFrom: { turn: 3, ai: 'charge' } },
     // 南の林から野盗
     { cls: 'fighter', lv: 2, x: 7, y: 12, wps: ['ironAxe'], ai: 'charge' },
-    { cls: 'soldier', lv: 3, x: 11, y: 12, wps: ['ironLance'], ai: 'hold' },
+    { cls: 'soldier', lv: 3, x: 11, y: 12, wps: ['ironLance'], ai: 'charge' },
     // 川の東から貴族の私兵
     { cls: 'soldier', lv: 3, x: 18, y: 4, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
     { cls: 'cavalier', lv: 3, x: 18, y: 7, wps: ['ironLance'], ai: 'charge', prefix: '私兵の' },
-    { cls: 'myrmidon', lv: 4, x: 17, y: 9, wps: ['ironSword'], ai: 'hold', prefix: '私兵の' },
+    { cls: 'myrmidon', lv: 4, x: 17, y: 9, wps: ['ironSword'], ai: 'hold', prefix: '私兵の', aiFrom: { turn: 4, ai: 'charge' } },
     { cls: 'archer', lv: 3, x: 18, y: 10, wps: ['ironBow'], ai: 'hold', prefix: '私兵の' },
     { cls: 'mercenary', lv: 7, x: 19, y: 2, wps: ['steelSword'], ai: 'guard', boss: '傭兵隊長ドルガン', defeat: 'retreat' },
   ],

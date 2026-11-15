@@ -24,13 +24,28 @@ export const ch01: Chapter = {
   enemies: [
     { cls: 'soldier', lv: 1, x: 6, y: 5, wps: ['ironLance'], ai: 'charge' },
     { cls: 'fighter', lv: 1, x: 8, y: 6, wps: ['ironAxe'], ai: 'charge' },
-    { cls: 'archer', lv: 1, x: 7, y: 3, wps: ['ironBow'], ai: 'charge' },
+    { cls: 'archer', lv: 1, x: 7, y: 3, wps: ['ironBow'], ai: 'hold' },
     { cls: 'fighter', lv: 2, x: 3, y: 3, wps: ['ironAxe'], ai: 'charge' },
-    { cls: 'soldier', lv: 2, x: 5, y: 2, wps: ['ironLance'], ai: 'charge' },
-    { cls: 'soldier', lv: 2, x: 11, y: 3, wps: ['ironLance'], ai: 'hold' },
-    { cls: 'fighter', lv: 3, x: 12, y: 3, wps: ['ironAxe'], ai: 'hold' },
+    { cls: 'soldier', lv: 2, x: 5, y: 2, wps: ['ironLance'], ai: 'hold', aiFrom: { turn: 3, ai: 'charge' } },
+    { cls: 'soldier', lv: 2, x: 11, y: 3, wps: ['ironLance'], ai: 'guard' },
+    { cls: 'fighter', lv: 3, x: 12, y: 3, wps: ['ironAxe'], ai: 'guard' },
     { cls: 'archer', lv: 2, x: 14, y: 3, wps: ['ironBow'], ai: 'guard' },
     { cls: 'knight', lv: 5, x: 13, y: 2, wps: ['javelin'], ai: 'guard', boss: '野盗頭ガズ', defeat: 'captured' },
+  ],
+  // 増援（systems.md §6：1章は3〜4体足して下限に寄せる）。2・4ターン目に北の森から、3ターン目に東の砦の脇から（全滅が勝利条件なので、最初の敵を倒しきる前に着くようにする）。
+  reinforce: [
+    { turn: 2, units: [
+      { cls: 'fighter', lv: 2, x: 4, y: 0, wps: ['ironAxe'], ai: 'charge' },
+      { cls: 'soldier', lv: 2, x: 7, y: 0, wps: ['ironLance'], ai: 'charge' },
+    ] },
+    { turn: 3, units: [
+      { cls: 'fighter', lv: 3, x: 15, y: 4, wps: ['ironAxe'], ai: 'charge' },
+      { cls: 'archer', lv: 2, x: 14, y: 4, wps: ['ironBow'], ai: 'charge' },
+    ] },
+    { turn: 4, units: [
+      { cls: 'soldier', lv: 3, x: 6, y: 0, wps: ['ironLance'], ai: 'charge' },
+      { cls: 'archer', lv: 2, x: 8, y: 0, wps: ['ironBow'], ai: 'charge' },
+    ] },
   ],
   prologue: 'prologue', intro: 'ch1.intro', outro: 'ch1.outro', interlude: 'ch1.interlude',
   talks: [

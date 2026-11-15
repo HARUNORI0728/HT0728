@@ -37,12 +37,12 @@ export const ch05: Chapter = {
     crystal(3, 3, 'c1'), crystal(16, 9, 'c2'), crystal(12, 11, 'c3'),
     // 北西の空き地
     wolf(7, 2, 2, 'hold'), golem(8, 4, 4, 'guard'),
-    // サラの岩山のまわり
-    bird(7, 6, 1, 'charge'), wolf(8, 7, 5, 'charge'), bird(7, 3, 6, 'hold'),
+    // サラの岩山のまわり（3ターン目から動く。加入したばかりのサラが開幕に囲まれないように）
+    { ...bird(7, 6, 1, 'guard'), aiFrom: { turn: 3, ai: 'charge' } }, { ...wolf(8, 7, 5, 'guard'), aiFrom: { turn: 3, ai: 'charge' } }, { ...bird(7, 3, 6, 'guard'), aiFrom: { turn: 3, ai: 'hold' } },
     // 森の中ほど・南の空き地
     wolf(7, 10, 10, 'charge'), wolf(8, 13, 8, 'charge'), wolf(7, 11, 11, 'hold'), golem(8, 13, 11, 'hold'),
     // 東の空き地と泉
-    wolf(8, 15, 9, 'hold'), golem(8, 17, 9, 'guard'), bird(8, 14, 4, 'hold'), bird(8, 18, 7, 'hold'),
+    wolf(8, 15, 9, 'hold'), golem(8, 17, 9, 'guard'), { ...bird(8, 14, 4, 'guard'), aiFrom: { turn: 3, ai: 'hold' } }, bird(8, 18, 7, 'hold'),
     // 森の主（苔の大鹿。大熊の職で代用）
     { cls: 'bear', lv: 12, x: 17, y: 4, wps: ['bearClaw'], ai: 'guard', boss: '森の主' },
   ],
