@@ -952,7 +952,7 @@ export function drawTerrain(c: C2D, mapIn: string[]) {
       // terraces stepping down from the summit (only on the hill itself), so the top reads as the highest ground
       const hp = shapeOf(ch => ch === 'H' || ch === 'C', 0.3, 0.4, 0.07, 6).p;
       c.save(); c.clip(hp, 'evenodd');
-      for (const [k2, a] of [[1.75, 0.4], [2.6, 0.32], [3.5, 0.24]]) {
+      for (const [k2, a] of [[1.75, 0.5], [2.6, 0.42], [3.5, 0.32]]) {
         c.strokeStyle = `rgba(60,108,48,${a})`; c.lineWidth = 2 * u; c.setLineDash([T * 0.5, T * 0.12]);
         c.beginPath(); c.ellipse(cx, cy + T * 0.1 * k2, rx * k2, ry * k2 * 0.95, 0, 0, 7); c.stroke();
         c.strokeStyle = `rgba(236,255,200,${a * 0.8})`; c.beginPath(); c.ellipse(cx, cy + T * 0.1 * k2 - 2 * u, rx * k2, ry * k2 * 0.95, 0, Math.PI * 1.05, Math.PI * 1.75); c.stroke();

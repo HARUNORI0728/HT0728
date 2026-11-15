@@ -5,21 +5,19 @@
     {
       "chapter": 9,
       "counts": {
-        "win": 11,
-        "lose": 1
+        "win": 9,
+        "lose": 3
       },
       "winningTurns": [
-        13,
+        14,
         14,
         14,
         15,
+        15,
+        15,
+        15,
         16,
-        16,
-        16,
-        16,
-        17,
-        19,
-        19
+        26
       ],
       "triggeredBattleScenes": [
         "ch9.battle1",
@@ -33,13 +31,15 @@
         "ch9.battle9"
       ],
       "falls": {
-        "ghislaine": 3,
-        "zanoba": 3,
-        "cliff": 9,
-        "ruijerd": 2,
-        "paul": 4,
+        "cliff": 6,
         "sylphiette": 1,
-        "rudeus": 1
+        "perugius": 4,
+        "zanoba": 2,
+        "ghislaine": 2,
+        "ariel": 1,
+        "rudeus": 2,
+        "paul": 1,
+        "ruijerd": 1
       }
     },
     {
@@ -52,12 +52,12 @@
         12,
         12,
         13,
-        13,
-        13,
-        13,
-        14,
         15,
         15,
+        16,
+        17,
+        17,
+        19,
         21
       ],
       "triggeredBattleScenes": [
@@ -72,15 +72,14 @@
         "ch10.battle9"
       ],
       "falls": {
-        "zanoba": 12,
-        "cliff": 11,
-        "roxy": 5,
-        "paul": 3,
-        "sylphiette": 3,
-        "eris": 1,
-        "ghislaine": 3,
-        "orsted": 1,
-        "rudeus": 1
+        "zanoba": 3,
+        "ruijerd": 3,
+        "cliff": 9,
+        "roxy": 3,
+        "paul": 2,
+        "eris": 2,
+        "rudeus": 2,
+        "ghislaine": 1
       }
     }
   ],
@@ -90,12 +89,21 @@
       "chapter9": "win",
       "chapter10": "win",
       "turns": [
-        14,
-        13
+        16,
+        12
       ]
     },
     {
       "seed": 2,
+      "chapter9": "win",
+      "chapter10": "lose",
+      "turns": [
+        15,
+        7
+      ]
+    },
+    {
+      "seed": 3,
       "chapter9": "win",
       "chapter10": "win",
       "turns": [
@@ -104,21 +112,12 @@
       ]
     },
     {
-      "seed": 3,
-      "chapter9": "win",
-      "chapter10": "win",
-      "turns": [
-        13,
-        13
-      ]
-    },
-    {
       "seed": 4,
       "chapter9": "win",
       "chapter10": "win",
       "turns": [
-        16,
-        11
+        14,
+        12
       ]
     },
     {
@@ -126,18 +125,13 @@
       "chapter9": "win",
       "chapter10": "win",
       "turns": [
-        19,
-        12
+        15,
+        14
       ]
     },
     {
       "seed": 6,
-      "chapter9": "win",
-      "chapter10": "win",
-      "turns": [
-        17,
-        12
-      ]
+      "chapter9": "lose"
     }
   ]
 }
