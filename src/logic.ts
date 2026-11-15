@@ -2,7 +2,7 @@
 import {
   CAST, CHARS, chapterDef, CLASSES, ENEMY_BASE, FANG_BASE, FANG_MAX, MAGIC, PROMOS, RANKS, RANK_PTS, STAT_KEYS, SUPPORTS, SUPPORT_BONUS, SUPPORT_CAP, SUPPORT_GAIN, SUPPORT_RANGE,
   SKILLS, SKILL_LIMIT, S_LIMIT, S_LIMIT_DEFAULT, TERRAIN, TRIANGLE, WEAPONS, moveCost,
-  type AllyDef, type ArtId, type Chapter, type EnemyAI, type EnemyDef, type LoseCond, type Reinforce, type Tile, type WinCond, type PromoReq, type Stats, type SupportBonus, type SupportPair, type SupportRank, type TalkEvent, type TalkWhen, type Team, type TerrainChange, type Weapon,
+  type AllyDef, type ArtId, type Chapter, type EnemyAI, type EnemyDef, type LoseCond, type Reinforce, type Tile, type WinCond, type PromoReq, type Stats, type SupportBonus, type SupportPair, type SupportRank, type TalkEvent, type TalkWhen, type Team, type TerrainChange, type VisitDef, type Weapon,
 } from './data';
 import { idForName } from './render/who';
 
@@ -832,6 +832,25 @@ export function canEscape(s: State, u: Unit): boolean {
 export function markedTiles(s: State): { goal: Tile[]; guard: Tile[] } {
   const w = curWin(s);
   return { goal: w.type === 'seize' || w.type === 'escape' ? w.tiles : [], guard: guardTiles(loseCond(curChapter(s), stageOf(s))) };
+}
+
+// ---------- 宝箱・訪問マス（M13。VisitDef） ----------
+/** 開けた・訪問したの印（State.flags。章の途中のセーブにそのまま残る）。 */
+export const visitFlag = (v: VisitDef) => `visit:${v.x},${v.y}`;
+export const visitDone = (s: State, v: VisitDef) => !!s.flags[visitFlag(v)];
+/** 失われた（崩落などでマスが通れなくなった）。 */
+export const visitLost = (s: State, v: VisitDef) => moveCost(s.map[v.y]?.[v.x] ?? 'Q', 'foot') === Infinity;
+/** 盤面に描くもの：まだ残っているもの（open = 開けた後）。失われたものは描かない。 */
+export const shownVisits = (s: State) => (curChapter(s).visits ?? []).filter(v => !visitLost(s, v)).map(v => ({ v, open: visitDone(s, v) }));
+/**
+ * `u` がいまの位置で開けられる・訪問できるもの。味方だけ（敵は開けない）。
+ * 村は同じマスで。宝箱は同じマスで、鍵開け（リニア）なら隣のマスからでも。
+ */
+export function visitsFor(s: State, u: Unit): VisitDef[] {
+  if (u.team !== 'blue' || !onMap(u)) return [];
+  const pick = hasSkill(u, 'lockpick');
+  return (curChapter(s).visits ?? []).filter(v => !visitDone(s, v) && !visitLost(s, v) &&
+    (dist(u, v) === 0 || (v.kind === 'chest' && pick && dist(u, v) === 1)));
 }
 
 const rfFlag = (stage: number, wi: number, ei: number) => (stage ? `rf${stage}.${wi}_${ei}` : `rf${wi}_${ei}`);

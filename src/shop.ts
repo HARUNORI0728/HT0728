@@ -92,3 +92,23 @@ export function equipFirst(u: Unit, i: number) {
   u.wps.unshift(w);
   u.eq = 0;
 }
+
+/** 宝箱・訪問（M13）で品を受け取った結果。to = 持たせた仲間（null なら銀に換えた）。silver = 増えた銀（中身の銀＋換金）。 */
+export interface Loot { item: string | null; to: Unit | null; silver: number }
+/**
+ * 宝箱・訪問の中身を受け取る（所持金は戻り値の silver を呼び出し側が足す）。
+ * 品は開けた本人 `u` に持たせ、持てなければ（枠がいっぱい・使えない武器種・覚えている教本）`others` の順に持てる仲間へ。
+ * 誰も持てなければ店の値段の銀に換える（入れ替えはしない。単純に保つ）。
+ */
+export function takeLoot(u: Unit, item: string | undefined, gold: number | undefined, others: Unit[] = []): Loot {
+  const out: Loot = { item: item ?? null, to: null, silver: Math.max(0, gold ?? 0) };
+  if (!item) return out;
+  const it = SHOP.find(i => i.id === item);
+  if (!it) return out;
+  const to = [u, ...others.filter(o => o !== u)].find(o => canHold(o, it).ok);
+  if (to) {
+    buy(it.price, to, it); out.to = to;
+    if (it.id === 'potion') to.potions++; // 盤面ではすぐ使える（章の終わりに残りの数へそろえ直される）
+  } else out.silver += it.price;
+  return out;
+}
