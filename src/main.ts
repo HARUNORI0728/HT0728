@@ -1,10 +1,10 @@
 // Screen, input and turn flow. Rules live in logic.ts.
-import { CAST, CHAPTERS, CHARS, CLASSES, RANKS, RANK_PTS, STAT_KEYS, STAT_NAMES, SUPPORTS, SUPPORT_BONUS, WEAPONS, WTYPE_NAMES, chapterDef, hasChapter, type EnemyDef, type Line, type Stats, type SupportPair } from './data';
+import { CAST, CHAPTERS, CHARS, CLASSES, RANKS, RANK_PTS, STAT_KEYS, STAT_NAMES, SCHOOLS, SKILLS, SUPPORTS, SUPPORT_BONUS, WEAPONS, WTYPE_NAMES, chapterDef, hasChapter, type EnemyDef, type Line, type Stats, type SupportPair } from './data';
 import {
   DIFFICULTY_NAMES, POTION_HEAL, addExp, alive, bondStatus, canEscape, canSeize, dist, expGain, fight, forecast, gainBonds, goalText, heal, healAmount, healExp, healTargets,
   initBonds, inRange, key, loseCond, makeEnemy, makeUnit, maxRank, newChapter, nextNeed, outcome, pairKey, planEnemy, promote, promoOptions, rankName, rankUp, readyPairs,
   WEAPON_SLOTS, benchExp, chapterPicks, rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
-  bossId, dueTalks, fightTalks, onMap, talkKey,
+  bossId, dueTalks, fightTalks, onMap, talkKey, clearSlow, expBoost, familiarHeal, hasSkill, healingWind, skillsOf,
   CANDIDATES, advanceStage, answerConfession, applyAiSwitch, applyTerrainChanges, ensureMarried, isConfession, markedTiles, marriedTo, seizeFlag, stageBgm, stageOf,
   type Bonds, type Difficulty, type SortiePlan, type State, type Unit,
 } from './logic';
@@ -112,6 +112,8 @@ interface Camp {
   gold: number;
   /** 直前の章で控えが得た経験値（部隊タブに表示）。 */
   bench?: { id: string; exp: number; fromLv: number; lv: number }[];
+  /** パウロ（三流派の心得）が出撃準備で選んだ流派（SCHOOLS の id）。v6 の任意項目。無ければ CharDef.school。 */
+  school?: string;
 }
 /**
  * seen = conversations watched (for the camp's 記録): scene ids (序章・開幕・終幕・幕間) and support talks
@@ -165,7 +167,7 @@ function normalize(d: any): SaveData | null {
   const c = d?.camp;
   let cp: Camp | null = null;
   if (c && Array.isArray(c.roster) && typeof c.next === 'number' && typeof c.cleared === 'number' && c.cleared >= 1) {
-    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), gold: Number.isFinite(c.gold) && c.gold > 0 ? Math.floor(c.gold) : 0, ...(c.ended === true ? { ended: true } : {}), ...(Array.isArray(c.bench) ? { bench: c.bench.filter((g: any) => g && typeof g.id === 'string' && typeof g.exp === 'number') } : {}) };
+    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), gold: Number.isFinite(c.gold) && c.gold > 0 ? Math.floor(c.gold) : 0, ...(c.ended === true ? { ended: true } : {}), ...(SCHOOLS.includes(c.school) ? { school: c.school } : {}), ...(Array.isArray(c.bench) ? { bench: c.bench.filter((g: any) => g && typeof g.id === 'string' && typeof g.exp === 'number') } : {}) };
   }
   const married = Array.isArray(d?.married) ? d.married.filter((k: unknown) => typeof k === 'string' && CANDIDATES.includes(k as string)) : [];
   if (cp) ensureMarried(cp.bonds, married);
@@ -316,7 +318,12 @@ function unitHtml(u: Unit) {
   const face = faceHtml(u, 'big');
   return `<div class="ucard${face ? '' : ' noface'}">${face}<div class="ubody"><div class="uhead"><b class="${u.team}">${u.name}</b><span>${CLASSES[u.cls].name}　Lv ${u.lv}${u.gr ? `　EXP ${u.exp}` : ''}</span></div>
     <div class="hp">HP ${u.hp} / ${u.st.hp}<div class="bar"><i style="width:${100 * u.hp / u.st.hp}%;background:${u.team === 'blue' ? '#5aa7ff' : '#ff6f61'}"></i></div></div></div></div>
-    <div class="stats">${st}</div><div class="wps">${wps}　／　${t.name}（守備+${t.def} 回避+${t.avo}）</div>${u.team === 'blue' ? bondLine(u) : ''}`;
+    <div class="stats">${st}</div><div class="wps">${wps}　／　${t.name}（守備+${t.def} 回避+${t.avo}）</div>${skillLine(u)}${u.team === 'blue' ? bondLine(u) : ''}`;
+}
+/** スキル名と説明（systems.md §4。戦闘中に有効な最大3つ）。 */
+function skillLine(u: Unit) {
+  const ks = skillsOf(u);
+  return ks.length ? `<div class="skills">${ks.map(k => `<div class="skill"><b>${SKILLS[k].name}</b><span>${SKILLS[k].desc}</span></div>`).join('')}</div>` : '';
 }
 /** One-line summary of a unit's supports with allies on this map. */
 function bondLine(u: Unit) {
@@ -429,7 +436,7 @@ function openMenu() {
   if (canEscape(S, u)) items.push(['離脱', () => { u.left = true; float(u, '離脱', '#e8c56a'); finish(u); }, 'primary']);
   if (u.potions > 0 && u.hp < u.st.hp) items.push([`傷薬（残り${u.potions}）`, () => { u.potions--; u.hp = Math.min(u.st.hp, u.hp + POTION_HEAL); float(u, `+${POTION_HEAL}`, '#8fe0a0'); audio.sfx('heal'); finish(u); }]);
   items.push(['待機', () => finish(u)]);
-  items.push(['もどる', () => { u.x = origin.x; u.y = origin.y; selectUnit(u); }]);
+  items.push(['もどる', () => { u.x = origin.x; u.y = origin.y; u.mv = 0; selectUnit(u); }]);
   info(unitHtml(u)); menu(items);
 }
 function chooseTarget(wid: string, ts: Unit[]) {
@@ -446,7 +453,8 @@ function pickTarget(t: Unit) {
   info(`<div class="fc">${who}${row('HP', `${u.hp}`, `${t.hp}`)}
     ${row('威力', f.a.dmg + (f.a.double ? ' ×2' : ''), f.d ? f.d.dmg + (f.d.double ? ' ×2' : '') : '—')}
     ${row('命中', f.a.hit + '%', f.d ? f.d.hit + '%' : '—')}${row('必殺', f.a.crit + '%', f.d ? f.d.crit + '%' : '—')}
-    ${row('武器', weaponLabel(u, curW), f.d ? (f.d.w.type === 'fang' ? weaponLabel(t, 'fang') : f.d.w.name) : '反撃不可')}</div>${supRow(f.a.sup.from)}`);
+    ${f.d?.block || f.a.block ? row('', f.d?.block ? `${SKILLS.shieldBlock.name} ${f.d.block}%` : '', f.a.block ? `${SKILLS.shieldBlock.name} ${f.a.block}%` : '') : ''}
+    ${row('武器', weaponLabel(u, curW), f.d ? (f.d.w.type === 'fang' ? weaponLabel(t, 'fang') : f.d.w.name) : '反撃不可')}</div>${supRow(f.a.sup.from)}${skillRow(f.a.skills, f.d?.skills ?? [])}`);
   menu([['戦う', async () => { mode = 'busy'; await battle(u, curW, t); finish(u); }, 'primary'], ['もどる', openMenu]]);
 }
 function chooseHeal(sid: string, ts: Unit[]) {
@@ -465,15 +473,20 @@ function pickHeal(t: Unit) {
   menu([['回復する', async () => { mode = 'busy'; await doHeal(u, curW, t); finish(u); }, 'primary'], ['もどる', openMenu]]);
 }
 async function doHeal(u: Unit, sid: string, t: Unit) {
-  const h = heal(u, sid, t);
+  const h = heal(u, sid, t), wind = healingWind(S, u, t);
   float(t, `+${h}`, '#8fe0a0'); audio.sfx('heal');
+  if (wind.length) { skillPop(u, SKILLS.healingWind.name); for (const w of wind) float(w.unit, `+${w.hp}`, '#8fe0a0'); }
   await sleep(450);
   if (u.team === 'blue') await runTalks(dueTalks(S, w => w.type === 'firstHeal' && w.unit === u.id));
   if (u.team === 'blue' && u.gr) {
-    const gains = addExp(u, healExp(h));
+    const gains = addExp(u, expBoost(S, u, healExp(h)));
     if (gains) audio.jingle('levelup');
     if (gains) await banner(`${u.name} レベルアップ！ Lv ${u.lv}　` + (gainText(gains) || '成長なし'), 1700);
   }
+}
+/** 予測欄の補足：この戦闘で効いている条件付きスキル。 */
+function skillRow(a: string[], d: string[]) {
+  return a.length || d.length ? `<p class="fcsup">スキル：${[...a.map(n => `<span class="blue">${n}</span>`), ...d.map(n => `<span class="red">${n}</span>`)].join('、')}</p>` : '';
 }
 function supRow(from: { name: string; rank: string }[]) {
   return from.length ? `<p class="fcsup">支援：${from.map(f => `${f.name} ${f.rank}`).join('、')}</p>` : '';
@@ -538,7 +551,7 @@ async function tapAt(clientX: number, clientY: number) {
     }
   } else if (mode === 'move') {
     if (!stops.has(key(tx, ty))) { audio.sfx('cancel'); return idle(); }
-    mode = 'busy'; if (tx !== sel!.x || ty !== sel!.y) audio.sfx('move'); await tween(sel!, tx, ty); openMenu();
+    mode = 'busy'; if (tx !== sel!.x || ty !== sel!.y) audio.sfx('move'); sel!.mv = dist(origin, { x: tx, y: ty }); await tween(sel!, tx, ty); openMenu();
   } else if (mode === 'menu') {
     if (u && u.team === 'red') { const wid = usable(sel!).find(w => inRange(WEAPONS[w], dist(sel!, u))); if (wid) { chooseTarget(wid, alive(S, 'red').filter(t => inRange(WEAPONS[wid], dist(sel!, t)))); pickTarget(u); } }
     if (u && u.team === 'blue') { const sid = staves(sel!).find(w => healTargets(S, sel!, w).includes(u)); if (sid) { chooseHeal(sid, healTargets(S, sel!, sid)); pickHeal(u); } }
@@ -599,6 +612,7 @@ async function battle(att: Unit, wid: string, def: Unit) {
     const dx = Math.sign(k.to.x - k.from.x) * T / 4, dy = Math.sign(k.to.y - k.from.y) * T / 4;
     offs.set(k.from.uid, { dx, dy }); await sleep(110); offs.delete(k.from.uid);
     float(k.to, k.hit ? (k.crit ? `必殺！${k.dmg}` : `${k.dmg}`) : 'ミス', k.hit ? (k.crit ? '#ffe36a' : '#ffffff') : '#a79fb8');
+    if (k.skill) skillPop(k.skill === SKILLS.shieldBlock.name ? k.to : k.from, k.skill);
     shownHp.set(k.to.uid, (shownHp.get(k.to.uid) ?? 0) - k.dmg);
     audio.sfx(k.hit ? (k.crit ? 'crit' : 'hit') : 'miss');
     if (k.hit && (shownHp.get(k.to.uid) ?? 0) <= 0) audio.sfx('kill');
@@ -616,7 +630,7 @@ async function battle(att: Unit, wid: string, def: Unit) {
   }
   const me = att.team === 'blue' ? att : def, foe = me === att ? def : att;
   if (me.hp > 0 && me.gr) {
-    const gains = addExp(me, expGain(me, foe, strikes));
+    const gains = addExp(me, expBoost(S, me, expGain(me, foe, strikes)));
     if (gains) audio.jingle('levelup');
     if (gains) await banner(`${me.name} レベルアップ！ Lv ${me.lv}　` + (Object.keys(gains).map(k => STAT_NAMES[k as keyof typeof STAT_NAMES] + '+1').join(' ') || '成長なし'), 1700);
   }
@@ -634,8 +648,8 @@ async function checkEnd(): Promise<boolean> {
     const ch = chapterDef(S.chapter);
     // The camp is saved first (with the closing scenes marked seen), so closing the page mid-scene loses nothing:
     // they can be watched again from the camp's 記録.
-    const roster = rosterOf(S), benchUp = benchExp(S, roster), reward = chapterReward(S.chapter + 1);
-    camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster, bonds: S.bonds, difficulty: S.difficulty, gold: (camp?.gold ?? 0) + reward, bench: benchUp.map(g => ({ id: g.id, exp: g.exp, fromLv: g.fromLv, lv: g.lv })), ...(camp?.ended ? { ended: true } : {}) };
+    const roster = rosterOf(S), benchUp = benchExp(S, roster), reward = chapterReward(S.chapter + 1) + (Number(S.flags.loot) || 0); // loot = 抜け目なし
+    camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster, bonds: S.bonds, difficulty: S.difficulty, gold: (camp?.gold ?? 0) + reward, ...(camp?.school ? { school: camp.school } : {}), bench: benchUp.map(g => ({ id: g.id, exp: g.exp, fromLv: g.fromLv, lv: g.lv })), ...(camp?.ended ? { ended: true } : {}) };
     markSeen(ch.outro); if (ch.interlude) markSeen(ch.interlude);
     inBattle = false; save();
     await playScene(ch.outro);
@@ -652,7 +666,12 @@ async function checkEnd(): Promise<boolean> {
   return true;
 }
 /** The state at the start of the current chapter (from the camp, or a new game for chapter 1), with the same members picked on the sortie screen. */
-const chapterStart = () => newChapter(S.chapter, camp?.next === S.chapter ? camp.roster : undefined, camp?.next === S.chapter ? camp.bonds : undefined, S.difficulty, camp?.next === S.chapter ? chapterPicks(S) : undefined);
+const chapterStart = () => withSchool(newChapter(S.chapter, camp?.next === S.chapter ? camp.roster : undefined, camp?.next === S.chapter ? camp.bonds : undefined, S.difficulty, camp?.next === S.chapter ? chapterPicks(S) : undefined));
+/** 三流派の心得：出撃準備で選んだ流派を、出撃するパウロに付ける。 */
+function withSchool(st: State): State {
+  if (camp?.school) for (const u of st.units) if (u.team === 'blue' && hasSkill(u, 'threeSchools')) u.school = camp.school;
+  return st;
+}
 function showDefeat() {
   const classic = S.difficulty === 'classic';
   if (classic) { const st = S; S = chapterStart(); save(); S = st; } // クラシック：中断データも章の最初に戻す
@@ -684,7 +703,11 @@ async function stageChange() {
 // ---------- phases ----------
 function fortHeal(team: 'blue' | 'red') {
   for (const u of alive(S, team)) if (terrainAt(S, u.x, u.y).heal && u.hp < u.st.hp) { const h = Math.min(u.st.hp - u.hp, Math.ceil(u.st.hp * 0.2)); u.hp += h; float(u, `+${h}`, '#8fe0a0'); }
+  // 使い魔の加護（ペルギウス）：砦の回復のあとに。演出は名前を出さない（使い魔の設定は要確認）。
+  for (const g of familiarHeal(S, team)) float(g.unit, `+${g.hp}`, '#8fe0a0');
 }
+/** A skill's name popped above the unit for a moment (proc skills such as 盾受け). */
+function skillPop(u: Unit, name: string) { floats.push({ x: u.x * T + T / 2, y: u.y * T - T * 0.2, text: name, color: '#9fe8ff', t: FLOAT_LIFE }); }
 async function endTurn() {
   if (mode === 'busy') return;
   mode = 'busy'; sel = picked = inspect = null; stops = new Set(); threat = new Set(); menu([]);
@@ -713,13 +736,14 @@ async function endTurn() {
       followLog.push({ name: e.name, x: p.x, y: p.y, before, after: inView(e.x, e.y, 0) && inView(p.x, p.y, 0), cam: { ...cam } });
     }
     if (p.x !== e.x || p.y !== e.y) audio.sfx('move');
-    await tween(e, p.x, p.y);
+    e.mv = dist(e, p); await tween(e, p.x, p.y);
     if (p.heal && p.wid) await doHeal(e, p.wid, p.heal);
     else if (p.potion) { e.potions--; const h = Math.min(e.st.hp - e.hp, POTION_HEAL); e.hp += h; float(e, `+${h}`, '#8fe0a0'); audio.sfx('heal'); await sleep(450); }
     else if (p.target && p.wid) { await battle(e, p.wid, p.target); if (await checkEnd()) return; }
     await sleep(140);
   }
   S.phase = 'blue'; S.turn++;
+  clearSlow(S); // 泥沼は敵軍フェイズのあいだだけ
   for (const u of S.units) u.done = false;
   if (await checkEnd()) return; // survive / defend: the last enemy phase is over (or the next stage begins)
   if (scrolls()) await panTo(camBefore.x, camBefore.y); // back to where the player was looking
@@ -870,7 +894,7 @@ function unitCard(u: Unit) {
   const c = CLASSES[u.cls];
   const st = STAT_KEYS.map(k => `<div><span>${STAT_NAMES[k]}</span>${u.st[k]}</div>`).join('');
   const card = el('div', 'card' + (u.out ? ' out' : ''), `<div class="uhead"><b class="blue">${esc(u.name)}</b><span>${c.name}${tierOf(u.cls) === 2 ? '（上級職）' : ''}　Lv ${u.lv}　EXP ${u.exp}　移動 ${c.mov}</span>${u.out ? '<em class="outTag">戦線離脱（療養中）・出撃不可</em>' : ''}</div>
-    <div class="stats">${st}</div><div class="wps">使える武器種：${c.wtypes.map(t => WTYPE_NAMES[t]).join('・')}</div>${benchNote(u)}`);
+    <div class="stats">${st}</div><div class="wps">使える武器種：${c.wtypes.map(t => WTYPE_NAMES[t]).join('・')}</div>${skillLine(u)}${benchNote(u)}`);
   const head = card.querySelector('.uhead')!, face = faceHtml(u, 'card' + (u.out ? ' out' : ''));
   if (face) head.insertAdjacentHTML('afterbegin', face);
   else { const icon = document.createElement('canvas'); icon.width = icon.height = 112; icon.className = 'uicon' + (u.out ? ' out' : ''); drawIcon(icon, u); head.prepend(icon); }
@@ -1009,10 +1033,27 @@ async function goNext() {
   }
   if (!camp || !hasChapter(camp.next)) return;
   const plan = sortiePlan(camp.next, camp.roster);
-  if (!plan.choose) { start(newChapter(camp.next, camp.roster, camp.bonds, camp.difficulty), true); return; }
+  if (!plan.choose && !schoolUnit(plan, plan.picks)) { start(newChapter(camp.next, camp.roster, camp.bonds, camp.difficulty), true); return; }
   prep = { index: camp.next, plan, picks: [...plan.picks] };
   campMsg('');
   renderPrep();
+}
+/** 出撃するパウロ（三流派の心得を持つ者）。固定・選んだ仲間の中から。 */
+function schoolUnit(plan: SortiePlan, picks: string[]): Unit | null {
+  return [...plan.fixed.map(f => f.unit), ...plan.pool.filter(u => picks.includes(u.id))].find(u => hasSkill(u, 'threeSchools')) ?? null;
+}
+/** 三流派の心得：流派を1つ選ぶ欄（選んだものは Camp.school に残り、名簿のパウロにも付く）。 */
+function schoolPicker(u: Unit) {
+  const cur = camp!.school ?? u.school ?? CHARS[u.id]?.school ?? SCHOOLS[0];
+  const box = el('div', 'schoolPick', `<h3 class="prepHead">${esc(u.name)}の流派（${SKILLS.threeSchools.name}）</h3>`);
+  for (const k of SCHOOLS) {
+    const b = document.createElement('button');
+    b.className = 'pick school'; b.dataset.school = k; b.setAttribute('aria-pressed', String(k === cur));
+    b.innerHTML = `<span class="pname"><b>${SKILLS[k].name}</b></span><small>${SKILLS[k].desc}</small><em>${k === cur ? '装備' : ''}</em>`;
+    b.onclick = () => { camp!.school = k; for (const r of camp!.roster) if (hasSkill(r, 'threeSchools')) r.school = k; save(); renderPrep(); };
+    box.appendChild(b);
+  }
+  return box;
 }
 const shortStats = (u: Unit) => (['hp', 'str', 'mag', 'spd', 'def'] as const).map(k => `${STAT_NAMES[k]}${u.st[k]}`).join(' ');
 function renderPrep() {
@@ -1045,6 +1086,8 @@ function renderPrep() {
     };
     body.appendChild(b);
   }
+  const su = schoolUnit(plan, p.picks);
+  if (su) body.appendChild(schoolPicker(su));
   const row = el('div', 'row');
   row.appendChild(btn(`この${n}人で出撃する`, () => { const picks = p.picks; prep = null; start(newChapter(p.index, c.roster, c.bonds, c.difficulty, picks), true); }, 'primary', !p.picks.length && plan.free > 0));
   row.appendChild(btn('章間にもどる', () => showCamp()));
@@ -1110,7 +1153,7 @@ function syncGridBtn() {
   g.setAttribute('aria-label', gridOn() ? 'マス目の線を消す' : 'マス目の線を表示する');
 }
 async function start(state: State, intro: boolean) {
-  S = state; mode = 'busy'; inspect = sel = picked = null; inBattle = true; engaged.clear();
+  S = withSchool(state); mode = 'busy'; inspect = sel = picked = null; inBattle = true; engaged.clear();
   $('camp').hidden = true; $('title').hidden = true;
   // The terrain is painted at the canvas's final resolution (RES), so it is as crisp as the figures. That takes
   // a moment on big maps: say so first, so the screen does not look frozen.

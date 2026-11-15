@@ -1,7 +1,7 @@
 // Pure game rules: movement, combat math, level-ups, enemy AI. No DOM access here.
 import {
   CAST, CHARS, chapterDef, CLASSES, ENEMY_BASE, FANG_BASE, FANG_MAX, MAGIC, PROMOS, RANKS, RANK_PTS, STAT_KEYS, SUPPORTS, SUPPORT_BONUS, SUPPORT_CAP, SUPPORT_GAIN, SUPPORT_RANGE,
-  S_LIMIT, S_LIMIT_DEFAULT, TERRAIN, TRIANGLE, WEAPONS, moveCost,
+  SKILLS, SKILL_LIMIT, S_LIMIT, S_LIMIT_DEFAULT, TERRAIN, TRIANGLE, WEAPONS, moveCost,
   type AllyDef, type ArtId, type Chapter, type EnemyAI, type EnemyDef, type LoseCond, type Reinforce, type Tile, type WinCond, type PromoReq, type Stats, type SupportBonus, type SupportPair, type SupportRank, type TalkEvent, type TalkWhen, type Team, type TerrainChange, type Weapon,
 } from './data';
 import { idForName } from './render/who';
@@ -30,6 +30,14 @@ export interface Unit {
   items?: { id: string; n: number }[];
   /** 出撃した時点の累計経験値（totalXp）。章クリア時の控えの経験値の計算に使う。 */
   xp0?: number;
+  /** ボスのスキル（EnemyDef.skills）。味方のスキルは skillsOf() が CHARS と CLASSES から組み立てる。 */
+  skills?: string[];
+  /** 剣の流派（パウロが出撃準備で選んだもの。未設定なら CharDef.school）。セーブにそのまま残る。 */
+  school?: string;
+  /** 泥沼（ルーデウス）：次の敵軍フェイズの移動力の減少。敵軍フェイズの終わりに消す（clearSlow）。 */
+  slow?: number;
+  /** この行動で動いたマス数（始点からの距離。突撃・狙い澄まし用）。 */
+  mv?: number;
 }
 /**
  * Bond progress per pair (key = pairKey). rank: 0 = none, 1 = C … 4 = S.
@@ -92,6 +100,7 @@ export function makeEnemy(e: EnemyDef, uid: number): Unit {
   if (e.retreatAt) u.retreatAt = e.retreatAt;
   if (e.unkillable) u.unkillable = true;
   if (e.tag) u.tag = e.tag;
+  if (e.skills?.length) u.skills = [...e.skills];
   return u;
 }
 
@@ -187,12 +196,55 @@ function mapMatches(map: unknown, ch: Chapter): boolean {
     map[y][x] === t || (ch.terrainChanges ?? []).some(c => c.to === map[y][x] && c.tiles.some(([tx, ty]) => tx === x && ty === y))));
 }
 
+// ---------- スキル（systems.md §4） ----------
+/**
+ * 戦闘中に有効なスキル（最大 SKILL_LIMIT 個）。味方：CharDef.skills（素質・固有）＋職業スキル（'school' は本人の流派）。
+ * 敵：ボスの Unit.skills だけ（一般の敵は持たない）。
+ */
+export function skillsOf(u: Unit): string[] {
+  if (u.team === 'red') return (u.skills ?? []).slice(0, SKILL_LIMIT);
+  const c = CHARS[u.id], school = u.school ?? c?.school;
+  const cls = (CLASSES[u.cls].skills ?? []).map(k => (k === 'school' ? school : k)).filter((k): k is string => !!k && !!SKILLS[k]);
+  return [...(c?.skills ?? []), ...(u.skills ?? []), ...cls].filter((k, i, a) => a.indexOf(k) === i).slice(0, SKILL_LIMIT);
+}
+export const hasSkill = (u: Unit, id: string) => skillsOf(u).includes(id);
+/** 移動力（泥沼の減少込み。最低1）。 */
+export const moveOf = (u: Unit) => Math.max(1, CLASSES[u.cls].mov - (u.slow ?? 0));
+/** このユニットにとっての地形の移動コスト（獣の脚：森は1）。 */
+export const moveCostFor = (u: Unit, t: string) => (t === 'F' && CLASSES[u.cls].mtype !== 'fly' && hasSkill(u, 'beastLegs') ? 1 : moveCost(t, CLASSES[u.cls].mtype));
+/** マスを動く（突撃・狙い澄ましのために動いた距離を覚える）。 */
+export function moveTo(u: Unit, x: number, y: number) { u.mv = dist(u, { x, y }); u.x = x; u.y = y; }
+/** 敵軍フェイズの終わり：泥沼の効果を消す。 */
+export function clearSlow(s: State) { for (const u of s.units) delete u.slow; }
+/** 経験値のスキル補正：師の教え（隣のロキシー、本人以外）・自称天才。各 +20%。 */
+export function expBoost(s: State, u: Unit, amount: number): number {
+  let k = 1;
+  if (hasSkill(u, 'genius')) k += 0.2;
+  if (alive(s, u.team).some(a => a.uid !== u.uid && dist(a, u) === 1 && hasSkill(a, 'teacher'))) k += 0.2;
+  return k === 1 ? amount : Math.round(amount * k);
+}
+/** 癒しの風：杖で `t` を回復したあと、t に隣接する他の味方を HP+3。回復した相手と量を返す（反映済み）。 */
+export function healingWind(s: State, u: Unit, t: Unit): { unit: Unit; hp: number }[] {
+  if (!hasSkill(u, 'healingWind')) return [];
+  const out: { unit: Unit; hp: number }[] = [];
+  for (const a of alive(s, u.team)) if (a !== t && dist(a, t) === 1 && a.hp < a.st.hp) { const h = Math.min(3, a.st.hp - a.hp); a.hp += h; out.push({ unit: a, hp: h }); }
+  return out;
+}
+/** 使い魔の加護：`team` のフェイズ開始時、持ち主の2マス以内の味方（本人以外）を HP+3。回復した相手と量を返す（反映済み）。 */
+export function familiarHeal(s: State, team: Team): { unit: Unit; hp: number }[] {
+  const src = alive(s, team).filter(u => hasSkill(u, 'familiar'));
+  if (!src.length) return [];
+  const out: { unit: Unit; hp: number }[] = [];
+  for (const a of alive(s, team)) if (a.hp < a.st.hp && src.some(p => p !== a && dist(p, a) <= 2)) { const h = Math.min(3, a.st.hp - a.hp); a.hp += h; out.push({ unit: a, hp: h }); }
+  return out;
+}
+
 /** Dijkstra over the map. Returns reachable tiles (cost) and the predecessor of each. */
-export function reachable(s: State, u: Unit, mov = CLASSES[u.cls].mov, ignoreUnits = false) {
+export function reachable(s: State, u: Unit, mov = moveOf(u), ignoreUnits = false) {
   const cost = new Map<string, number>([[key(u.x, u.y), 0]]);
   const prev = new Map<string, string>();
   const open: [number, number, number][] = [[u.x, u.y, 0]];
-  const mt = CLASSES[u.cls].mtype;
+  const mt = CLASSES[u.cls].mtype, legs = mt !== 'fly' && hasSkill(u, 'beastLegs');
   while (open.length) {
     open.sort((a, b) => a[2] - b[2]);
     const [x, y, c] = open.shift()!;
@@ -202,7 +254,7 @@ export function reachable(s: State, u: Unit, mov = CLASSES[u.cls].mov, ignoreUni
       if (ny < 0 || ny >= s.map.length || nx < 0 || nx >= s.map[0].length) continue;
       const other = unitAt(s, nx, ny);
       if (!ignoreUnits && other && other.team !== u.team) continue;
-      const nc = c + moveCost(s.map[ny][nx], mt);
+      const tt = s.map[ny][nx], nc = c + (legs && tt === 'F' ? 1 : moveCost(tt, mt));
       if (nc > mov || nc >= (cost.get(key(nx, ny)) ?? Infinity)) continue;
       cost.set(key(nx, ny), nc); prev.set(key(nx, ny), key(x, y)); open.push([nx, ny, nc]);
     }
@@ -265,19 +317,60 @@ export function threatTiles(s: State, u: Unit, stops = stopTiles(s, u)) {
   return out;
 }
 
-export interface Side { dmg: number; hit: number; crit: number; double: boolean; w: Weapon; sup: SupportInfo }
+/**
+ * block = 盾受け（守る側のエリナリーゼ）の発動率%。skills = この側に効いたスキル名（確定の補正。予測欄の補足）。
+ */
+export interface Side { dmg: number; hit: number; crit: number; double: boolean; w: Weapon; sup: SupportInfo; block: number; skills: string[] }
 export interface Forecast { a: Side; d: Side | null }
 
-function side(s: State, att: Unit, w: Weapon, def: Unit, dw: Weapon | null): Side {
-  const tri = dw ? (TRIANGLE[w.type] === dw.type ? 1 : TRIANGLE[dw.type] === w.type ? -1 : 0) : 0;
+/** 2マス以内の味方に王女の器を持つ者がいるか（本人を除く。複数いても +5 は1回）。 */
+const royalNear = (s: State, u: Unit) => alive(s, u.team).some(a => a.uid !== u.uid && dist(a, u) <= 2 && hasSkill(a, 'royalVessel'));
+
+/**
+ * One direction of a combat. init = att is the one who started the fight (false for the counter).
+ * mv = tiles att moved before attacking (突撃・狙い澄まし。init のときだけ使う)。
+ */
+function side(s: State, att: Unit, w: Weapon, def: Unit, dw: Weapon | null, init = true, mv = 0): Side {
+  const A = skillsOf(att), D = skillsOf(def), used: string[] = [];
+  const on = (id: string) => { used.push(SKILLS[id].name); return true; };
+  let tri = dw ? (TRIANGLE[w.type] === dw.type ? 1 : TRIANGLE[dw.type] === w.type ? -1 : 0) : 0;
+  if (tri < 0 && A.includes('northGod') && on('northGod')) tri = 0;
   const magic = MAGIC.includes(w.type), t = terrainAt(s, def.x, def.y);
   const flying = CLASSES[def.cls].mtype === 'fly';
   const sa = supportBonus(s, att), sd = supportBonus(s, def);
-  const dmg = Math.max(0, (magic ? att.st.mag : att.st.str) + weaponMight(att, w) * (effective(w, def) ? 2 : 1) + tri + sa.dmg - (magic ? def.st.res : def.st.def) - (flying ? 0 : t.def));
-  const hit = Math.round(w.hit + att.st.skl * 2 + att.st.lck / 2 + tri * 15 + sa.hit - (def.st.spd * 2 + def.st.lck + (flying ? 0 : t.avo) + sd.avo));
-  const crit = Math.round(w.crit + att.st.skl / 2 + (CLASSES[att.cls].crit ?? 0) + sa.crit - def.st.lck);
+  let dmgB = 0, hitB = 0, critB = 0, avoB = 0, guard = 0, spdB = 0;
+  // 攻める側
+  if (init && A.includes('swordGod') && on('swordGod')) { hitB += 10; dmgB += 1; }
+  if (!magic && A.includes('sore') && att.hp * 2 <= att.st.hp && on('sore')) dmgB += 3;
+  if (A.includes('kingFlash')) critB += 10;
+  if (A.includes('pride') && att.hp >= att.st.hp && on('pride')) hitB += 10;
+  if (A.includes('monsterHunter') && CLASSES[def.cls].monster && on('monsterHunter')) { dmgB += 3; hitB += 10; }
+  if (!magic && A.includes('godStrength')) guard -= Math.min(3, def.st.def);
+  if (A.includes('preyScent') && def.hp * 2 <= def.st.hp && on('preyScent')) { hitB += 10; dmgB += 2; }
+  if (!init && A.includes('stillWater') && on('stillWater')) hitB += 15;
+  if (w.type === 'lance' && A.includes('spearEdge')) hitB += 10;
+  if (w.type === 'anima' && A.includes('highMagic')) dmgB += 2;
+  if (w.type === 'light' && A.includes('divineArts')) hitB += 10;
+  if (init && mv >= 4 && A.includes('charge') && on('charge')) dmgB += 2;
+  if (init && mv === 0 && A.includes('aim') && on('aim')) hitB += 15;
+  if (magic && A.includes('muei')) spdB += 2;
+  if (royalNear(s, att)) hitB += 5;
+  if (alive(s, def.team).some(e => { const p = e.uid === def.uid ? def : e; return dist(p, att) === 1 && hasSkill(p, 'kingAura'); })) hitB -= 10;
+  const terrAvo = flying || A.includes('thirdEye') ? 0 : t.avo;
+  // 守る側
+  if (D.includes('forestFolk') && s.map[def.y]?.[def.x] === 'F') avoB += 10;
+  if (D.includes('pride') && def.hp >= def.st.hp) avoB += 10;
+  if (royalNear(s, def)) avoB += 5;
+  if (init && D.includes('waterGod')) dmgB -= 2;
+  if (!magic && alive(s, def.team).some(a => a.uid !== def.uid && dist(a, def) === 1 && hasSkill(a, 'guardian'))) guard += 2;
+  if (!magic && dist(att, def) === 2 && D.includes('shieldStance')) guard += 3;
+  const dmg = Math.max(0, (magic ? att.st.mag : att.st.str) + weaponMight(att, w) * (effective(w, def) ? 2 : 1) + tri + sa.dmg + dmgB - (magic ? def.st.res : def.st.def + guard) - (flying ? 0 : t.def));
+  const hit = Math.round(w.hit + att.st.skl * 2 + att.st.lck / 2 + tri * 15 + sa.hit + hitB - (def.st.spd * 2 + def.st.lck + terrAvo + sd.avo + avoB));
+  const crit = Math.round(w.crit + att.st.skl / 2 + (CLASSES[att.cls].crit ?? 0) + sa.crit + critB - def.st.lck);
   const clamp = (v: number) => Math.max(0, Math.min(100, v));
-  return { dmg, hit: clamp(hit), crit: w.noCrit ? 0 : clamp(crit), double: att.st.spd - def.st.spd >= 4, w, sup: sa };
+  const block = init && D.includes('shieldBlock') ? Math.max(0, Math.min(30, def.st.skl)) : 0;
+  const need = A.includes('beastInstinct') ? 3 : 4;
+  return { dmg, hit: clamp(hit), crit: w.noCrit ? 0 : clamp(crit), double: att.st.spd + spdB - def.st.spd >= need, w, sup: sa, block, skills: used };
 }
 
 /** The weapon the defender counters with: equipped if it reaches, else the first that does. Staves never counter. */
@@ -287,14 +380,21 @@ export function counterWeapon(def: Unit, d: number): Weapon | null {
   return null;
 }
 
-export function forecast(s: State, att: Unit, wid: string, def: Unit, from = { x: att.x, y: att.y }): Forecast {
-  const w = WEAPONS[wid], dw = counterWeapon(def, dist(from, def));
+/**
+ * `from` = the tile the attacker will attack from (planning); omitted = where it stands now, having moved `att.mv` tiles.
+ */
+export function forecast(s: State, att: Unit, wid: string, def: Unit, from?: { x: number; y: number }): Forecast {
+  const at = from ?? { x: att.x, y: att.y }, mv = from ? dist(att, from) : (att.mv ?? 0);
+  const w = WEAPONS[wid], dw = counterWeapon(def, dist(at, def));
   // Evaluate terrain at the tile the attacker will stand on.
-  const moved = { ...att, x: from.x, y: from.y };
-  return { a: side(s, moved, w, def, dw), d: dw ? side(s, def, dw, moved, w) : null };
+  const moved = { ...att, x: at.x, y: at.y };
+  return { a: side(s, moved, w, def, dw, true, mv), d: dw ? side(s, def, dw, moved, w, false) : null };
 }
 
-export interface Strike { from: Unit; to: Unit; dmg: number; hit: boolean; crit: boolean }
+/** skill = この一撃で出た確率発動などのスキル名（盾受け・泥沼。戦闘中に短く表示する）。 */
+export interface Strike { from: Unit; to: Unit; dmg: number; hit: boolean; crit: boolean; skill?: string }
+/** 抜け目なし：撃破1体ごとの銀（State.flags.loot にためて、章クリア時に所持金へ足す）。 */
+export const SHREWD_GOLD = 30;
 
 /** Resolves a full round of combat and applies HP changes. */
 export function fight(s: State, att: Unit, wid: string, def: Unit, rnd = Math.random): Strike[] {
@@ -303,9 +403,17 @@ export function fight(s: State, att: Unit, wid: string, def: Unit, rnd = Math.ra
   const strike = (from: Unit, to: Unit, sd: Side) => {
     if (from.hp <= 0 || to.hp <= 0 || from.retreated || to.retreated) return;
     const hit = rnd() * 100 < sd.hit, crit = hit && rnd() * 100 < sd.crit;
+    // 盾受け（確率で半減）・頑強（必殺は2倍）。
+    const block = hit && sd.block > 0 && rnd() * 100 < sd.block;
+    let raw = sd.dmg * (crit ? (hasSkill(to, 'sturdy') ? 2 : 3) : 1);
+    if (block) raw = Math.floor(raw / 2);
     // 撃破不可（M3）：HP は 1 で止まる。撤退するボスも倒れずに撤退する（「撃破＝撤退」。HP は 1 以上残る）。
-    const dmg = hit ? Math.min(to.unkillable || to.retreatAt ? to.hp - 1 : to.hp, sd.dmg * (crit ? 3 : 1)) : 0;
-    to.hp -= dmg; out.push({ from, to, dmg, hit, crit });
+    const dmg = hit ? Math.min(to.unkillable || to.retreatAt ? to.hp - 1 : to.hp, raw) : 0;
+    to.hp -= dmg;
+    // 泥沼：魔術が当たった相手は次の敵軍フェイズの移動力 -2。
+    const mud = hit && to.hp > 0 && MAGIC.includes(sd.w.type) && hasSkill(from, 'mudslide');
+    if (mud) to.slow = 2;
+    out.push({ from, to, dmg, hit, crit, ...(block ? { skill: SKILLS.shieldBlock.name } : mud ? { skill: SKILLS.mudslide.name } : {}) });
     // 撤退（M3）：HP が retreatAt の割合以下になったら、その場で戦いをやめて盤面から下がる。
     if (to.retreatAt && to.hp > 0 && to.hp <= to.st.hp * to.retreatAt) { to.retreated = true; to.left = true; }
   };
@@ -313,6 +421,7 @@ export function fight(s: State, att: Unit, wid: string, def: Unit, rnd = Math.ra
   if (f.d) strike(def, att, f.d);
   if (f.a.double) strike(att, def, f.a);
   if (f.d?.double) strike(def, att, f.d);
+  for (const [k, v] of [[att, def], [def, att]] as const) if (v.hp <= 0 && k.hp > 0 && hasSkill(k, 'shrewd')) s.flags.loot = (Number(s.flags.loot) || 0) + SHREWD_GOLD;
   return out;
 }
 
@@ -342,7 +451,7 @@ export function addExp(u: Unit, amount: number, rnd = Math.random): Partial<Stat
 /** HP a staff restores on `t`: staff value + floor(mag / 2), capped at the target's missing HP. */
 export function healAmount(u: Unit, wid: string, t: Unit): number {
   const w = WEAPONS[wid];
-  return Math.max(0, Math.min(t.st.hp - t.hp, (w.heal ?? 0) + Math.floor(u.st.mag / 2)));
+  return Math.max(0, Math.min(t.st.hp - t.hp, (w.heal ?? 0) + Math.floor(u.st.mag / 2) + (hasSkill(u, 'healArts') ? 2 : 0)));
 }
 /** Experience for a heal: 10 + floor(healed / 2), at most 25. */
 export const healExp = (healed: number) => Math.min(25, 10 + Math.floor(healed / 2));
@@ -369,7 +478,7 @@ function planHeal(s: State, u: Unit, stops: Set<string>, foes: Unit[]): Plan | n
     const [x, y] = k.split(',').map(Number);
     const safe = foes.length ? Math.min(...foes.map(f => dist({ x, y }, f))) : 0;
     for (const sid of staves(u)) for (const t of healTargets(s, u, sid, { x, y })) {
-      const amt = healAmount(u, sid, t), full = (WEAPONS[sid].heal ?? 0) + Math.floor(u.st.mag / 2);
+      const amt = healAmount(u, sid, t), full = (WEAPONS[sid].heal ?? 0) + Math.floor(u.st.mag / 2) + (hasSkill(u, 'healArts') ? 2 : 0);
       if (t.st.hp - t.hp < full / 2) continue;
       const score = amt + (t.boss ? 8 : 0);
       if (score > bestScore || (score === bestScore && safe > bestSafe)) { bestScore = score; bestSafe = safe; best = { x, y, heal: t, wid: sid }; }
@@ -398,7 +507,8 @@ export function planEnemy(s: State, u: Unit): Plan {
       const kills = f.a.dmg * (f.a.double ? 2 : 1) >= t.hp;
       const kill = kills ? 40 * f.a.hit / 100 : 0;
       if (kills && f.a.hit > 0) canKill = true;
-      const score = out + kill - back * 0.4 + terrainAt(s, x, y).avo / 20 + (staves(t).length ? 6 : 0);
+      // 御身大事（王女）：撃破できないなら狙いにくい。
+      const score = out + kill - back * 0.4 + terrainAt(s, x, y).avo / 20 + (staves(t).length ? 6 : 0) - (!kills && hasSkill(t, 'protectMe') ? 5 : 0);
       if (score > bestScore) { bestScore = score; best = { x, y, target: t, wid }; }
     }
   }

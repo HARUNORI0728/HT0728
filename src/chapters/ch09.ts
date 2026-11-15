@@ -46,7 +46,7 @@ export const ch09: Chapter = {
     bow(13, 8, 4, 'hold'), bow(14, 16, 4, 'hold'), mage(14, 15, 3, 'hold'), healer(13, 12, 2, 'hold'),
     knight(14, 11, 0, 'guard'), knight(14, 13, 0, 'guard'),
     { cls: 'swordKing', lv: 18, x: 12, y: 4, wps: ['steelSword'], ai: 'guard', aiFrom: { turn: 7, ai: 'charge' },
-      boss: 'ガル・ファリオン', retreatAt: 0.5, defeat: 'retreat',
+      boss: 'ガル・ファリオン', retreatAt: 0.5, defeat: 'retreat', skills: ['swordGod'],
       st: { hp: 54, str: 13, mag: 2, skl: 21, spd: 16, lck: 9, def: 12, res: 10 } },
     { cls: 'mage', lv: 14, x: MANOR[0], y: MANOR[1], wps: ['fire'], ai: 'guard', boss: 'ダリウス', defeat: 'captured',
       st: { hp: 34, str: 3, mag: 10, skl: 10, spd: 8, lck: 6, def: 9, res: 12 } },

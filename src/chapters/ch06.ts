@@ -53,7 +53,7 @@ export const ch06: Chapter = {
     { turn: 4, units: [cav(9, 21, 5, 'target'), lance(9, 21, 9, 'target'), archer(9, 21, 4, 'charge')] },
     { turn: 6, units: [merc(8, 0, 9, 'target'), lance(9, 0, 10, 'target'), foe('fighter', 'ironAxe', '傭兵の')(8, 0, 7, 'charge')] },
     { turn: 8, units: [
-      { cls: 'myrmidon', lv: 13, x: 21, y: 5, wps: ['steelSword'], ai: 'charge', boss: 'オーベール', retreatAt: 0.5, defeat: 'retreat' },
+      { cls: 'myrmidon', lv: 13, x: 21, y: 5, wps: ['steelSword'], ai: 'charge', boss: 'オーベール', retreatAt: 0.5, defeat: 'retreat', skills: ['northGod'] },
       { cls: 'myrmidon', lv: 10, x: 21, y: 9, wps: ['steelSword'], ai: 'charge', prefix: '刺客の' },
     ] },
   ],

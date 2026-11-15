@@ -51,7 +51,7 @@ export const ch04: Chapter = {
     // 北東の丘の弓兵
     { cls: 'archer', lv: 6, x: 14, y: 2, wps: ['ironBow'], ai: 'hold', prefix: P },
     { cls: 'archer', lv: 6, x: 17, y: 5, wps: ['ironBow'], ai: 'guard', prefix: P },
-    { cls: 'myrmidon', lv: 11, x: 13, y: 3, wps: ['ironSword'], ai: 'guard', boss: '北帝オーベール', retreatAt: 0.5, defeat: 'retreat',
+    { cls: 'myrmidon', lv: 11, x: 13, y: 3, wps: ['ironSword'], ai: 'guard', boss: '北帝オーベール', retreatAt: 0.5, defeat: 'retreat', skills: ['northGod'],
       aiFrom: { turn: 2, ai: 'charge' } },
   ],
   reinforce: [

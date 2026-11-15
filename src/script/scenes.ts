@@ -19,6 +19,11 @@ export type SceneId =
   | "ch1.battle5"
   | "ch1.battle6"
   | "ch1.battle7"
+  | "ch1.battle8"
+  | "ch1.battle9"
+  | "ch1.battle10"
+  | "ch1.battle11"
+  | "ch1.battle12"
   | "ch1.outro"
   | "ch1.interlude"
   | "ch2.intro"
@@ -151,7 +156,7 @@ export type SceneId =
   | "frag:差し替え・ルーク"
   | "epilogue.close";
 /** Scene ids in screenplay order. */
-export const SCENE_ORDER: SceneId[] = ["prologue", "ch1.intro", "ch1.battle1", "ch1.battle2", "ch1.battle3", "ch1.battle4", "ch1.battle5", "ch1.battle6", "ch1.battle7", "ch1.outro", "ch1.interlude", "ch2.intro", "ch2.battle1", "ch2.battle2", "ch2.battle3", "ch2.battle4", "ch2.battle5", "ch2.battle6", "ch2.battle7", "ch2.battle8", "ch2.outro", "ch2.interlude", "ch3.intro", "ch3.battle1", "ch3.battle2", "ch3.battle3", "ch3.battle4", "ch3.battle5", "ch3.battle6", "ch3.battle7", "ch3.outro", "ch3.interlude", "ch4.intro", "ch4.battle1", "ch4.battle2", "ch4.battle3", "ch4.battle4", "ch4.battle5", "ch4.battle6", "ch4.battle7", "ch4.outro", "ch4.interlude", "ch5.intro", "ch5.battle1", "ch5.battle2", "ch5.battle3", "ch5.battle4", "ch5.battle5", "ch5.battle6", "ch5.battle7", "ch5.outro", "ch5.interlude", "ch6.intro", "ch6.battle1", "ch6.battle2", "ch6.battle3", "ch6.battle4", "ch6.battle5", "ch6.battle6", "ch6.battle7", "ch6.battle8", "ch6.outro", "ch6.interlude", "ch7.intro", "ch7.battle1", "ch7.battle2", "ch7.battle3", "ch7.battle4", "ch7.battle5", "ch7.battle6", "ch7.battle7", "ch7.outro", "ch7.interlude", "ch8.intro", "ch8.battle1", "ch8.battle2", "ch8.battle3", "ch8.battle4", "ch8.battle5", "ch8.battle6", "ch8.battle7", "ch8.outro", "ch8.interlude", "ch9.intro", "ch9.battle1", "ch9.battle2", "ch9.battle3", "ch9.battle4", "ch9.battle5", "ch9.battle9", "ch9.battle6", "ch9.battle7", "ch9.battle8", "ch9.outro", "ch9.interlude", "ch10.intro", "ch10.battle1", "ch10.battle2", "ch10.battle9", "ch10.battle3", "ch10.battle4", "ch10.battle5", "ch10.battle6", "ch10.battle7", "ch10.battle8", "ch10.outro", "confess.sylphiette", "confess.roxy", "confess.eris", "confess.sara", "confess.linia", "confess.pursena", "confess.ariel", "epilogue.open", "after.sylphiette.wed", "after.sylphiette.friend", "after.roxy.wed", "after.roxy.friend", "after.eris.wed", "after.eris.friend", "after.sara.wed", "after.sara.friend", "after.linia.wed", "after.linia.friend", "after.pursena.wed", "after.pursena.friend", "after.ariel.wed", "after.ariel.friend", "frag:差し替え・サラ（仲間）", "frag:差し込み・療養中", "frag:差し込み・シルフィエットとエリス", "frag:差し込み・シルフィエットとロキシー", "frag:差し込み・シルフィエットとアリエル", "frag:差し込み・エリスとロキシー", "frag:差し込み・エリスとアリエル", "frag:差し込み・リニアとプルセナ（結婚）", "frag:差し込み・リニアとプルセナ（仲間）", "frag:差し替え・エリナリーゼ", "frag:差し替え・ルーク", "epilogue.close"];
+export const SCENE_ORDER: SceneId[] = ["prologue", "ch1.intro", "ch1.battle1", "ch1.battle2", "ch1.battle3", "ch1.battle4", "ch1.battle5", "ch1.battle6", "ch1.battle7", "ch1.battle8", "ch1.battle9", "ch1.battle10", "ch1.battle11", "ch1.battle12", "ch1.outro", "ch1.interlude", "ch2.intro", "ch2.battle1", "ch2.battle2", "ch2.battle3", "ch2.battle4", "ch2.battle5", "ch2.battle6", "ch2.battle7", "ch2.battle8", "ch2.outro", "ch2.interlude", "ch3.intro", "ch3.battle1", "ch3.battle2", "ch3.battle3", "ch3.battle4", "ch3.battle5", "ch3.battle6", "ch3.battle7", "ch3.outro", "ch3.interlude", "ch4.intro", "ch4.battle1", "ch4.battle2", "ch4.battle3", "ch4.battle4", "ch4.battle5", "ch4.battle6", "ch4.battle7", "ch4.outro", "ch4.interlude", "ch5.intro", "ch5.battle1", "ch5.battle2", "ch5.battle3", "ch5.battle4", "ch5.battle5", "ch5.battle6", "ch5.battle7", "ch5.outro", "ch5.interlude", "ch6.intro", "ch6.battle1", "ch6.battle2", "ch6.battle3", "ch6.battle4", "ch6.battle5", "ch6.battle6", "ch6.battle7", "ch6.battle8", "ch6.outro", "ch6.interlude", "ch7.intro", "ch7.battle1", "ch7.battle2", "ch7.battle3", "ch7.battle4", "ch7.battle5", "ch7.battle6", "ch7.battle7", "ch7.outro", "ch7.interlude", "ch8.intro", "ch8.battle1", "ch8.battle2", "ch8.battle3", "ch8.battle4", "ch8.battle5", "ch8.battle6", "ch8.battle7", "ch8.outro", "ch8.interlude", "ch9.intro", "ch9.battle1", "ch9.battle2", "ch9.battle3", "ch9.battle4", "ch9.battle5", "ch9.battle9", "ch9.battle6", "ch9.battle7", "ch9.battle8", "ch9.outro", "ch9.interlude", "ch10.intro", "ch10.battle1", "ch10.battle2", "ch10.battle9", "ch10.battle3", "ch10.battle4", "ch10.battle5", "ch10.battle6", "ch10.battle7", "ch10.battle8", "ch10.outro", "confess.sylphiette", "confess.roxy", "confess.eris", "confess.sara", "confess.linia", "confess.pursena", "confess.ariel", "epilogue.open", "after.sylphiette.wed", "after.sylphiette.friend", "after.roxy.wed", "after.roxy.friend", "after.eris.wed", "after.eris.friend", "after.sara.wed", "after.sara.friend", "after.linia.wed", "after.linia.friend", "after.pursena.wed", "after.pursena.friend", "after.ariel.wed", "after.ariel.friend", "frag:差し替え・サラ（仲間）", "frag:差し込み・療養中", "frag:差し込み・シルフィエットとエリス", "frag:差し込み・シルフィエットとロキシー", "frag:差し込み・シルフィエットとアリエル", "frag:差し込み・エリスとロキシー", "frag:差し込み・エリスとアリエル", "frag:差し込み・リニアとプルセナ（結婚）", "frag:差し込み・リニアとプルセナ（仲間）", "frag:差し替え・エリナリーゼ", "frag:差し替え・ルーク", "epilogue.close"];
 export const SCENES: Record<SceneId, Scene> = {
   "prologue": {
     title: "序章「ふたたびの産声」", chapter: 0,
@@ -264,7 +269,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch1.battle5": {
     title: "第1章　戦闘中⑤", chapter: 1,
-    cond: "3ターン目・自軍フェイズ開始時",
+    cond: "4ターン目・自軍フェイズ開始時",
     lines: [
       {"who":"","text":"天幕の陰で、炊き出しの鍋を抱えた女が、子どもたちを背に隠していた。"},
       {"who":"ハンナ","text":"ほら坊やたち、頭を下げてな！ 大丈夫、あの人たちが来てくれたからね！","art":false},
@@ -292,6 +297,62 @@ export const SCENES: Record<SceneId, Scene> = {
       {"who":"ガズ","text":"ぐっ……こんな、ガキどもに……","face":"angry"},
       {"who":"ガズ","text":"……殺せよ。どうせ、拾った命だ。","face":"normal"},
       {"who":"ルーデウス","text":"殺しません。聞きたいことがあります。……その鎧を、誰にもらったのか。","face":"normal"},
+    ],
+  },
+  "ch1.battle8": {
+    title: "第1章　戦闘中⑧", chapter: 1,
+    cond: "1ターン目・自軍フェイズ開始時（開幕会話のあと、最初の操作の前）",
+    lines: [
+      {"who":"ギレーヌ","text":"奴らの狙いは奥の天幕だ。冬を越すための麦と干し肉が、全部あそこに積んである。","face":"normal"},
+      {"who":"ギレーヌ","text":"一度でも踏み込まれたら終わりだ。持ち出されれば、このキャンプは冬を越せん。","face":"angry"},
+      {"who":"ルーデウス","text":"分かりました。まずは天幕の前で迎え撃ちます。砦に攻め上がるのは、波が引いてからです。","face":"normal"},
+      {"who":"ルイジェルド","text":"北の森にまだ気配がある。川の向こうにもだ。一度では終わらんぞ。","face":"normal"},
+      {"who":"エリス","text":"何度来たって同じよ！ 全部たたき返してやるわ！","face":"angry"},
+      {"who":"ルーデウス","text":"（守りながら数を減らす。焦って前に出たら、その隙に天幕をやられる）","face":"normal"},
+    ],
+  },
+  "ch1.battle9": {
+    title: "第1章　戦闘中⑨", chapter: 1,
+    cond: "2ターン目・敵軍フェイズ開始時、川向こう（南東の畑）に増援が出現した直後",
+    lines: [
+      {"who":"","text":"川の向こう、南東の畑の跡に、新しい一団が現れた。"},
+      {"who":"ギレーヌ","text":"東からも来たか。……あの畑は、キャンプの者が春に向けて耕し直していた場所だ。","face":"angry"},
+      {"who":"","text":"野盗たちは、芽を出したばかりの麦を踏みつけながら、浅瀬のほうへ向かってくる。"},
+      {"who":"エリス","text":"ちょっと！ せっかく植えたのを踏んでるじゃない！","face":"angry"},
+      {"who":"ルーデウス","text":"浅瀬は足を取られます。渡りきる前に叩けば、こちらが有利です。","face":"normal"},
+      {"who":"ルーデウス","text":"（笑いながら踏み荒らしてる。あれは、ここで生きようとしてる人たちの春なのに）","face":"angry"},
+    ],
+  },
+  "ch1.battle10": {
+    title: "第1章　戦闘中⑩", chapter: 1,
+    cond: "7ターン目・自軍フェイズ開始時（前半「6ターン守り切る」を達成し、後半に切り替わった直後）", bgm: "resolve",
+    lines: [
+      {"who":"","text":"押し寄せる波が、ようやく途切れた。天幕の前には、野盗の落とした武器が散らばっている。"},
+      {"who":"ギレーヌ","text":"しのいだな。……向こうの手勢は、もう砦に残っている分だけのはずだ。","face":"normal"},
+      {"who":"ルーデウス","text":"なら、今度はこちらから行きましょう。ガズを押さえないと、また同じことが起きます。","face":"normal"},
+      {"who":"ルイジェルド","text":"砦へは橋を渡って東だ。入口は一つで、門番が立っている。","face":"normal"},
+      {"who":"ギレーヌ","text":"だが、天幕を空にはできん。北の森で、まだ何人か様子をうかがっている。","face":"normal"},
+      {"who":"エリス","text":"じゃあ、留守番を決めて、残りで殴り込みね！","face":"smile"},
+      {"who":"ルーデウス","text":"……言い方はともかく、そういうことです。誰か一人、天幕のそばに残ってください。","face":"smile"},
+    ],
+  },
+  "ch1.battle11": {
+    title: "第1章　戦闘中⑪", chapter: 1,
+    cond: "9ターン目・敵軍フェイズ開始時、後半の北の森の増援が出現した直後",
+    lines: [
+      {"who":"","text":"北の森から、また野盗が現れた。手薄になったキャンプのほうへ、まっすぐ下りてくる。"},
+      {"who":"ハンナ","text":"ちょいと！ また来たよ！ 天幕のほうだ！","art":false},
+      {"who":"ルイジェルド","text":"頭を見捨てて、食料だけは持ち帰るつもりか。浅ましい。","face":"angry"},
+      {"who":"ルーデウス","text":"（砦を落とすのが先か、天幕を守るのが先か。……両方だ。どっちも諦めない）","face":"normal"},
+    ],
+  },
+  "ch1.battle12": {
+    title: "第1章　戦闘中⑫", chapter: 1,
+    cond: "11ターン目・敵軍フェイズ開始時（ガズが健在のときだけ。ガズが砦を出て動き出す）",
+    lines: [
+      {"who":"ガズ","text":"ちっ、どいつもこいつも役に立たねえ！","face":"angry"},
+      {"who":"ガズ","text":"もういい。砦に籠もってたって、飯は湧いてこねえんだ。俺が出る！","face":"angry"},
+      {"who":"ルーデウス","text":"（砦を捨てて出てきた。……向こうも、もう後がないんだ）","face":"normal"},
     ],
   },
   "ch1.outro": {
@@ -1737,7 +1798,7 @@ export const SCENES: Record<SceneId, Scene> = {
   },
   "ch10.intro": {
     title: "第10章　開幕", chapter: 10,
-    cond: "第10章の開始時（出撃前）", bgm: "resolve", bg: "camp_sunset",
+    cond: "第10章の開始時（出撃前）", bgm: "resolve", bg: "camp_dawn",
     lines: [
       {"who":"","text":"夜明け前。キャンプの外れに、仲間たちが集まっていた。誰も眠れなかったらしい。"},
       {"who":"パウロ","text":"ルディ。父さまも行くぞ。止めても無駄だからな。","face":"normal"},

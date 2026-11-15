@@ -67,7 +67,7 @@ export const ch10: Chapter = {
       golem(15, 17, 5, 'hold'), shade(15, 18, 3, 'hold'),
       wolf(14, 20, 3, 'hold'), shade(16, 15, 1, 'hold'),
       ...wedges.map(({ tag, tile: [x, y] }): EnemyDef => ({ cls: 'crystal', lv: 6, x, y, wps: [], ai: 'guard', prefix: '', tag })),
-      { cls: 'mage', lv: 20, x: 16, y: 2, wps: ['shadeBolt'], ai: 'guard', boss: '使徒',
+      { cls: 'mage', lv: 20, x: 16, y: 2, wps: ['shadeBolt'], ai: 'guard', boss: '使徒', skills: ['muei'],
         st: { hp: 51, str: 3, mag: 20, skl: 18, spd: 15, lck: 9, def: 14, res: 17 } },
     ],
     reinforce: wedgeWaves,

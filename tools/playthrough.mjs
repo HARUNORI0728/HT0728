@@ -51,6 +51,8 @@ const rngOf = seed => { let s = seed >>> 0; return () => ((s = (Math.imul(s, 166
 const clone = v => JSON.parse(JSON.stringify(v));
 const K = (x, y) => x + ',' + y;
 const P = k => { const [x, y] = k.split(',').map(Number); return { x, y }; };
+// 動いた距離を覚える（突撃・狙い澄まし）。--root の古いソースには moveTo が無い。
+const moveTo = (u, x, y) => { if (L.moveTo) L.moveTo(u, x, y); else { u.x = x; u.y = y; } };
 
 // ---------- per-chapter play plans (人の普通の打ち方) ----------
 // mode: assault（敵へ向かう）/ boss（ボスへ）/ seize / escape / hold（持ち場 anchor の半径 r に留まり、来た敵を叩く）
@@ -71,6 +73,7 @@ function planOf(s) {
   }
   // 章ごとの補足（地図を見た人がふつうにやること）
   const n = s.chapter + 1;
+  if (n === 1 && st === 0) { p.anchor = [3, 6]; p.r = 4; p.leash = 10; } // 前半は食料の天幕のまわりで迎え撃つ（目標が「守り切る」なので、砦までは出ていかない）
   if (n === 2) { p.anchor = [5, 7]; p.r = 4; }               // 廃村の中で迎え撃つ
   if (n === 6) { p.r = 4; }                                  // 食糧庫のまわり
   if (n === 7) { p.plugFrom = 1; }                           // 船着き場を早めに塞ぐ
@@ -203,7 +206,7 @@ function Sim(rnd, log) {
       if (isPlug) { const d = plugF.get(k) ?? 99; base -= d * 4; if (d === 0) base += 30; }
       else if (anchorF) {
         const d = anchorF.get(k) ?? 99;
-        base -= Math.max(0, d - plan.r) * 3;
+        base -= Math.max(0, d - plan.r) * (plan.leash ?? 3);
         if (vip) base -= d * 0.5;
       }
       // VIP stays behind the others: penalty for being closer to foes than the nearest ally
@@ -295,7 +298,7 @@ function Sim(rnd, log) {
         fallen.push({ id: u.id, turn: s.turn, phase: s.phase, by: foe.name, byLv: foe.lv, byBoss: !!foe.boss, lv: L.effLv(u) });
       }
       const me = att.team === 'blue' ? att : def, foe = me === att ? def : att;
-      if (me.hp > 0 && me.gr) L.addExp(me, L.expGain(me, foe, strikes), rnd);
+      if (me.hp > 0 && me.gr) L.addExp(me, L.expBoost ? L.expBoost(s, me, L.expGain(me, foe, strikes)) : L.expGain(me, foe, strikes), rnd);
     }
     function lossReason() {
       const lc = L.loseCond(ch, L.stageOf(s));
@@ -341,11 +344,11 @@ function Sim(rnd, log) {
         }
         const { u, b } = pick;
         if (TRACE && TRACE.includes(s.chapter + 1)) console.error(`  T${s.turn} ${u.id}(${u.hp}/${u.st.hp} Lv${L.effLv(u)}) (${u.x},${u.y})->(${b.x},${b.y}) ${b.target ? 'atk ' + b.target.name + '(' + b.target.hp + ')' : b.heal ? 'heal ' + b.heal.id : b.potion ? 'potion' : b.seize ? 'SEIZE' : b.escape ? 'ESCAPE' : 'wait'} ${b.score.toFixed(1)}`);
-        u.x = b.x; u.y = b.y; u.done = true;
+        moveTo(u, b.x, b.y); u.done = true;
         if (b.seize && L.canSeize(s, u)) s.flags[L.seizeFlag(s)] = true;
         else if (b.escape && L.canEscape(s, u)) u.left = true;
         else if (b.target) combat(u, b.wid, b.target);
-        else if (b.heal) { const h = L.heal(u, b.wid, b.heal); L.addExp(u, L.healExp(h), rnd); if (u.team === 'blue') talk(w => w.type === 'firstHeal' && w.unit === u.id); }
+        else if (b.heal) { const h = L.heal(u, b.wid, b.heal); L.healingWind?.(s, u, b.heal); L.addExp(u, L.expBoost ? L.expBoost(s, u, L.healExp(h)) : L.healExp(h), rnd); if (u.team === 'blue') talk(w => w.type === 'firstHeal' && w.unit === u.id); }
         else if (b.potion) { u.potions--; u.hp = Math.min(u.st.hp, u.hp + L.POTION_HEAL); }
         const o = check(); if (o === 'win' || o === 'lose') result = o;
       }
@@ -353,6 +356,7 @@ function Sim(rnd, log) {
       // ---- enemy phase ----
       s.phase = 'red';
       for (const u of L.alive(s, 'red')) if (L.terrainAt(s, u.x, u.y).heal && u.hp < u.st.hp) u.hp += Math.min(u.st.hp - u.hp, Math.ceil(u.st.hp * 0.2));
+      L.familiarHeal?.(s, 'red');
       L.applyAiSwitch(s);
       const actors = L.alive(s, 'red');
       talk(w => w.type === 'turn' && w.turn === s.turn && w.phase === 'red');
@@ -362,17 +366,19 @@ function Sim(rnd, log) {
       for (const e of actors) {
         if (e.hp <= 0 || e.left) continue;
         const p = L.planEnemy(s, e);
-        e.x = p.x; e.y = p.y;
+        moveTo(e, p.x, p.y);
         if (p.heal && p.wid) L.heal(e, p.wid, p.heal);
         else if (p.potion) { e.potions--; e.hp += Math.min(e.st.hp - e.hp, L.POTION_HEAL); }
         else if (p.target && p.wid) { combat(e, p.wid, p.target); const o = check(); if (o === 'win' || o === 'lose') { result = o; break; } }
       }
       if (result) break;
       s.phase = 'blue'; s.turn++;
+      L.clearSlow?.(s); // 泥沼は敵軍フェイズのあいだだけ
       for (const u of s.units) u.done = false;
       { const o = check(); if (o === 'win' || o === 'lose') { result = o; break; } }
       L.applyTerrainChanges(s, 'turn');
       for (const u of L.alive(s, 'blue')) if (L.terrainAt(s, u.x, u.y).heal && u.hp < u.st.hp) u.hp += Math.min(u.st.hp - u.hp, Math.ceil(u.st.hp * 0.2));
+      L.familiarHeal?.(s, 'blue');
       talk(w => w.type === 'turn' && w.turn === s.turn && w.phase === 'blue');
       const o = check(); if (o === 'win' || o === 'lose') result = o;
     }
@@ -485,7 +491,7 @@ function campaign(seed, startIndex = C0 - 1, startCamp = null) {
     for (const u of roster) u.joined ??= i;
     entry.promoted = campStep(roster, bonds, i + 1);
     if (!NOSHOP) {
-      if (r.result === 'win') gold += SHOP.chapterReward(i + 1);
+      if (r.result === 'win') gold += SHOP.chapterReward(i + 1) + (Number(r.s.flags.loot) || 0); // loot = 抜け目なし
       const sh = shopStep(roster, gold, i + 1);
       gold = sh.gold; entry.bought = sh.bought; entry.gold = gold;
     }
