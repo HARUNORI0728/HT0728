@@ -22,6 +22,7 @@ import { SCENES, SCENE_ORDER, type SceneId } from './script/scenes';
 import { faceHtml, idForName, idForUnit, loadMapArt, loadUnitArt, mapArtUrl, portraitUrl, preloadPortrait, spriteUrl } from './render/art';
 import { BLOCKING, changedTiles, drawGrid, drawGuideMarks, paintedLayer } from './render/mapart';
 import { audio } from './audio/engine';
+import { chooseMapTrack } from './audio/map-track';
 import { mountAudioUi } from './audio/ui';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -351,21 +352,19 @@ function menu(items: [string, () => void, string?][]) {
 
 // ---------- music ----------
 // Which track plays where (design/asset-orders.md §1). Delivered files replace the placeholder synth by themselves.
-/** Bosses the party has fought this chapter (by uid): the boss theme plays while one of them still stands. */
+/** Engaged bosses retain their theme in allied phases until defeated or gone. */
 const engaged = new Set<number>();
 /** Whether this boss's first-clash conversation has played (also after reloading mid-chapter). */
 const bossTalkPlayed = (u: Unit) => (chapterDef(S.chapter).talks ?? []).some(e => e.when.type === 'bossFight' && e.when.boss === bossId(u) && S.flags[talkKey(e.scene)]);
 const bossEngaged = () => S.units.some(u => u.team === 'red' && u.boss && !u.unkillable && u.hp > 0 && !u.left && (engaged.has(u.uid) || bossTalkPlayed(u)));
 /**
- * The map's track: the boss theme from the first clash with a boss until it falls (or retreats); otherwise the
+ * The map's track: enemy phases always use their own theme; allied phases use an engaged boss's theme, otherwise the
  * chapter's own (Chapter.bgm) or the default by chapter — map_dawn 1–3, map_resolve 4–7, map_final 8–10 — and
  * map_enemy in the enemy phase.
  */
 function mapTrack(): string {
   const bgm = stageBgm(chapterDef(S.chapter), stageOf(S)) ?? {}, n = S.chapter + 1;
-  if (bossEngaged()) return bgm.boss ?? 'boss';
-  if (S.phase === 'red') return bgm.red ?? 'map_enemy';
-  return bgm.blue ?? (n <= 3 ? 'map_dawn' : n <= 7 ? 'map_resolve' : 'map_final');
+  return chooseMapTrack(n, S.phase, bossEngaged(), bgm);
 }
 const mapMusic = () => { if (inBattle && S) audio.bgm(mapTrack()); };
 /** Old companions whose talks are about shared history rather than romance or banter. */
@@ -604,7 +603,7 @@ async function battle(att: Unit, wid: string, def: Unit) {
   for (const e of skip) { S.flags[talkKey(e.scene)] = true; persistFlag(talkKey(e.scene)); }
   await runTalks(evs);
   for (const u of [att, def]) if (u.team === 'red' && u.boss) engaged.add(u.uid);
-  mapMusic(); // the boss theme from the first clash on
+  mapMusic(); // engaged boss theme in allied phases; enemy phases keep their own theme
   shownHp.set(att.uid, att.hp); shownHp.set(def.uid, def.hp);
   const strikes = fight(S, att, wid, def);
   const retreated = [att, def].filter(u => u.retreated);
