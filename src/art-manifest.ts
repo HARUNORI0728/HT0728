@@ -83,9 +83,15 @@ export const PORTRAIT_ART: Record<string, Partial<Record<Face, string>>> = {
 };
 /** Conversation backgrounds by name (screenplay 背景：<名前>). 16:9, width 1280. */
 export const BG_ART: Record<string, string> = {
+  battlefield_dusk: 'assets/backgrounds/battlefield_dusk.webp?v=e9cf8852',
+  buena_hill: 'assets/backgrounds/buena_hill.webp?v=b7f9fe36',
   camp_day: 'assets/backgrounds/camp_day.webp?v=d15f68c4',
   camp_night: 'assets/backgrounds/camp_night.webp?v=d11d434b',
+  forest: 'assets/backgrounds/forest.webp?v=4c009e28',
+  forest_residue: 'assets/backgrounds/forest_residue.webp?v=18cb68f4',
   grassland_day: 'assets/backgrounds/grassland_day.webp?v=74e1292f',
+  riverside: 'assets/backgrounds/riverside.webp?v=add5204f',
+  ruined_city: 'assets/backgrounds/ruined_city.webp?v=496d281b',
   ruined_village: 'assets/backgrounds/ruined_village.webp?v=471efad6',
   tent_inside: 'assets/backgrounds/tent_inside.webp?v=dac09c48',
   title: 'assets/backgrounds/title.webp?v=a3b013e8',
