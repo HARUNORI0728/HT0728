@@ -285,6 +285,11 @@
   .sndBtn:hover { color: var(--ink); }
   #title .sndBtn { position: absolute; top: max(12px, env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); }
   .hudR { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  /* Map grid toggle (HUD, next to the sound button): pressed = tile lines drawn over the map. */
+  .gridBtn { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 4px 10px; font-size: 13px; color: var(--dim); flex: none; }
+  .gridBtn svg { width: 20px; height: 20px; }
+  .gridBtn:hover { color: var(--ink); }
+  .gridBtn[aria-pressed="true"] { color: var(--gold); border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
   .campHead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   #snd { z-index: 40; display: flex; align-items: center; justify-content: center; background: rgba(var(--shade), .72); padding: 16px; }
   .sndCard { width: min(360px, 100%); background: linear-gradient(#262238, #1b1828); border: 2px solid var(--gold); border-radius: 8px; padding: 16px;
@@ -299,7 +304,7 @@
 </style>
 
 <main id="app">
-  <header id="hud"><span id="chTitle"></span><span class="hudR"><span id="turn"></span><button class="sndBtn" type="button"></button></span></header>
+  <header id="hud"><span id="chTitle"></span><span class="hudR"><span id="turn"></span><button id="gridBtn" class="gridBtn" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM9.33 4v16M14.67 4v16M4 9.33h16M4 14.67h16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>格子</span></button><button class="sndBtn" type="button"></button></span></header>
   <div id="stage"><canvas id="cv" width="1440" height="960"></canvas><div id="banner" hidden></div>
     <div id="cutin" hidden><div class="ciband"></div><div class="ci l"><img alt=""></div><div class="ci r"><img alt=""></div><div class="cicrit">必殺！</div></div></div>
   <section id="panel"><div id="info"></div><div id="menu"></div></section>

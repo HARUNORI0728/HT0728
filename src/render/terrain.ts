@@ -10,6 +10,35 @@
 // Everything random is seeded from the map (and the tile), so the same map always gives the same picture.
 import { OUT, T, canvas, hashStr, rng, type C2D } from './common';
 import * as O from './terrain-objs';
+import { CHAPTER_SLOTS } from '../chapters';
+
+/**
+ * 迷宮の石床 (K) と岩壁 (Q)。呼び出し側が古い代用（K→道 R、Q→崖 X）に置き換えた地図を渡してきたときは、
+ * その章の地図（と崩落で岩壁になるマス）と照らし合わせて K / Q に戻す。K / Q を含む地図はそのまま使う。
+ */
+function restoreCave(map: string[]): string[] {
+  if (map.some(r => /[KQ]/.test(r))) return map;
+  for (const ch of CHAPTER_SLOTS) {
+    if (!ch || !ch.map.some(r => r.includes('Q')) || ch.map.length !== map.length || ch.map[0].length !== map[0].length) continue;
+    const toQ = new Set((ch.terrainChanges ?? []).filter(t => t.to === 'Q').flatMap(t => t.tiles.map(([x, y]) => x + ',' + y)));
+    const sub = (t: string) => (t === 'K' ? 'R' : t === 'Q' ? 'X' : t);
+    if (!map.every((row, y) => [...row].every((t, x) => t === sub(ch.map[y][x]) || (t === 'X' && toQ.has(x + ',' + y))))) continue;
+    return map.map((row, y) => [...row].map((t, x) => {
+      const o = ch.map[y][x];
+      return t === 'X' && (o === 'Q' || toQ.has(x + ',' + y)) ? 'Q' : t === 'R' && o === 'K' ? 'K' : t;
+    }).join(''));
+  }
+  return map;
+}
+/** Cave maps: bushes (Y) with no forest beside them are underground thickets → 'y' (crystal growth, same tile rules). */
+function caveMarks(map: string[]): string[] {
+  const f = (x: number, y: number) => map[y]?.[x] === 'F';
+  return map.map((row, y) => [...row].map((t, x) => {
+    if (t !== 'Y') return t;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (f(x + dx, y + dy)) return t;
+    return 'y';
+  }).join(''));
+}
 
 type Test = (ch: string) => boolean;
 const isWater: Test = ch => ch === 'W' || ch === 'B' || ch === 'P';
@@ -254,7 +283,9 @@ function moved(p: Path2D, dx: number, dy: number) {
 }
 
 // ---------- terrain layer ----------
-export function drawTerrain(c: C2D, map: string[]) {
+export function drawTerrain(c: C2D, mapIn: string[]) {
+  const restored = restoreCave(mapIn), cave = hasAny(restored, 'Q');
+  const map = cave ? caveMarks(restored) : restored;
   const cols = map[0].length, rows = map.length, W = cols * T, H = rows * T;
   const seed = hashStr(map.join('/'));
   const R = rng(seed);
@@ -320,6 +351,114 @@ export function drawTerrain(c: C2D, map: string[]) {
     }
     ['#fff6c8', '#ffd0e0', '#e6f0ff', '#ffe27a'].forEach((col, i) => { c.fillStyle = col; c.fill(fl[i]); });
   }
+  // ---- cave floor (迷宮): everything but the open ground at the exit (forest, grass, bushes beside the forest) ----
+  if (cave) drawCaveFloor();
+  function drawCaveFloor() {
+    const outdoor = (ch: string) => ch === 'F' || ch === 'G' || ch === 'Y';
+    const ff = buildField(map, ch => !outdoor(ch), 6, 0.3, { noise, amp: 0.12, freq: 1 });
+    const fp = toPath(contours(ff, 0.5));
+    // walls darken the floor beside them (ambient occlusion), so rooms read as hollows in the rock
+    const ao = buildField(map, ch => ch === 'Q', 3, 0.45);
+    // flagstones: irregular cells (jittered seeds, not tied to the tiles) with mortar cracks and bevels; worn
+    // patches fade into rough bedrock so wide rooms never show a regular pattern
+    const sp = T * 0.47, gx = Math.ceil(W / sp) + 3, gy = Math.ceil(H / sp) + 3, SR = rng(seed ^ 0x5eed);
+    const sxs = new Float32Array(gx * gy), sys = new Float32Array(gx * gy), stn = new Float32Array(gx * gy);
+    for (let j = 0; j < gy; j++) for (let i = 0; i < gx; i++) {
+      const id = j * gx + i;
+      sxs[id] = (i - 1 + 0.12 + SR() * 0.76) * sp; sys[id] = (j - 1 + 0.12 + SR() * 0.76) * sp; stn[id] = SR() - 0.5;
+    }
+    const cs = 2 * u, lw = Math.ceil(W / cs), lh = Math.ceil(H / cs);
+    const cv = canvas(lw, lh), g = cv.getContext('2d')!, img = g.createImageData(lw, lh);
+    const ss = (a: number, b: number, v: number) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+    for (let j = 0; j < lh; j++) for (let i = 0; i < lw; i++) {
+      const px = (i + 0.5) * cs, py = (j + 0.5) * cs;
+      if (valueAtB(ff, px, py) < 0.3) continue;
+      const ci = Math.floor(px / sp) + 1, cj = Math.floor(py / sp) + 1;
+      let d1 = 1e9, d2 = 1e9, id1 = 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        const ii = ci + di, jj = cj + dj;
+        if (ii < 0 || jj < 0 || ii >= gx || jj >= gy) continue;
+        const id = jj * gx + ii, dx = px - sxs[id], dy = py - sys[id], d = dx * dx + dy * dy;
+        if (d < d1) { d2 = d1; d1 = d; id1 = id; } else if (d < d2) d2 = d;
+      }
+      d1 = Math.sqrt(d1); d2 = Math.sqrt(d2);
+      const e = (d2 - d1) / 2, tx = px / T, ty = py / T;
+      const wear = ss(-0.2, 0.3, noise(tx * 0.7 + 13, ty * 0.7 + 5) + noise(tx * 2.3 + 1, ty * 2.3 + 8) * 0.3);
+      const mortar = (1 - ss(0, T * 0.024, e)) * (1 - wear * 0.9);
+      const lit = -((px - sxs[id1]) * 0.6 + (py - sys[id1]) * 0.8) / Math.max(1, d1);
+      const bevel = (1 - ss(0, T * 0.08, e)) * lit * (1 - wear * 0.7);
+      let v = 0.52 + noise(tx * 0.5, ty * 0.5) * 0.12 + noise(tx * 1.9 + 7, ty * 1.9 + 3) * 0.07 + noise(tx * 7 + 2, ty * 7 + 9) * (0.04 + wear * 0.06);
+      v += stn[id1] * 0.13 * (1 - wear * 0.6) + bevel * 0.12 - mortar * 0.42;
+      v -= Math.min(1, valueAtB(ao, px, py) * 1.25) * 0.3;
+      v = Math.max(0, Math.min(1, v));
+      const r0 = v < 0.5 ? 34 + (100 - 34) * v * 2 : 100 + (162 - 100) * (v - 0.5) * 2;
+      const g0 = v < 0.5 ? 30 + (95 - 30) * v * 2 : 95 + (154 - 95) * (v - 0.5) * 2;
+      const b0 = v < 0.5 ? 46 + (114 - 46) * v * 2 : 114 + (166 - 114) * (v - 0.5) * 2;
+      const tint = ss(0.25, 0.7, noise(tx * 0.35 + 40, ty * 0.35 + 20)); // violet seep of the residue in places
+      const o = (j * lw + i) * 4;
+      img.data[o] = r0 + 10 * tint; img.data[o + 1] = g0 - 4 * tint; img.data[o + 2] = b0 + 18 * tint; img.data[o + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    c.save(); c.clip(fp, 'evenodd');
+    c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+    c.drawImage(cv, 0, 0, lw * cs, lh * cs);
+    // hairline cracks wandering across the stones
+    const crk = new Path2D(), crkL = new Path2D();
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+      if (map[y][x] !== 'K') continue;
+      const r = tileR(x, y, 'crack');
+      if (r() < 0.45) continue;
+      let px = (x + r()) * T, py = (y + r()) * T, a = r() * 7;
+      crk.moveTo(px, py); crkL.moveTo(px + u, py + u);
+      for (let s = 0; s < 4 + r() * 4; s++) {
+        a += (r() - 0.5) * 1.4; px += Math.cos(a) * T * 0.09; py += Math.sin(a) * T * 0.09;
+        crk.lineTo(px, py); crkL.lineTo(px + u, py + u);
+        if (r() < 0.2) { crk.moveTo(px, py); crk.lineTo(px + Math.cos(a + 1.2) * T * 0.07, py + Math.sin(a + 1.2) * T * 0.07); crk.moveTo(px, py); }
+      }
+    }
+    c.strokeStyle = 'rgba(200,192,214,.22)'; c.lineWidth = 1.2 * u; c.stroke(crkL);
+    c.strokeStyle = 'rgba(16,12,26,.55)'; c.lineWidth = 1.3 * u; c.stroke(crk);
+    // veins of the residue: thin violet seams that glow, branching through the floor
+    const VR = rng(seed ^ 0x7a11), veins = new Path2D();
+    const floorTiles: [number, number][] = [];
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (map[y][x] === 'K') floorTiles.push([x, y]);
+    const nV = Math.round(floorTiles.length / 22);
+    for (let n = 0; n < nV && floorTiles.length; n++) {
+      const [tx0, ty0] = floorTiles[Math.floor(VR() * floorTiles.length)];
+      const walk = (px: number, py: number, a: number, len: number, depth: number) => {
+        veins.moveTo(px, py);
+        for (let s = 0; s < len; s++) {
+          a += (VR() - 0.5) * 0.9; px += Math.cos(a) * T * 0.1; py += Math.sin(a) * T * 0.1;
+          const t = map[Math.floor(py / T)]?.[Math.floor(px / T)];
+          if (!t || outdoor(t) || t === 'W') break;
+          veins.lineTo(px, py);
+          if (depth < 2 && VR() < 0.12) { walk(px, py, a + (VR() < 0.5 ? 0.9 : -0.9), Math.floor(len * 0.4), depth + 1); veins.moveTo(px, py); }
+        }
+      };
+      walk((tx0 + VR()) * T, (ty0 + VR()) * T, VR() * 7, 8 + Math.floor(VR() * 10), 0);
+    }
+    softStroke(c, veins, '168,112,236', 2.2 * u, 7 * u, 0.55);
+    c.strokeStyle = 'rgba(236,214,255,.85)'; c.lineWidth = 1 * u; c.stroke(veins);
+    // gravel and pebbles
+    for (let i = 0; i < 520 * area; i++) {
+      const x = R() * W, y = R() * H, t = at(Math.floor(x / T), Math.floor(y / T));
+      if (t !== 'K') continue;
+      c.fillStyle = R() < 0.5 ? 'rgba(20,16,30,.4)' : 'rgba(190,182,204,.3)';
+      c.beginPath(); c.ellipse(x, y, (1.2 + R() * 2.2) * u, (0.8 + R() * 1.2) * u, R(), 0, 7); c.fill();
+    }
+    // faint motes of light hanging over the floor
+    for (let i = 0; i < 60 * area; i++) {
+      const x = R() * W, y = R() * H, t = at(Math.floor(x / T), Math.floor(y / T));
+      if (t !== 'K' && t !== 'U' && t !== 'y') continue;
+      const rr = (4 + R() * 7) * u, gl = c.createRadialGradient(x, y, 0, x, y, rr), cyan = R() < 0.35;
+      gl.addColorStop(0, cyan ? 'rgba(170,240,255,.6)' : 'rgba(220,180,255,.6)'); gl.addColorStop(0.25, cyan ? 'rgba(120,210,255,.22)' : 'rgba(180,120,255,.22)'); gl.addColorStop(1, 'rgba(160,110,255,0)');
+      c.fillStyle = gl; c.beginPath(); c.arc(x, y, rr, 0, 7); c.fill();
+    }
+    c.restore();
+    // where the cave opens to the outside: a dark rim on the stone
+    c.save(); c.clip(fp, 'evenodd'); softStroke(c, fp, '20,16,30', 1.5 * u, T * 0.18, 0.35); c.restore();
+    c.strokeStyle = 'rgba(40,34,44,.7)'; c.lineWidth = 2 * u; c.stroke(fp);
+  }
 
   // ---- soft ground patches: only the blurred shadow of the shape is drawn (shape sits off-canvas) ----
   // Painted at quarter size and scaled up: the blur is the same to the eye and far cheaper on big maps.
@@ -347,15 +486,15 @@ export function drawTerrain(c: C2D, map: string[]) {
   };
   // dirt around the camp and the village, trampled ground
   const dirt = shapeOf(ch => ch === 'N' || ch === 'D' || ch === 'U', 0.45, 0.33, 0.12);
-  soft(dirt.p, 'rgba(150,120,72,.55)', T * 0.5, 'NDU', false);
+  soft(dirt.p, cave ? 'rgba(70,58,62,.5)' : 'rgba(150,120,72,.55)', T * 0.5, 'NDU', false);
   const forest = shapeOf(ch => ch === 'F', 0.3, 0.42);
   soft(forest.p, 'rgba(28,86,44,.5)', T * 0.3, 'F', false);
   const bushes = shapeOf(ch => ch === 'Y', 0.3, 0.4);
   soft(bushes.p, 'rgba(40,100,50,.35)', T * 0.35, 'Y', false);
   const mtn = shapeOf(ch => ch === 'M' || ch === 'X', 0.34, 0.32);
-  soft(mtn.p, 'rgba(126,112,84,.85)', T * 0.3, 'MX');
+  soft(mtn.p, 'rgba(126,112,84,.85)', T * 0.3, cave ? '' : 'MX'); // the cave draws its own ledges and chasms
   c.save(); c.clip(mtn.p, 'evenodd');
-  for (let i = 0; i < 420 * area; i++) {
+  for (let i = 0; i < (cave ? 0 : 420) * area; i++) {
     const x = R() * W, y = R() * H;
     if (valueAt(mtn.f, x, y) < 0.36) continue;
     c.fillStyle = R() < 0.5 ? 'rgba(90,75,60,.35)' : 'rgba(230,220,190,.3)'; c.beginPath(); c.ellipse(x, y, (1.5 + R() * 3) * blade, (1 + R() * 1.5) * blade, 0, 0, 7); c.fill();
@@ -426,11 +565,11 @@ export function drawTerrain(c: C2D, map: string[]) {
     };
     const hx = hills.map(h => h[0]), hy = hills.map(h => h[1]);
     const box = [Math.min(...hx) - T * 1.2, Math.min(...hy) - T * 1.2, Math.max(...hx) + T * 1.2, Math.max(...hy) + T * 1.2];
-    const rc = relief(hf, 0.4, W, H, [60, 110, 52], [206, 240, 160], 0.3, height, box), rk = rc.width / W;
+    const rc = relief(hf, 0.4, W, H, cave ? [62, 52, 56] : [60, 110, 52], cave ? [150, 132, 118] : [206, 240, 160], 0.3, height, box), rk = rc.width / W;
     const bx = Math.max(0, Math.floor(box[0] * rk)), by = Math.max(0, Math.floor(box[1] * rk)), bw = Math.min(rc.width, Math.ceil(box[2] * rk)) - bx, bh = Math.min(rc.height, Math.ceil(box[3] * rk)) - by;
     if (bw > 0 && bh > 0) c.drawImage(rc, bx, by, bw, bh, bx / rk, by / rk, bw / rk, bh / rk);
     c.save(); c.clip(hp, 'evenodd');
-    for (const th of [0.62, 0.8]) { c.strokeStyle = 'rgba(70,120,55,.3)'; c.lineWidth = 1.5 * u; c.stroke(toPath(contours(hf, th))); }
+    for (const th of [0.62, 0.8]) { c.strokeStyle = cave ? 'rgba(70,56,52,.35)' : 'rgba(70,120,55,.3)'; c.lineWidth = 1.5 * u; c.stroke(toPath(contours(hf, th))); }
     // hachures: short strokes down the slope; dark on the south-east, light on the north-west
     const gr = (x: number, y: number) => [valueAt(hf, x + 4, y) - valueAt(hf, x - 4, y), valueAt(hf, x, y + 4) - valueAt(hf, x, y - 4)];
     for (let i = 0; i < 26 * hills.length; i++) {
@@ -440,11 +579,11 @@ export function drawTerrain(c: C2D, map: string[]) {
       if (m < 1e-3) continue;
       const nx = -gx / m, ny = -gy / m, sun = nx * 0.55 + ny * 0.83;
       if (Math.abs(sun) < 0.25) continue;
-      c.strokeStyle = sun > 0 ? 'rgba(40,85,40,.45)' : 'rgba(230,255,200,.45)'; c.lineWidth = 1.5 * u;
+      c.strokeStyle = sun > 0 ? (cave ? 'rgba(50,40,44,.5)' : 'rgba(40,85,40,.45)') : (cave ? 'rgba(235,220,200,.4)' : 'rgba(230,255,200,.45)'); c.lineWidth = 1.5 * u;
       c.beginPath(); c.moveTo(x, y); c.lineTo(x + nx * 7 * u, y + ny * 7 * u); c.stroke();
     }
     c.restore();
-    c.strokeStyle = 'rgba(48,92,42,.7)'; c.lineWidth = 2.2 * u; c.stroke(hp);
+    c.strokeStyle = cave ? 'rgba(52,40,42,.75)' : 'rgba(48,92,42,.7)'; c.lineWidth = 2.2 * u; c.stroke(hp);
   }
 
   // ---- ruins ground (廃墟): broken paving with grass in the cracks ----
@@ -460,7 +599,7 @@ export function drawTerrain(c: C2D, map: string[]) {
         if (r() < 0.35 || noise(px / T * 2.2 + 70, py / T * 2.2) < -0.25) continue;
         const w = T * (0.17 + r() * 0.05), h = T * (0.13 + r() * 0.04), a = (r() - 0.5) * 0.3;
         c.save(); c.translate(px, py); c.rotate(a);
-        c.fillStyle = ['#cfc6b2', '#bdb39e', '#d8d0bd'][Math.floor(r() * 3)]; c.strokeStyle = 'rgba(70,60,50,.6)'; c.lineWidth = 1.3 * u;
+        c.fillStyle = (cave ? ['#9d97a6', '#8b8596', '#aaa4b2'] : ['#cfc6b2', '#bdb39e', '#d8d0bd'])[Math.floor(r() * 3)]; c.strokeStyle = 'rgba(70,60,50,.6)'; c.lineWidth = 1.3 * u;
         c.beginPath(); c.moveTo(0, 0); c.lineTo(w, r() * 2 * u); c.lineTo(w - r() * 3 * u, h); c.lineTo(r() * 2 * u, h - r() * 2 * u); c.closePath(); c.fill(); c.stroke();
         c.restore();
       }
@@ -498,11 +637,11 @@ export function drawTerrain(c: C2D, map: string[]) {
   // ---- water: grassy bank, sand, deep edge, bright centre, flow lines; shallows (浅瀬) are lighter with pebbles ----
   const waterF = buildField(map, isWater, 6, 0.22, { noise, amp: 0.07, floor: 0.35 });
   const waterP = toPath(contours(waterF, 0.32));
-  c.strokeStyle = 'rgba(40,80,40,.45)'; c.lineWidth = T * 0.36; c.stroke(waterP);
-  c.strokeStyle = '#4f8f52'; c.lineWidth = T * 0.28; c.stroke(waterP);
-  c.strokeStyle = '#c9b98a'; c.lineWidth = T * 0.19; c.stroke(waterP);
+  c.strokeStyle = cave ? 'rgba(14,10,24,.55)' : 'rgba(40,80,40,.45)'; c.lineWidth = T * 0.36; c.stroke(waterP);
+  c.strokeStyle = cave ? '#4a4456' : '#4f8f52'; c.lineWidth = T * 0.28; c.stroke(waterP);
+  c.strokeStyle = cave ? '#8a8296' : '#c9b98a'; c.lineWidth = T * 0.19; c.stroke(waterP);
   c.save(); c.setLineDash([2 * blade, 7 * blade]); c.strokeStyle = 'rgba(120,100,60,.5)'; c.lineWidth = T * 0.15; c.stroke(waterP); c.restore();
-  c.fillStyle = '#5aaaea'; c.fill(waterP, 'evenodd');
+  c.fillStyle = cave ? '#3f86c8' : '#5aaaea'; c.fill(waterP, 'evenodd');
   c.save(); c.clip(waterP, 'evenodd');
   // depth: darker toward the middle of wide water
   for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
@@ -510,8 +649,8 @@ export function drawTerrain(c: C2D, map: string[]) {
     const deep = N4.filter(([dx, dy]) => isWater(atC(x + dx, y + dy))).length;
     if (deep >= 3) { const g = c.createRadialGradient((x + 0.5) * T, (y + 0.5) * T, 0, (x + 0.5) * T, (y + 0.5) * T, T * 0.8); g.addColorStop(0, 'rgba(30,90,170,.28)'); g.addColorStop(1, 'rgba(30,90,170,0)'); c.fillStyle = g; c.fillRect((x - 0.3) * T, (y - 0.3) * T, T * 1.6, T * 1.6); }
   }
-  softStroke(c, waterP, '63,147,220', T * 0.7, T * 0.3);
-  softStroke(c, waterP, '47,120,200', T * 0.22, T * 0.08);
+  softStroke(c, waterP, cave ? '40,104,176' : '63,147,220', T * 0.7, T * 0.3);
+  softStroke(c, waterP, cave ? '30,80,150' : '47,120,200', T * 0.22, T * 0.08);
   // shallows
   if (hasAny(map, 'P')) {
     // a light band across the river from bank to bank (we are inside the water clip), fading along the flow
@@ -571,7 +710,8 @@ export function drawTerrain(c: C2D, map: string[]) {
   }
 
   // ---- cliffs (崖): a raised rocky plateau; the sheer face shows on its south side ----
-  if (hasAny(map, 'X')) {
+  if (cave) drawCaveRock();
+  if (!cave && hasAny(map, 'X')) {
     const xp = shapeOf(ch => ch === 'X', 0.2, 0.45, 0.16, 8).p, fh = T * 0.36;
     soft(moved(xp, T * 0.08, T * 0.06), 'rgba(20,20,10,.5)', T * 0.12, 'X');
     const fg = c.createLinearGradient(0, 0, 0, H); fg.addColorStop(0, '#8b7c6c'); fg.addColorStop(1, '#6a5c52');
@@ -604,10 +744,123 @@ export function drawTerrain(c: C2D, map: string[]) {
     c.restore();
     c.strokeStyle = OUT; c.lineWidth = 2.6 * u; c.stroke(xp);
   }
+  /**
+   * The labyrinth's rock (cave maps): chasms (X) as dark crevasses, rock ledges (M) as low raised shelves, and the
+   * rock walls (Q) as one mass per connected group — a face along the passages to the south, a lit lip, and a top
+   * that sinks into darkness away from the passages. Collapsed tiles join the mass because it is one field.
+   */
+  function drawCaveRock() {
+    const ss = (a: number, b: number, v: number) => { const t = Math.max(0, Math.min(1, (v - a) / (b - a))); return t * t * (3 - 2 * t); };
+    /** The south-facing band of a raised shape (the visible face), painted per tile edge so the bands line up. */
+    const faceBands = (set: string, fh: number, hi: string, lo: string, salt: string) => {
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+        if (!set.includes(map[y][x]) || y + 1 >= rows || set.includes(map[y + 1][x])) continue;
+        const y0 = (y + 1) * T - fh - T * 0.08, y1 = (y + 1) * T + T * 0.1;
+        const g = c.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, hi); g.addColorStop(1, lo);
+        c.fillStyle = g; c.fillRect((x - 0.35) * T, y0, T * 1.7, y1 - y0);
+        const r = tileR(x, y, salt);
+        for (let i = 0; i < 10; i++) {
+          const px = (x + r()) * T, py = y0 + T * 0.08 + r() * fh * 0.7;
+          c.strokeStyle = r() < 0.55 ? 'rgba(14,10,22,.55)' : 'rgba(220,208,232,.28)'; c.lineWidth = (1.2 + r()) * u;
+          c.beginPath(); c.moveTo(px, py); c.lineTo(px + (r() - 0.5) * 5 * u, py + fh * (0.25 + r() * 0.35)); c.stroke();
+        }
+      }
+    };
+    // chasms: the far (north) inner wall shows; below it, darkness with a faint violet glow from the depths
+    if (hasAny(map, 'X')) {
+      const xp = shapeOf(ch => ch === 'X', 0.2, 0.45, 0.16, 8).p, fh = T * 0.42;
+      c.save(); c.clip(xp, 'evenodd');
+      const fg = c.createLinearGradient(0, 0, 0, H); fg.addColorStop(0, '#5a506a'); fg.addColorStop(1, '#433a52');
+      c.fillStyle = fg; c.fill(xp);
+      const ab = moved(xp, 0, fh);
+      c.save(); c.clip(ab, 'evenodd');
+      c.fillStyle = '#0e0a16'; c.fill(xp);
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+        if (map[y][x] !== 'X') continue;
+        const gx = (x + 0.5) * T, gy = (y + 0.7) * T, gl = c.createRadialGradient(gx, gy, 0, gx, gy, T * 0.8);
+        gl.addColorStop(0, 'rgba(150,90,230,.32)'); gl.addColorStop(1, 'rgba(150,90,230,0)');
+        c.fillStyle = gl; c.fillRect(gx - T, gy - T, 2 * T, 2 * T);
+      }
+      c.restore();
+      c.strokeStyle = 'rgba(10,6,16,.6)'; c.lineWidth = 2 * u; c.stroke(ab);
+      c.restore();
+      c.strokeStyle = OUT; c.lineWidth = 2.6 * u; c.stroke(xp);
+    }
+    // rock ledges (岩棚, foot soldiers can climb): a low warm shelf, lighter than the walls
+    if (hasAny(map, 'M')) {
+      const mf = buildField(map, ch => ch === 'M', 6, 0.26, { noise, amp: 0.1 });
+      const mp = toPath(contours(mf, 0.45)), fh = T * 0.18;
+      soft(moved(mp, T * 0.06, T * 0.1), 'rgba(8,4,16,.55)', T * 0.16, 'M');
+      c.save(); c.clip(mp, 'evenodd');
+      c.fillStyle = '#4f4448'; c.fill(mp);
+      faceBands('M', fh, '#857470', '#3a2f36', 'mface');
+      const top = moved(mp, 0, -fh);
+      c.save(); c.clip(top, 'evenodd');
+      const b = boxOf(map, 'M')!;
+      const height = (x: number, y: number) => valueAtB(mf, x, y) * 0.8 + noise(x / T * 2.6 + 3, y / T * 2.6) * 0.1;
+      const rc = relief(mf, 0.45, W, H, [58, 50, 58], [150, 136, 130], 0.35, height, [(b[0] - 1) * T, (b[1] - 1) * T, (b[2] + 2) * T, (b[3] + 2) * T]);
+      c.drawImage(rc, 0, -fh, W, rc.height * (W / rc.width));
+      c.restore();
+      c.strokeStyle = 'rgba(226,206,186,.5)'; c.lineWidth = 2 * u; c.stroke(mp);
+      c.strokeStyle = OUT; c.lineWidth = 2.4 * u; c.stroke(top);
+      c.restore();
+      c.strokeStyle = OUT; c.lineWidth = 2.4 * u; c.stroke(mp);
+    }
+    // rock walls
+    if (hasAny(map, 'Q')) {
+      const qf = buildField(map, ch => ch === 'Q', 8, 0.2, { noise, amp: 0.13, freq: 1.2 });
+      const qp = toPath(contours(qf, 0.5)), fh = T * 0.3;
+      const deep = buildField(map, ch => ch === 'Q', 4, 0.6);
+      soft(qp, 'rgba(8,4,18,.75)', T * 0.42, 'Q', false);
+      soft(moved(qp, T * 0.08, T * 0.14), 'rgba(4,0,12,.6)', T * 0.12, 'Q');
+      c.save(); c.clip(qp, 'evenodd');
+      c.fillStyle = '#3e3548'; c.fill(qp);
+      faceBands('Q', fh, '#7a6d88', '#2a2234', 'qface');
+      // the top: lit rock at the rim, sinking to near black inside a thick mass; lumpy, mottled
+      const b = boxOf(map, 'Q')!, cs = 4 * u;
+      const x0 = Math.max(0, Math.floor((b[0] - 0.5) * T / cs)), y0 = Math.max(0, Math.floor((b[1] - 0.5) * T / cs));
+      const x1 = Math.min(Math.ceil(W / cs), Math.ceil((b[2] + 1.5) * T / cs)), y1 = Math.min(Math.ceil(H / cs), Math.ceil((b[3] + 1.5) * T / cs));
+      const cv = canvas(Math.max(1, x1 - x0), Math.max(1, y1 - y0)), g = cv.getContext('2d')!, img = g.createImageData(cv.width, cv.height);
+      for (let j = y0; j < y1; j++) for (let i = x0; i < x1; i++) {
+        const px = (i + 0.5) * cs, py = (j + 0.5) * cs, tx = px / T, ty = py / T;
+        const depth = ss(0.4, 0.9, valueAtB(deep, px, py)), rim = 1 - ss(0.5, 0.97, valueAtB(qf, px, py));
+        const h = (a: number, bb: number) => noise(a * 1.6 + 21, bb * 1.6 + 4) * 0.6 + noise(a * 4.2 + 8, bb * 4.2 + 30) * 0.3;
+        const lump = (h(tx - 0.05, ty - 0.05) - h(tx + 0.05, ty + 0.05)) * 3.2; // lit on the north-west of each lump
+        const m = noise(tx * 9 + 5, ty * 9 + 1) * 0.08;
+        const v = Math.max(0, Math.min(1, 0.1 + rim * 0.42 + (1 - depth) * 0.2 + (lump + m) * (0.5 - depth * 0.3)));
+        const o = ((j - y0) * cv.width + (i - x0)) * 4;
+        img.data[o] = 22 + 104 * v; img.data[o + 1] = 18 + 92 * v; img.data[o + 2] = 30 + 108 * v; img.data[o + 3] = 255;
+      }
+      g.putImageData(img, 0, 0);
+      const top = moved(qp, 0, -fh);
+      c.save(); c.clip(top, 'evenodd');
+      c.imageSmoothingEnabled = true;
+      c.drawImage(cv, x0 * cs, y0 * cs - fh, cv.width * cs, cv.height * cs);
+      // fissures on the top near the rim
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+        if (map[y][x] !== 'Q' || !near(x, y, 'KUHPBGMWXy', N8)) continue;
+        const r = tileR(x, y, 'qtop');
+        for (let n = 0; n < 2; n++) {
+          if (r() < 0.4) continue;
+          let px = (x + 0.15 + r() * 0.7) * T, py = (y + 0.1 + r() * 0.6) * T - fh, a = r() * 7;
+          c.strokeStyle = 'rgba(8,6,14,.55)'; c.lineWidth = 1.4 * u; c.beginPath(); c.moveTo(px, py);
+          for (let s = 0; s < 4; s++) { a += (r() - 0.5) * 1.2; px += Math.cos(a) * T * 0.08; py += Math.sin(a) * T * 0.08; c.lineTo(px, py); }
+          c.stroke();
+        }
+      }
+      c.restore();
+      // lit lip along the passages; the outline only where the top shows inside the wall
+      c.strokeStyle = 'rgba(206,194,224,.55)'; c.lineWidth = 2.6 * u; c.stroke(qp);
+      c.strokeStyle = 'rgba(206,194,224,.35)'; c.lineWidth = 3 * u; c.stroke(top);
+      c.strokeStyle = OUT; c.lineWidth = 2.2 * u; c.stroke(top);
+      c.restore();
+      c.strokeStyle = OUT; c.lineWidth = 2.6 * u; c.stroke(qp);
+    }
+  }
 
   // ---- upright objects ----
-  // mountains: peaks per connected range
-  buildPeaks(map, seed).forEach(p => put(p.y, () => O.peak(c, p, rng(p.seed))));
+  // mountains: peaks per connected range (the cave's ledges are drawn above instead)
+  if (!cave) buildPeaks(map, seed).forEach(p => put(p.y, () => O.peak(c, p, rng(p.seed))));
   const TREE_SPOTS = [[0.22, 0.52, 0.8], [0.72, 0.48, 0.85], [0.47, 0.8, 1], [0.84, 0.88, 0.76], [0.14, 0.92, 0.72]];
   /** Neighbours of the same structure; on the map border a straight run continues off the map. */
   const links = (x: number, y: number, set: string) => {
@@ -657,12 +910,41 @@ export function drawTerrain(c: C2D, map: string[]) {
       }
     } else if (ch === 'H') {
       if (r() < 0.35) { const rx = (x + 0.2 + r() * 0.6) * T, ry = (y + 0.25 + r() * 0.2) * T; put(ry, () => O.rock(c, rx, ry, u * 0.7, rng(hashStr(`hr${x},${y}`)))); }
-      if (r() < 0.5) { const tx = (x + 0.15 + r() * 0.7) * T, ty = (y + 0.85) * T; put(ty, () => O.tuft(c, tx, ty, u, rng(hashStr(`ht${x},${y}`)))); }
+      if (r() < 0.5) { const tx = (x + 0.15 + r() * 0.7) * T, ty = (y + 0.85) * T; put(ty, cave ? () => O.rock(c, tx, ty, u * 0.6, rng(hashStr(`ht${x},${y}`)), -20) : () => O.tuft(c, tx, ty, u, rng(hashStr(`ht${x},${y}`)))); }
+      if (cave) for (let i = 0; i < 5; i++) { const tx = (x + 0.15 + r() * 0.7) * T, ty = (y + 0.2 + r() * 0.65) * T, s = u * (0.6 + r() * 0.5); put(ty, () => O.rock(c, tx, ty, s, rng(hashStr(`hc${x},${y},${i}`)), -24)); }
     } else if (ch === 'A') {
       if (r() < 0.12) { const sx = (x + 0.8) * T, sy = (y + 0.3) * T; put(sy, () => O.scarecrow(c, sx, sy, u * 1.1)); }
     } else if (ch === 'G') {
       decorate(x, y);
+    } else if (ch === 'K') {
+      caveDeco(x, y);
+    } else if (ch === 'y') {
+      // underground thicket: a patch of residue crystals and glowing caps (cover)
+      const gx = (x + 0.5) * T, gy = (y + 0.6) * T;
+      put(y * T, () => { const gl = c.createRadialGradient(gx, gy, 0, gx, gy, T * 0.6); gl.addColorStop(0, 'rgba(176,120,255,.32)'); gl.addColorStop(1, 'rgba(176,120,255,0)'); c.fillStyle = gl; c.fillRect(gx - T * 0.6, gy - T * 0.6, T * 1.2, T * 1.2); });
+      for (const [a, b] of [[0.24, 0.4], [0.74, 0.36], [0.5, 0.86], [0.2, 0.9], [0.82, 0.88]]) {
+        if (r() < 0.3) continue;
+        const sx = (x + a + (r() - 0.5) * 0.1) * T, sy = (y + b + (r() - 0.5) * 0.06) * T, s = u * (0.75 + r() * 0.3), cap = r() < 0.35;
+        put(sy, cap ? () => O.glowCap(c, sx, sy, s * 1.1, rng(hashStr(`gc${x},${y},${a}`))) : () => O.crystal(c, sx, sy, s, rng(hashStr(`cr${x},${y},${a}`))));
+      }
     }
+    if (cave && ch === 'M' && r() < 0.7) {
+      const n = 1 + Math.floor(r() * 2);
+      for (let i = 0; i < n; i++) { const rx = (x + 0.2 + r() * 0.6) * T, ry = (y + 0.3 + r() * 0.45) * T - T * 0.18, s = u * (0.7 + r() * 0.5); put(ry, () => O.rock(c, rx, ry, s, rng(hashStr(`cm${x},${y},${i}`)), -18)); }
+    }
+  }
+  /** Stone floor (cave): rubble at the foot of the walls, now and then a crystal or glowing caps. Small, off-centre. */
+  function caveDeco(x: number, y: number) {
+    const r = tileR(x, y, 'kdeco');
+    for (const [dx, dy] of N4) {
+      if (at(x + dx, y + dy) !== 'Q') continue;
+      const along = 0.2 + r() * 0.6, inset = dy < 0 ? 0.14 : 0.1;
+      const px = dx ? (x + (dx > 0 ? 1 - inset : inset)) * T : (x + along) * T, py = dx ? (y + along) * T : (y + (dy > 0 ? 1 - inset : inset)) * T;
+      const q = r();
+      if (q < 0.3) { const s = u * (0.55 + r() * 0.4); put(py, () => O.rock(c, px, py, s, rng(hashStr(`kr${x},${y},${dx},${dy}`)), -34)); }
+      else if (q < 0.38) { const s = u * (0.95 + r() * 0.25); put(py, () => O.crystal(c, px, py, s, rng(hashStr(`kc${x},${y},${dx},${dy}`)))); }
+    }
+    if (r() < 0.05) { const px = (x + (r() < 0.5 ? 0.2 : 0.8)) * T, py = (y + (r() < 0.5 ? 0.3 : 0.88)) * T; put(py, () => O.glowCap(c, px, py, u * 0.9, rng(hashStr(`kg${x},${y}`)))); }
   }
   /** Decorations for one grass tile: blend into neighbouring terrain, then a little generic clutter. Off-centre, small. */
   function decorate(x: number, y: number) {

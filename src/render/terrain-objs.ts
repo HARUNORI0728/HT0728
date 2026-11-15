@@ -552,3 +552,45 @@ export function haystack(c: C2D, x: number, y: number, s: number) {
   for (let i = -8; i <= 8; i += 4) { c.beginPath(); c.moveTo(i, -2); c.quadraticCurveTo(i * 0.7, -10, i * 0.4, -18); c.stroke(); }
   c.restore();
 }
+
+// ---------- 迷宮（8章）の飾り ----------
+/** A small cluster of violet residue crystals (decoration only; smaller and paler than the crystal enemy). */
+export function crystal(c: C2D, x: number, y: number, s: number, R: () => number) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  const g = c.createRadialGradient(0, -3, 0, 0, -3, 20);
+  g.addColorStop(0, 'rgba(196,150,255,.42)'); g.addColorStop(1, 'rgba(196,150,255,0)');
+  c.fillStyle = g; c.beginPath(); c.ellipse(0, -2, 20, 11, 0, 0, 7); c.fill();
+  shadowBlob(c, 1.5, 0.5, 9, 3, 0.3);
+  const n = 3 + Math.floor(R() * 3), shards: { bx: number; a: number; L: number; w: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const f = n === 1 ? 0 : i / (n - 1) - 0.5;
+    shards.push({ bx: f * 11 + (R() - 0.5) * 2, a: f * 1.2 + (R() - 0.5) * 0.3, L: (1 - Math.abs(f) * 1.1) * (11 + R() * 9) + 5, w: 2.4 + R() * 1.6 });
+  }
+  shards.sort((p, q) => Math.abs(q.bx) - Math.abs(p.bx)); // outer shards behind, tall middle in front
+  for (const { bx, a, L, w } of shards) {
+    const sx = Math.sin(a), cy = -Math.cos(a), cx = Math.cos(a), sy = Math.sin(a);
+    const tip: Pt = [bx + sx * L, cy * L], sh = 0.72;
+    const l0: Pt = [bx - cx * w, -sy * w * 0.3], r0: Pt = [bx + cx * w, sy * w * 0.3];
+    const l1: Pt = [l0[0] + sx * L * sh, l0[1] + cy * L * sh], r1: Pt = [r0[0] + sx * L * sh, r0[1] + cy * L * sh];
+    const gr = c.createLinearGradient(l0[0], 0, r0[0], 0);
+    gr.addColorStop(0, '#f3e6ff'); gr.addColorStop(0.45, '#c39cf0'); gr.addColorStop(1, '#7347b8');
+    c.fillStyle = gr; c.strokeStyle = OUT; c.lineWidth = 1.3; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(...l0); c.lineTo(...l1); c.lineTo(...tip); c.lineTo(...r1); c.lineTo(...r0); c.closePath(); c.fill(); c.stroke();
+    c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 0.9;
+    c.beginPath(); c.moveTo(bx - cx * w * 0.2, 0); c.lineTo(tip[0] - sx * 1.5, tip[1] + 2); c.stroke();
+  }
+  c.restore();
+}
+/** A pale cave mushroom pair with a faint glow (cave floor decoration). */
+export function glowCap(c: C2D, x: number, y: number, s: number, R: () => number) {
+  c.save(); c.translate(x, y); c.scale(s, s);
+  const g = c.createRadialGradient(0, -4, 0, 0, -4, 14);
+  g.addColorStop(0, 'rgba(140,230,255,.35)'); g.addColorStop(1, 'rgba(140,230,255,0)');
+  c.fillStyle = g; c.beginPath(); c.ellipse(0, -3, 14, 8, 0, 0, 7); c.fill();
+  for (const [dx, h, r] of [[-3, 6 + R() * 2, 3.6], [3.5, 4 + R() * 2, 2.8]] as const) {
+    c.strokeStyle = OUT; c.lineWidth = 1.2; c.fillStyle = '#d8eef0';
+    c.beginPath(); c.roundRect(dx - 0.9, -h, 1.8, h, 0.8); c.fill(); c.stroke();
+    c.fillStyle = '#8fdcef'; c.beginPath(); c.ellipse(dx, -h, r, r * 0.6, 0, Math.PI, 0); c.closePath(); c.fill(); c.stroke();
+  }
+  c.restore();
+}

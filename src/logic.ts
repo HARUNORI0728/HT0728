@@ -602,7 +602,15 @@ export function outcome(s: State): 'win' | 'lose' | 'stage' | null {
     case 'rout': won = !foesToBeat(s).length; break;
     case 'boss': won = bossesDown(s); break;
     case 'seize': won = !!s.flags?.[`seized${stage || ''}`]; break;
-    case 'escape': won = blue.some(u => u.left) && !alive(s, 'blue').length; break;
+    case 'escape':
+      won = blue.some(u => u.left) && !alive(s, 'blue').length;
+      // 手詰まり：残っている味方の誰も、地形の上で出口へたどり着けなくなったら（崩落で道が塞がった等）敗北。
+      // 敵は倒せば通れるので数えない（地形だけで判定）。
+      if (!won && alive(s, 'blue').length && !alive(s, 'blue').some(u => {
+        const { cost } = reachable(s, u, Infinity, true);
+        return w.tiles.some(([x, y]) => cost.has(key(x, y)));
+      })) return 'lose';
+      break;
     // Holding out also ends early once every enemy is down and no reinforcement is still due.
     case 'defend': case 'survive':
       won = (s.turn > w.turns && s.phase === 'blue') || (!w.strictTurns && ((!foesToBeat(s).length && !reinforcementsPending(s)) || (!!w.orBoss && s.units.some(u => u.team === 'red' && u.boss) && bossesDown(s))));

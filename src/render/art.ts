@@ -3,7 +3,7 @@
 // Pictures live next to play/index.html (play/assets/…) and are listed in art-manifest.ts, so the game never asks
 // for a file that does not exist. They are loaded with Image elements (works from file:// and static hosting).
 // Until a picture has loaded, or if it fails, callers get null and keep drawing the vector figure.
-import { BG_ART, EVENT_ART, PORTRAIT_ART, UNIT_ART, type Face } from '../art-manifest';
+import { BG_ART, EVENT_ART, MAP_ART, PORTRAIT_ART, UNIT_ART, type Face } from '../art-manifest';
 import { CAST, CHARS } from '../data';
 import { idForName } from './who';
 import { imageKey, setUnitImage, type UnitLike } from './units';
@@ -110,4 +110,18 @@ export function fallbackGradient(name: string): string {
   if (t) return `linear-gradient(to bottom, ${t[1]}, ${t[2]})`;
   let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 360;
   return `linear-gradient(to bottom, hsl(${h} 32% 34%), hsl(${(h + 30) % 360} 30% 10%))`;
+}
+
+// ---------- painted map backgrounds ----------
+/** URL of the painted map for a chapter (1–10, assets/maps/chNN), or null when the chapter is drawn by code. */
+export const mapArtUrl = (chapter: number) => MAP_ART[`ch${String(chapter).padStart(2, '0')}`] ?? null;
+/** Loads a painted map; resolves with the decoded picture, or null when it fails (the caller keeps the drawn map). */
+export function loadMapArt(url: string): Promise<HTMLImageElement | null> {
+  return new Promise(res => {
+    const img = load(url);
+    if (ready(img)) return res(img);
+    if (failed.has(url)) return res(null);
+    img.addEventListener('load', () => res(img.naturalWidth > 0 ? img : null), { once: true });
+    img.addEventListener('error', () => res(null), { once: true });
+  });
 }

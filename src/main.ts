@@ -17,7 +17,8 @@ import { FLOAT_LIFE, drawCursor, drawEdgeMarks, drawFloat, drawTile, drawVignett
 import { drawTerrain } from './render/terrain';
 import { drawIcon, drawUnit } from './render/units';
 import { SCENES, SCENE_ORDER, type SceneId } from './script/scenes';
-import { faceHtml, idForName, idForUnit, loadUnitArt, portraitUrl, preloadPortrait, spriteUrl } from './render/art';
+import { faceHtml, idForName, idForUnit, loadMapArt, loadUnitArt, mapArtUrl, portraitUrl, preloadPortrait, spriteUrl } from './render/art';
+import { BLOCKING, changedTiles, drawGrid, drawGuideMarks, paintedLayer } from './render/mapart';
 import { audio } from './audio/engine';
 import { mountAudioUi } from './audio/ui';
 
@@ -29,6 +30,18 @@ const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, fast() ? 0 : 
 let S: State;
 /** The terrain, drawn once per chapter at the final resolution (RES backing pixels per map pixel). Null while drawing. */
 let terrain: HTMLCanvasElement | null = null;
+/** Whether `terrain` comes from a painted map (assets/maps/chNN) rather than the code-drawn one. */
+let paintedMap = false;
+/**
+ * The tile grid over the map (button 格子 in the HUD). Remembered separately for painted maps (default on, to spot
+ * where the picture and the rules' tiles disagree) and code-drawn maps (default off).
+ */
+const GRID_KEY = 'fittoa-grid';
+const gridPref: { painted: boolean; auto: boolean } = { painted: true, auto: false };
+try { const j = localStorage.getItem(GRID_KEY); if (j) { const d = JSON.parse(j); if (typeof d.painted === 'boolean') gridPref.painted = d.painted; if (typeof d.auto === 'boolean') gridPref.auto = d.auto; } } catch { /* storage unavailable */ }
+const gridOn = () => gridPref[paintedMap ? 'painted' : 'auto'];
+/** An empty tile the player tapped to read its terrain (outlined until the next action). */
+let probe: { x: number; y: number } | null = null;
 type Mode = 'idle' | 'move' | 'menu' | 'target' | 'heal' | 'busy';
 let mode: Mode = 'busy';
 let sel: Unit | null = null, picked: Unit | null = null, inspect: Unit | null = null;
@@ -178,6 +191,7 @@ function render(now = performance.now()) {
     if (sw > 0 && sh > 0) ctx.drawImage(terrain, sx * RES, sy * RES, sw * RES, sh * RES, sx - cam.x, sy - cam.y, sw, sh);
     if (cam.y < 0 && topPad) ctx.drawImage(topPad, cam.x * RES, 0, W * RES, topPad.height, 0, -cam.y - TOP_PAD, W, TOP_PAD);
     ctx.save(); ctx.translate(-cam.x, -cam.y);
+    if (gridOn()) drawGrid(ctx, Math.max(0, Math.floor(cam.x / T)), Math.max(0, Math.floor(cam.y / T)), Math.min(cols(), Math.ceil((cam.x + W) / T)) - 1, Math.min(rows(), Math.ceil((cam.y + H) / T)) - 1);
     const tile = (k: string, kind: Parameters<typeof drawTile>[1], a = 1) => { const [x, y] = k.split(',').map(Number); drawTile(ctx, kind, x, y, a); };
     if (mode === 'move' || (mode === 'idle' && inspect)) {
       for (const k of threat) if (!stops.has(k)) tile(k, 'attack');
@@ -210,6 +224,7 @@ function render(now = performance.now()) {
     for (const { u, px, py } of shown) drawUnit(ctx, u, px, py, u.done && S.phase === 'blue', (shownHp.get(u.uid) ?? u.hp) / u.st.hp);
     const cur = picked ?? sel ?? inspect;
     if (cur && cur.hp > 0) drawCursor(ctx, cur.x, cur.y, sec);
+    else if (probe && mode === 'idle') drawCursor(ctx, probe.x, probe.y, sec);
     for (let i = floats.length - 1; i >= 0; i--) {
       drawFloat(ctx, floats[i]);
       if (--floats[i].t <= 0) floats.splice(i, 1);
@@ -376,7 +391,7 @@ const turnTalks = () => runTalks(dueTalks(S, w => w.type === 'turn' && w.turn ==
 
 // ---------- player flow ----------
 function idle() {
-  mode = 'idle'; sel = picked = null; targets = [];
+  mode = 'idle'; sel = picked = null; targets = []; probe = null;
   if (!inspect) { stops = new Set(); threat = new Set(); }
   hud();
   info(inspect ? unitHtml(inspect) : `<p class="hint">青いユニットをタップして移動先を選ぼう。敵をタップすると移動・攻撃範囲が見られる。${scrolls() ? '地図はドラッグで動かせる。' : ''}</p>`);
@@ -505,7 +520,12 @@ async function tapAt(clientX: number, clientY: number) {
     audio.sfx('cursor');
     if (u) { stops = u.ai === 'guard' ? new Set([key(u.x, u.y)]) : stopTiles(S, u); threat = threatTiles(S, u, stops); }
     idle();
-    if (!u) { const t = terrainAt(S, tx, ty); info(`<p class="hint">${t.name}　守備+${t.def}　回避+${t.avo}${t.heal ? '　ターン開始時にHP回復' : ''}${t.note ? '　' + t.note : ''}</p>`); }
+    if (!u) {
+      // the tapped tile stays outlined, so on a painted map it is clear which tile of the picture the rules read
+      const t = terrainAt(S, tx, ty), block = BLOCKING.includes(S.map[ty][tx]);
+      probe = { x: tx, y: ty };
+      info(`<p class="hint">${t.name}　守備+${t.def}　回避+${t.avo}${t.heal ? '　ターン開始時にHP回復' : ''}${t.note ? '　' + t.note : ''}${block ? '（飛行ユニットのみ通れる）' : ''}</p>`);
+    }
   } else if (mode === 'move') {
     if (!stops.has(key(tx, ty))) { audio.sfx('cancel'); return idle(); }
     mode = 'busy'; if (tx !== sel!.x || ty !== sel!.y) audio.sfx('move'); await tween(sel!, tx, ty); openMenu();
@@ -1024,21 +1044,50 @@ function showTitle(msg = '', panel: 'main' | 'diff' | 'defeat' = 'main') {
 /** Test log: how long each chapter's terrain took to draw (ms). */
 const terrainMs: number[] = [];
 /**
- * Paints the terrain at the canvas's final resolution (RES), so it is as crisp as the figures; at chapter start and
- * after a terrain change. That takes a moment on big maps: say so first, so the screen does not look frozen.
+ * The code-drawn terrain of `map` at `scale` backing pixels per map pixel (RES for the game, less for the guides).
  * 石床 (K) and 岩壁 (Q) are drawn as road and cliff until they get their own tiles (M9).
  */
+function drawAutoTerrain(map: string[], scale = RES) {
+  const tc = document.createElement('canvas'); tc.width = Math.round(map[0].length * T * scale); tc.height = Math.round(map.length * T * scale);
+  const tg = tc.getContext('2d')!; tg.setTransform(scale, 0, 0, scale, 0, 0);
+  drawTerrain(tg, map.map(r => r.replace(/K/g, 'R').replace(/Q/g, 'X')));
+  return tc;
+}
+/** How long a painted map may take to load at chapter start before the drawn map is shown (it replaces it later). */
+const MAP_ART_WAIT = 2500;
+let paintSeq = 0;
+function setTerrain(tc: HTMLCanvasElement, painted: boolean) {
+  terrain = tc; paintedMap = painted;
+  topPad = makeTopPad(tc);
+  syncGridBtn();
+}
+/**
+ * Paints the terrain at the canvas's final resolution (RES), so it is as crisp as the figures; at chapter start and
+ * after a terrain change. That takes a moment on big maps: say so first, so the screen does not look frozen.
+ * A chapter with a painted map (assets/maps/chNN, listed in MAP_ART) uses the picture, stretched over the whole map,
+ * with the tiles changed since the chapter began (柵・崩落・城門) drawn by code on top. Until the picture has loaded
+ * (or if it fails), the drawn map is used, and the picture takes its place when it arrives.
+ */
 async function paintTerrain() {
+  const seq = ++paintSeq, url = mapArtUrl(S.chapter + 1);
   const b = $('banner'); b.textContent = '地図を描いています'; b.hidden = false;
   await new Promise<void>(r => requestAnimationFrame(() => setTimeout(r, 0)));
   const t0 = performance.now();
-  const tc = document.createElement('canvas'); tc.width = Math.round(cols() * T * RES); tc.height = Math.round(rows() * T * RES);
-  const tg = tc.getContext('2d')!; tg.setTransform(RES, 0, 0, RES, 0, 0);
-  drawTerrain(tg, S.map.map(r => r.replace(/K/g, 'R').replace(/Q/g, 'X')));
+  const loading = url ? loadMapArt(url) : null;
+  const img = loading ? await Promise.race([loading, new Promise<null>(r => setTimeout(() => r(null), MAP_ART_WAIT))]) : null;
+  if (seq !== paintSeq) return; // a newer paint (another chapter, another change) took over
+  const changed = changedTiles(chapterDef(S.chapter).map, S.map);
+  const auto = img && !changed.length ? null : drawAutoTerrain(S.map);
   terrainMs.push(Math.round(performance.now() - t0));
   b.hidden = true;
-  terrain = tc;
-  topPad = makeTopPad(tc);
+  setTerrain(img ? paintedLayer(img, cols(), rows(), RES, auto, changed) : auto!, !!img);
+  if (loading && !img) void loading.then(late => { if (late && seq === paintSeq && auto) setTerrain(paintedLayer(late, cols(), rows(), RES, auto, changed), true); });
+}
+/** Shows the 格子 button's state (pressed = grid shown). */
+function syncGridBtn() {
+  const g = $('gridBtn'); if (!g) return;
+  g.setAttribute('aria-pressed', String(gridOn()));
+  g.setAttribute('aria-label', gridOn() ? 'マス目の線を消す' : 'マス目の線を表示する');
 }
 async function start(state: State, intro: boolean) {
   S = state; mode = 'busy'; inspect = sel = picked = null; inBattle = true; engaged.clear();
@@ -1111,6 +1160,12 @@ $('btnDefeatTitle').onclick = () => showTitle();
 $('btnNext').onclick = goNext;
 $('btnToTitle').onclick = () => showTitle();
 for (const b of document.querySelectorAll<HTMLButtonElement>('#campTabs button')) b.onclick = () => { campTab = b.dataset.tab as CampTab; campMsg(''); renderCamp(); };
+$('gridBtn').onclick = () => {
+  gridPref[paintedMap ? 'painted' : 'auto'] = !gridOn();
+  try { localStorage.setItem(GRID_KEY, JSON.stringify(gridPref)); } catch { /* storage unavailable: lasts for this visit */ }
+  syncGridBtn();
+};
+syncGridBtn();
 showTitle();
 loadUnitArt();
 requestAnimationFrame(render);
@@ -1131,6 +1186,17 @@ requestAnimationFrame(render);
   get cam() { return { ...cam, w: VIEW_W, h: VIEW_H, t: T }; }, followLog,
   /** Test helper: the pre-drawn terrain layer (to check that tiles read as their terrain). */
   get terrain() { return terrain; },
+  /** Test helpers: whether the current map is a painted one, and whether the grid is shown. */
+  get paintedMap() { return paintedMap; }, get grid() { return gridOn(); },
+  /**
+   * Tool (npm run map-guides): chapter n's code-drawn map at its start, `px` pixels per tile, as a PNG data URL;
+   * `marks` adds the grid, terrain letters and names, and hatching on impassable tiles (the check sheet).
+   */
+  mapGuide(n: number, px = 64, marks = false) {
+    const map = chapterDef(n - 1).map, scale = px / T, c = drawAutoTerrain(map, scale);
+    if (marks) { const g = c.getContext('2d')!; g.setTransform(scale, 0, 0, scale, 0, 0); drawGuideMarks(g, map); }
+    return c.toDataURL('image/png');
+  },
   /** Test helper: center the view on a tile right away if it is off screen. */
   reveal(x: number, y: number) { if (S && !inView(x, y, 0)) centerOn(x, y); return { ...cam }; },
   /** Test helper: add a cast member to the camp roster (to try the sortie screen). */
