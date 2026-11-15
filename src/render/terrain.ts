@@ -550,7 +550,12 @@ export function drawTerrain(c: C2D, mapIn: string[]) {
   }
 
   // ---- hills (丘): raised lighter ground with terraced contours and slope hachures ----
-  if (hasAny(map, 'H')) {
+  // cave: the hills are heaps of fallen rubble (崩れた土砂) — a dark earthy patch under a pile of stones (placed below)
+  if (cave && hasAny(map, 'H')) {
+    const hp = shapeOf(ch => ch === 'H', 0.28, 0.42, 0.2, 6).p;
+    soft(hp, 'rgba(84,68,64,.75)', T * 0.22, 'H');
+  }
+  if (!cave && hasAny(map, 'H')) {
     const hf = buildField(map, ch => ch === 'H', 6, 0.3, { noise, amp: 0.07 });
     const hp = toPath(contours(hf, 0.4));
     soft(moved(hp, T * 0.05, T * 0.1), 'rgba(30,60,30,.5)', T * 0.16, 'H');
@@ -798,7 +803,7 @@ export function drawTerrain(c: C2D, mapIn: string[]) {
       c.save(); c.clip(top, 'evenodd');
       const b = boxOf(map, 'M')!;
       const height = (x: number, y: number) => valueAtB(mf, x, y) * 0.8 + noise(x / T * 2.6 + 3, y / T * 2.6) * 0.1;
-      const rc = relief(mf, 0.45, W, H, [58, 50, 58], [150, 136, 130], 0.35, height, [(b[0] - 1) * T, (b[1] - 1) * T, (b[2] + 2) * T, (b[3] + 2) * T]);
+      const rc = relief(mf, 0.45, W, H, [52, 44, 50], [132, 118, 112], 0.35, height, [(b[0] - 1) * T, (b[1] - 1) * T, (b[2] + 2) * T, (b[3] + 2) * T]);
       c.drawImage(rc, 0, -fh, W, rc.height * (W / rc.width));
       c.restore();
       c.strokeStyle = 'rgba(226,206,186,.5)'; c.lineWidth = 2 * u; c.stroke(mp);
@@ -878,6 +883,7 @@ export function drawTerrain(c: C2D, mapIn: string[]) {
     } else if (ch === 'C') {
       const fx = (x + 0.5) * T, fy = (y + 0.46) * T;
       put((y + 0.995) * T, () => fort(c, fx, fy, k * 1.12)); // in front of neighbouring peaks
+      if (N8.filter(([dx, dy]) => at(x + dx, y + dy) === 'H').length >= 6) summit(x, y);
     } else if (ch === 'D') {
       const hx = (x + 0.5 + (r() - 0.5) * 0.06) * T, hy = (y + 0.84) * T, ruined = r() < 0.6;
       put(hy, () => O.house(c, hx, hy, u * 1.12, rng(hashStr(`h${x},${y}`)), ruined));
@@ -911,7 +917,7 @@ export function drawTerrain(c: C2D, mapIn: string[]) {
     } else if (ch === 'H') {
       if (r() < 0.35) { const rx = (x + 0.2 + r() * 0.6) * T, ry = (y + 0.25 + r() * 0.2) * T; put(ry, () => O.rock(c, rx, ry, u * 0.7, rng(hashStr(`hr${x},${y}`)))); }
       if (r() < 0.5) { const tx = (x + 0.15 + r() * 0.7) * T, ty = (y + 0.85) * T; put(ty, cave ? () => O.rock(c, tx, ty, u * 0.6, rng(hashStr(`ht${x},${y}`)), -20) : () => O.tuft(c, tx, ty, u, rng(hashStr(`ht${x},${y}`)))); }
-      if (cave) for (let i = 0; i < 5; i++) { const tx = (x + 0.15 + r() * 0.7) * T, ty = (y + 0.2 + r() * 0.65) * T, s = u * (0.6 + r() * 0.5); put(ty, () => O.rock(c, tx, ty, s, rng(hashStr(`hc${x},${y},${i}`)), -24)); }
+      if (cave) for (let i = 0; i < 9; i++) { const tx = (x + 0.12 + r() * 0.76) * T, ty = (y + 0.15 + r() * 0.75) * T, s = u * (0.55 + r() * (i < 3 ? 0.9 : 0.4)); put(ty, () => O.rock(c, tx, ty, s, rng(hashStr(`hc${x},${y},${i}`)), -24)); }
     } else if (ch === 'A') {
       if (r() < 0.12) { const sx = (x + 0.8) * T, sy = (y + 0.3) * T; put(sy, () => O.scarecrow(c, sx, sy, u * 1.1)); }
     } else if (ch === 'G') {
@@ -931,6 +937,44 @@ export function drawTerrain(c: C2D, mapIn: string[]) {
     if (cave && ch === 'M' && r() < 0.7) {
       const n = 1 + Math.floor(r() * 2);
       for (let i = 0; i < n; i++) { const rx = (x + 0.2 + r() * 0.6) * T, ry = (y + 0.3 + r() * 0.45) * T - T * 0.18, s = u * (0.7 + r() * 0.5); put(ry, () => O.rock(c, rx, ry, s, rng(hashStr(`cm${x},${y},${i}`)), -18)); }
+    }
+  }
+  /**
+   * A fort crowning a hill (most of its neighbours are hills): the summit gets a worn ring of trodden ground and
+   * old standing stones around it, and a soft light, so the hilltop reads as the place everything turns on.
+   */
+  function summit(x: number, y: number) {
+    const cx = (x + 0.5) * T, cy = (y + 0.62) * T, rx = T * 1.05, ry = T * 0.72, r = tileR(x, y, 'summit');
+    put(y * T - T * 2, () => {
+      const g = c.createRadialGradient(cx, cy, 0, cx, cy, T * 1.9);
+      g.addColorStop(0, 'rgba(255,246,200,.34)'); g.addColorStop(0.55, 'rgba(255,240,190,.12)'); g.addColorStop(1, 'rgba(255,240,190,0)');
+      c.fillStyle = g; c.beginPath(); c.ellipse(cx, cy, T * 1.9, T * 1.45, 0, 0, 7); c.fill();
+      // terraces stepping down from the summit (only on the hill itself), so the top reads as the highest ground
+      const hp = shapeOf(ch => ch === 'H' || ch === 'C', 0.3, 0.4, 0.07, 6).p;
+      c.save(); c.clip(hp, 'evenodd');
+      for (const [k2, a] of [[1.75, 0.4], [2.6, 0.32], [3.5, 0.24]]) {
+        c.strokeStyle = `rgba(60,108,48,${a})`; c.lineWidth = 2 * u; c.setLineDash([T * 0.5, T * 0.12]);
+        c.beginPath(); c.ellipse(cx, cy + T * 0.1 * k2, rx * k2, ry * k2 * 0.95, 0, 0, 7); c.stroke();
+        c.strokeStyle = `rgba(236,255,200,${a * 0.8})`; c.beginPath(); c.ellipse(cx, cy + T * 0.1 * k2 - 2 * u, rx * k2, ry * k2 * 0.95, 0, Math.PI * 1.05, Math.PI * 1.75); c.stroke();
+      }
+      c.restore();
+      c.strokeStyle = 'rgba(150,120,72,.45)'; c.lineWidth = T * 0.16; c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, 7); c.stroke();
+      c.strokeStyle = 'rgba(214,190,130,.45)'; c.lineWidth = T * 0.07; c.beginPath(); c.ellipse(cx, cy, rx, ry, 0, 0, 7); c.stroke();
+    });
+    const n = 11;
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + 0.2;
+      if (Math.abs(Math.sin(a) + 1) < 0.25 || r() < 0.12) continue; // keep the top (the sapling) clear; some stones have fallen
+      const sx = cx + Math.cos(a) * rx, sy = cy + Math.sin(a) * ry, h = (0.24 + r() * 0.12) * T, w = (0.09 + r() * 0.04) * T, lean = (r() - 0.5) * 0.25;
+      put(sy, () => {
+        c.save(); c.translate(sx, sy); c.rotate(lean);
+        O.shadowBlob(c, w * 0.4, 1, w * 1.5, w * 0.5, 0.3);
+        const g = c.createLinearGradient(-w, 0, w, 0); g.addColorStop(0, '#d9d4c4'); g.addColorStop(1, '#8d8676');
+        c.fillStyle = g; c.strokeStyle = OUT; c.lineWidth = 2 * u;
+        c.beginPath(); c.moveTo(-w, 0); c.lineTo(-w * 0.9, -h * 0.8); c.quadraticCurveTo(0, -h * 1.12, w * 0.85, -h * 0.82); c.lineTo(w, 0); c.closePath(); c.fill(); c.stroke();
+        c.fillStyle = 'rgba(90,130,70,.55)'; c.beginPath(); c.ellipse(-w * 0.2, -h * 0.25, w * 0.5, h * 0.12, 0, 0, 7); c.fill();
+        c.restore();
+      });
     }
   }
   /** Stone floor (cave): rubble at the foot of the walls, now and then a crystal or glowing caps. Small, off-centre. */
@@ -1003,6 +1047,17 @@ export function drawTerrain(c: C2D, mapIn: string[]) {
   }
   objs.sort((a, b) => a.y - b.y).forEach(o => o.draw());
 
+  // cave: daylight spilling in through the exit (the open ground), fading into the labyrinth
+  if (cave) {
+    const out: [number, number][] = [];
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (map[y][x] === 'G') out.push([x, y]);
+    if (out.length) {
+      const ex = (out.reduce((a, p) => a + p[0], 0) / out.length + 0.5) * T, ey = (out.reduce((a, p) => a + p[1], 0) / out.length + 0.3) * T;
+      const lg2 = c.createRadialGradient(ex, ey, 0, ex, ey, T * 4.5);
+      lg2.addColorStop(0, 'rgba(255,240,196,.22)'); lg2.addColorStop(0.5, 'rgba(255,236,190,.08)'); lg2.addColorStop(1, 'rgba(255,236,190,0)');
+      c.fillStyle = lg2; c.fillRect(ex - T * 4.5, ey - T * 4.5, T * 9, T * 9);
+    }
+  }
   // gentle light from the top-left over everything
   const lg = c.createLinearGradient(0, 0, W, H);
   lg.addColorStop(0, 'rgba(255,250,220,.08)'); lg.addColorStop(1, 'rgba(20,20,60,.10)');
