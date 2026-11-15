@@ -210,6 +210,11 @@
   .row button, .campBtns button { flex: 1 1 140px; }
   .campBtns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
   #title .btns.wide { width: min(360px, 100%); }
+  .levelPick { display: flex; align-items: center; gap: 8px; }
+  .levelPick span { font-family: var(--text); font-size: 13px; color: var(--dim); margin-right: auto; }
+  .levelPick button { padding: 6px 12px; }
+  .levelPick button[aria-pressed="true"] { color: var(--gold); border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+  .levelNote { text-align: left; font-family: var(--text); font-size: 12.5px; color: var(--dim); line-height: 1.5; margin-top: -4px; }
   button.diff { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 8px 12px; }
   button.diff b { font-weight: normal; color: var(--gold); font-size: 16px; }
   button.diff small { font-family: var(--text); font-size: 12.5px; color: var(--dim); line-height: 1.5; }
@@ -377,6 +382,8 @@
     <button id="btnLoad" hidden>つづきから</button>
   </div>
   <div id="diffPick" class="btns wide" hidden>
+    <div id="levelPick" class="levelPick" role="group" aria-label="敵の強さ"><span>敵の強さ</span><button type="button" data-level="normal" aria-pressed="true">ふつう</button><button type="button" data-level="hard" aria-pressed="false">むずかしい</button></div>
+    <small id="levelNote" class="levelNote"></small>
     <button data-diff="casual" class="diff"><b>カジュアル</b><small>倒れた仲間は撤退し、次の章で復帰する。敗北したら直前の自軍フェイズからやり直せる。</small></button>
     <button data-diff="classic" class="diff"><b>クラシック</b><small>倒れた仲間は戦線離脱し、以後は出撃できない。敗北すると章の最初から。</small></button>
     <button id="btnDiffBack">もどる</button>

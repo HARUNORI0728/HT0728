@@ -9,6 +9,7 @@
 //                              [--root DIR]                  // DIR/src のルールとデータで測る（調整前との比較用）
 //                              [--trace 3,4]                 // その章の行動を1手ずつ表示
 //                              [--noshop]                    // キャンプで買い物をしない（店の影響を比べる）
+//                              [--hard]                      // 難易度「むずかしい」（敵の能力が上がる。L.hardBonus）
 // 出力：表（標準出力）と JSON（--out。既定は OS の一時フォルダ ht0728-playthrough/）。名簿 *-camps.json は --camp に渡せる。
 import { build } from 'esbuild';
 import { writeFileSync, readFileSync, mkdirSync, unlinkSync, existsSync } from 'node:fs';
@@ -41,6 +42,7 @@ const OUT = opt('out', join(tmpdir(), 'ht0728-playthrough', 'playthrough.json'))
 const QUIET = !!opt('quiet', false);
 const NOSHOP = !!opt('noshop', false) || !SHOP;
 const DIFF = opt('classic', false) ? 'classic' : 'casual';
+const HARD = !!opt('hard', false);
 const TRACE = opt('trace', false) ? String(opt('trace')).split(',').map(Number) : null;
 
 // systems.md §6：章開始時の味方の平均Lv（1章は 1〜3 の中央）。
@@ -262,7 +264,7 @@ function Sim(rnd, log) {
 
   // ---------- one chapter ----------
   function playChapter(index, roster, bonds, picks) {
-    const s = L.newChapter(index, roster ? clone(roster) : undefined, bonds ? clone(bonds) : undefined, DIFF, picks);
+    const s = L.newChapter(index, roster ? clone(roster) : undefined, bonds ? clone(bonds) : undefined, DIFF, picks, HARD);
     const ch = chapterDef(index);
     const seen = new Set(), fallen = [], events = [];
     let lossCause = null, dmgTaken = 0, enemyAttacks = 0, minHpRatio = 1;
@@ -562,7 +564,7 @@ const summary = [...byCh.entries()].sort((a, b) => a[0] - b[0]).map(([n, list]) 
     falls, causes,
   };
 });
-const report = { generated: new Date().toISOString(), difficulty: DIFF, seeds: runs.map(r => r.seed), retriesAllowed: RETRIES, maxTurn: MAX_TURN, summary, runs };
+const report = { generated: new Date().toISOString(), difficulty: DIFF, hard: HARD, seeds: runs.map(r => r.seed), retriesAllowed: RETRIES, maxTurn: MAX_TURN, summary, runs };
 mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT, JSON.stringify(report, null, 1) + '\n');
 writeFileSync(OUT.replace(/\.json$/, '') + '-camps.json', JSON.stringify(runs.map(r => r.camps), null, 0) + '\n');

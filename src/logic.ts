@@ -47,6 +47,8 @@ export interface Bond { pts: number; rank: number; deferred?: number }
 export type Bonds = Record<string, Bond>;
 export type Difficulty = 'casual' | 'classic';
 export const DIFFICULTY_NAMES: Record<Difficulty, string> = { casual: 'カジュアル', classic: 'クラシック' };
+/** 難易度（カジュアル／クラシックとは別の軸）：ふつう／むずかしい。State.hard・Camp.hard（v6 の任意項目。無ければふつう）。 */
+export const levelName = (hard?: boolean) => (hard ? 'むずかしい' : 'ふつう');
 /**
  * bench = 出撃しなかった名簿の仲間（離脱者を含む）。章クリア時に名簿へ戻す。
  * flags = 章の進行フラグ（seized・増援の出現済みなど）。
@@ -56,6 +58,8 @@ export interface State {
   difficulty: Difficulty; bench: Unit[]; flags: Record<string, number | boolean>;
   /** 出撃準備で選んだ（空き枠に出した）仲間。「章の最初から」で同じメンバーにする。 */
   picks?: string[];
+  /** むずかしい（敵の能力が上がる。makeEnemy の hardBonus）。無ければふつう。 */
+  hard?: boolean;
 }
 
 export const key = (x: number, y: number) => x + ',' + y;
@@ -89,11 +93,32 @@ export function makeUnit(id: string): Unit | null {
   return { uid: 0, id: c.id, name: c.name, cls: c.cls, team: 'blue', lv: c.lv, exp: 0, hp: c.st.hp, st: { ...c.st }, gr: { ...c.gr }, wps: [...c.wps], eq: 0, x: 0, y: 0, done: false, hair: c.hair, potions: 3 };
 }
 
-/** An enemy unit built from ENEMY_BASE + per-level growth. Bosses carry one potion (systems.md §1). */
-export function makeEnemy(e: EnemyDef, uid: number): Unit {
+/**
+ * むずかしい：敵の能力への上乗せ（Lv+2 相当）。`index` = 章（0 = 第1章）。力/魔力は攻撃に使うほう（大きいほう）だけ、
+ * もともと 0 の能力は上げない。
+ * 一般の敵：HP+4・力/魔力+2・技・速さ・守備・魔防 +1。6章から HP・速さ +1、7章から技 +1 をさらに足す。
+ * ボス：HP+4・力/魔力・速さ・守備 +1。9・10章のボス（ガル・ファリオン、ダリウス、オルステッド、使徒）は HP+2・力/魔力 +1 だけ。
+ * 武器を持たない置物（10章の結晶）は上げない。
+ */
+export function hardBonus(e: EnemyDef, index: number): Partial<Stats> {
+  if (!e.wps.length) return {};
+  if (e.boss) return index >= 8 ? { hp: 2, str: 1, mag: 1 } : { hp: 4, str: 1, mag: 1, spd: 1, def: 1 };
+  const late = index >= 5 ? 1 : 0, later = index >= 6 ? 1 : 0;
+  return { hp: 4 + late, str: 2, mag: 2, skl: 1 + later, spd: 1 + late, def: 1, res: 1 };
+}
+
+/**
+ * An enemy unit built from ENEMY_BASE + per-level growth. Bosses carry one potion (systems.md §1).
+ * `hardIndex` = むずかしいのときの章（hardBonus を足す）。ふつうは undefined。
+ */
+export function makeEnemy(e: EnemyDef, uid: number, hardIndex?: number): Unit {
   const b = ENEMY_BASE[e.cls] ?? ENEMY_BASE.soldier, st = { ...b };
   for (const k of STAT_KEYS) st[k] += Math.floor((e.lv - 1) * (k === 'hp' ? 1.5 : k === 'lck' || k === 'res' ? 0.3 : 0.7));
   if (e.st) Object.assign(st, e.st);
+  if (hardIndex !== undefined) {
+    const atk: keyof Stats = st.mag > st.str ? 'mag' : 'str'; // 力/魔力は攻撃に使うほうだけ
+    for (const [k, v] of Object.entries(hardBonus(e, hardIndex)) as [keyof Stats, number][]) if ((k === 'hp' || st[k] > 0) && ((k !== 'str' && k !== 'mag') || k === atk)) st[k] += v;
+  }
   const u: Unit = { uid, id: e.cls, name: e.boss ?? (e.prefix ?? '野盗の') + CLASSES[e.cls].name, cls: e.cls, team: 'red', lv: e.lv, exp: 0, hp: st.hp, st, wps: [...e.wps], eq: 0, x: e.x, y: e.y, done: false, ai: e.ai, boss: !!e.boss, potions: e.boss ? 1 : 0, ...(e.defeat ? { defeat: e.defeat } : {}) };
   if (e.goal) u.goal = [...e.goal] as Tile;
   if (e.aiFrom) u.aiFrom = { ...e.aiFrom };
@@ -144,7 +169,7 @@ export function sortiePlan(index: number, roster: Unit[] = []): SortiePlan {
  * from `picks` when given (the sortie screen), otherwise from the roster in order.
  * Units marked `out` never deploy; everyone not deployed waits on the bench.
  */
-export function newChapter(index: number, roster?: Unit[], bonds?: Bonds, difficulty: Difficulty = 'casual', picks?: string[]): State {
+export function newChapter(index: number, roster?: Unit[], bonds?: Bonds, difficulty: Difficulty = 'casual', picks?: string[], hard = false): State {
   const ch = chapterDef(index);
   let uid = 1;
   const pool = roster ? clone(roster) : [];
@@ -165,8 +190,8 @@ export function newChapter(index: number, roster?: Unit[], bonds?: Bonds, diffic
   const picked: string[] = [];
   (ch.slots ?? []).slice(0, plan.free).forEach((sl, i) => { if (order[i]) { deploy(order[i], sl.x, sl.y); picked.push(order[i].id); } });
   const bench = pool.filter(r => !used.has(r.id) && !r.guest);
-  for (const e of ch.enemies) units.push(makeEnemy(e, uid++));
-  return { chapter: index, turn: 1, phase: 'blue', units, map: [...ch.map], bonds: initBonds(bonds), difficulty, bench, flags: {}, picks: picked };
+  for (const e of ch.enemies) units.push(makeEnemy(e, uid++, hard ? index : undefined));
+  return { chapter: index, turn: 1, phase: 'blue', units, map: [...ch.map], bonds: initBonds(bonds), difficulty, bench, flags: {}, picks: picked, ...(hard ? { hard: true } : {}) };
 }
 
 /**
@@ -178,13 +203,14 @@ export function newChapter(index: number, roster?: Unit[], bonds?: Bonds, diffic
 export function upgradeState(s: State): State {
   s.bonds = initBonds(s.bonds);
   s.difficulty = s.difficulty === 'classic' ? 'classic' : 'casual';
+  if (s.hard !== true) delete s.hard;
   s.bench = Array.isArray(s.bench) ? s.bench : [];
   s.flags = s.flags && typeof s.flags === 'object' ? s.flags : {};
   const ch = chapterDef(s.chapter);
   if (ch && !mapMatches(s.map, ch)) {
     const party = s.units.filter(u => u.team === 'blue' && !u.guest);
     const pool = [...party, ...s.bench].map(u => ({ ...clone(u), hp: u.st.hp, done: false, left: false }));
-    return newChapter(s.chapter, pool, s.bonds, s.difficulty, s.picks ?? party.map(u => u.id));
+    return newChapter(s.chapter, pool, s.bonds, s.difficulty, s.picks ?? party.map(u => u.id), !!s.hard);
   }
   return s;
 }
@@ -679,7 +705,7 @@ export function advanceStage(s: State): StageChange | null {
   for (const u of alive(s, 'red')) if (st.remove === 'all' || (st.remove ?? []).includes(bossId(u) ?? '')) { u.left = true; removed.push(u); }
   const added = (st.allies ?? []).map(a => addAlly(s, a)).filter((u): u is Unit => !!u);
   let uid = Math.max(0, ...s.units.map(u => u.uid)) + 1;
-  const foes = (st.enemies ?? []).map(e => { const u = makeEnemy(e, uid++); [u.x, u.y] = freeTileNear(s, e.x, e.y, u); s.units.push(u); return u; });
+  const foes = (st.enemies ?? []).map(e => { const u = makeEnemy(e, uid++, s.hard ? s.chapter : undefined); [u.x, u.y] = freeTileNear(s, e.x, e.y, u); s.units.push(u); return u; });
   const terrain = applyTerrainChanges(s, 'stage');
   return { stage: next, added, removed, foes, terrain };
 }
@@ -831,7 +857,7 @@ export function spawnReinforcements(s: State, appeared?: number[]): Unit[] {
       const f = rfFlag(st, wi, ei);
       if (s.flags[f] || s.turn < w.turn || unitAt(s, e.x, e.y)) return;
       const first = !w.units.some((_, j) => s.flags[rfFlag(st, wi, j)]);
-      const u = makeEnemy(e, uid++);
+      const u = makeEnemy(e, uid++, s.hard ? s.chapter : undefined);
       s.units.push(u); s.flags[f] = true; out.push(u);
       if (first) appeared?.push(wi);
     });

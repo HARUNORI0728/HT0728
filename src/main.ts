@@ -1,7 +1,7 @@
 // Screen, input and turn flow. Rules live in logic.ts.
 import { CAST, CHAPTERS, CHARS, CLASSES, RANKS, RANK_PTS, STAT_KEYS, STAT_NAMES, SCHOOLS, SKILLS, SUPPORTS, SUPPORT_BONUS, WEAPONS, WTYPE_NAMES, chapterDef, hasChapter, type EnemyDef, type Line, type Stats, type SupportPair } from './data';
 import {
-  DIFFICULTY_NAMES, POTION_HEAL, addExp, alive, bondStatus, canEscape, canSeize, dist, expGain, fight, forecast, gainBonds, goalText, heal, healAmount, healExp, healTargets,
+  DIFFICULTY_NAMES, levelName, POTION_HEAL, addExp, alive, bondStatus, canEscape, canSeize, dist, expGain, fight, forecast, gainBonds, goalText, heal, healAmount, healExp, healTargets,
   initBonds, inRange, key, loseCond, makeEnemy, makeUnit, maxRank, newChapter, nextNeed, outcome, pairKey, planEnemy, promote, promoOptions, rankName, rankUp, readyPairs,
   WEAPON_SLOTS, benchExp, chapterPicks, rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
   bossId, dueTalks, fightTalks, onMap, talkKey, clearSlow, expBoost, familiarHeal, hasSkill, healingWind, skillsOf,
@@ -114,6 +114,8 @@ interface Camp {
   bench?: { id: string; exp: number; fromLv: number; lv: number }[];
   /** パウロ（三流派の心得）が出撃準備で選んだ流派（SCHOOLS の id）。v6 の任意項目。無ければ CharDef.school。 */
   school?: string;
+  /** むずかしい（敵の能力が上がる）。v6 の任意項目。無ければふつう。 */
+  hard?: boolean;
 }
 /**
  * seen = conversations watched (for the camp's 記録): scene ids (序章・開幕・終幕・幕間) and support talks
@@ -167,12 +169,13 @@ function normalize(d: any): SaveData | null {
   const c = d?.camp;
   let cp: Camp | null = null;
   if (c && Array.isArray(c.roster) && typeof c.next === 'number' && typeof c.cleared === 'number' && c.cleared >= 1) {
-    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), gold: Number.isFinite(c.gold) && c.gold > 0 ? Math.floor(c.gold) : 0, ...(c.ended === true ? { ended: true } : {}), ...(SCHOOLS.includes(c.school) ? { school: c.school } : {}), ...(Array.isArray(c.bench) ? { bench: c.bench.filter((g: any) => g && typeof g.id === 'string' && typeof g.exp === 'number') } : {}) };
+    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), gold: Number.isFinite(c.gold) && c.gold > 0 ? Math.floor(c.gold) : 0, ...(c.ended === true ? { ended: true } : {}), ...(SCHOOLS.includes(c.school) ? { school: c.school } : {}), ...(c.hard === true ? { hard: true } : {}), ...(Array.isArray(c.bench) ? { bench: c.bench.filter((g: any) => g && typeof g.id === 'string' && typeof g.exp === 'number') } : {}) };
   }
   const married = Array.isArray(d?.married) ? d.married.filter((k: unknown) => typeof k === 'string' && CANDIDATES.includes(k as string)) : [];
   if (cp) ensureMarried(cp.bonds, married);
   if (battle) ensureMarried(battle.bonds, married);
   if (battle && cp && !b.difficulty) battle.difficulty = cp.difficulty;
+  if (battle && cp?.hard && b.hard === undefined) battle.hard = true;
   const sn = Array.isArray(d?.seen) ? d.seen.filter((k: unknown) => typeof k === 'string') : seenFrom(battle, cp);
   return battle || cp ? { v: 6, battle, camp: cp, seen: sn, married: marriedTo(cp?.bonds ?? battle!.bonds) } : null;
 }
@@ -649,7 +652,7 @@ async function checkEnd(): Promise<boolean> {
     // The camp is saved first (with the closing scenes marked seen), so closing the page mid-scene loses nothing:
     // they can be watched again from the camp's 記録.
     const roster = rosterOf(S), benchUp = benchExp(S, roster), reward = chapterReward(S.chapter + 1) + (Number(S.flags.loot) || 0); // loot = 抜け目なし
-    camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster, bonds: S.bonds, difficulty: S.difficulty, gold: (camp?.gold ?? 0) + reward, ...(camp?.school ? { school: camp.school } : {}), bench: benchUp.map(g => ({ id: g.id, exp: g.exp, fromLv: g.fromLv, lv: g.lv })), ...(camp?.ended ? { ended: true } : {}) };
+    camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster, bonds: S.bonds, difficulty: S.difficulty, gold: (camp?.gold ?? 0) + reward, ...(camp?.school ? { school: camp.school } : {}), ...(S.hard ? { hard: true } : {}), bench: benchUp.map(g => ({ id: g.id, exp: g.exp, fromLv: g.fromLv, lv: g.lv })), ...(camp?.ended ? { ended: true } : {}) };
     markSeen(ch.outro); if (ch.interlude) markSeen(ch.interlude);
     inBattle = false; save();
     await playScene(ch.outro);
@@ -666,7 +669,7 @@ async function checkEnd(): Promise<boolean> {
   return true;
 }
 /** The state at the start of the current chapter (from the camp, or a new game for chapter 1), with the same members picked on the sortie screen. */
-const chapterStart = () => withSchool(newChapter(S.chapter, camp?.next === S.chapter ? camp.roster : undefined, camp?.next === S.chapter ? camp.bonds : undefined, S.difficulty, camp?.next === S.chapter ? chapterPicks(S) : undefined));
+const chapterStart = () => withSchool(newChapter(S.chapter, camp?.next === S.chapter ? camp.roster : undefined, camp?.next === S.chapter ? camp.bonds : undefined, S.difficulty, camp?.next === S.chapter ? chapterPicks(S) : undefined, !!S.hard));
 /** 三流派の心得：出撃準備で選んだ流派を、出撃するパウロに付ける。 */
 function withSchool(st: State): State {
   if (camp?.school) for (const u of st.units) if (u.team === 'blue' && hasSkill(u, 'threeSchools')) u.school = camp.school;
@@ -852,7 +855,7 @@ function showCamp(msg = '') {
   if (!camp) return;
   mode = 'busy'; campTab = 'units';
   prep = null; $('campTabs').hidden = false; $('campBtns').hidden = false;
-  $('campTitle').textContent = `章間　難民キャンプ（${DIFFICULTY_NAMES[camp.difficulty]}）`;
+  $('campTitle').textContent = `章間　難民キャンプ（${DIFFICULTY_NAMES[camp.difficulty]}・${levelName(camp.hard)}）`;
   campMsg(msg);
   const has = hasChapter(camp.next);
   const nb = $<HTMLButtonElement>('btnNext');
@@ -1033,7 +1036,7 @@ async function goNext() {
   }
   if (!camp || !hasChapter(camp.next)) return;
   const plan = sortiePlan(camp.next, camp.roster);
-  if (!plan.choose && !schoolUnit(plan, plan.picks)) { start(newChapter(camp.next, camp.roster, camp.bonds, camp.difficulty), true); return; }
+  if (!plan.choose && !schoolUnit(plan, plan.picks)) { start(newChapter(camp.next, camp.roster, camp.bonds, camp.difficulty, undefined, !!camp.hard), true); return; }
   prep = { index: camp.next, plan, picks: [...plan.picks] };
   campMsg('');
   renderPrep();
@@ -1089,7 +1092,7 @@ function renderPrep() {
   const su = schoolUnit(plan, p.picks);
   if (su) body.appendChild(schoolPicker(su));
   const row = el('div', 'row');
-  row.appendChild(btn(`この${n}人で出撃する`, () => { const picks = p.picks; prep = null; start(newChapter(p.index, c.roster, c.bonds, c.difficulty, picks), true); }, 'primary', !p.picks.length && plan.free > 0));
+  row.appendChild(btn(`この${n}人で出撃する`, () => { const picks = p.picks; prep = null; start(newChapter(p.index, c.roster, c.bonds, c.difficulty, picks, !!c.hard), true); }, 'primary', !p.picks.length && plan.free > 0));
   row.appendChild(btn('章間にもどる', () => showCamp()));
   body.appendChild(row);
 }
@@ -1182,12 +1185,12 @@ function devRoster(): Unit[] {
   return Object.keys(CAST).map(id => makeUnit(id)).filter((u): u is Unit => !!u);
 }
 /** Development: starts chapter `index` (a test chapter 90 / 91, or any written story slot) with the dev roster. */
-function devStart(index: number, difficulty: Difficulty = 'casual') {
+function devStart(index: number, difficulty: Difficulty = 'casual', hard = !!camp?.hard) {
   if (!hasChapter(index)) return false;
   const roster = camp?.roster?.length ? camp.roster : devRoster();
   const bonds = initBonds(camp?.bonds);
-  camp = { next: index, cleared: Math.max(1, index), roster, bonds, difficulty, gold: camp?.gold ?? 0, ...(camp?.ended ? { ended: true } : {}) };
-  void start(newChapter(index, roster, bonds, difficulty), true);
+  camp = { next: index, cleared: Math.max(1, index), roster, bonds, difficulty, gold: camp?.gold ?? 0, ...(camp?.ended ? { ended: true } : {}), ...(hard ? { hard: true } : {}) };
+  void start(newChapter(index, roster, bonds, difficulty, undefined, hard), true);
   return true;
 }
 // Sound: starts on the first tap (autoplay rules); every button gives a short click.
@@ -1199,14 +1202,22 @@ document.addEventListener('click', e => {
   const t = b.textContent ?? '';
   audio.sfx(/もどる|キャンセル|いいえ|閉じる|タイトルへ|章間にもどる/.test(t) ? 'cancel' : b.classList.contains('primary') || b.classList.contains('diff') ? 'decide' : 'button');
 }, true);
-$('btnNew').onclick = () => showTitle('難易度を選んでください。', 'diff');
+$('btnNew').onclick = () => { setLevel(false); showTitle('難易度を選んでください。', 'diff'); };
+/** 新規ゲームの敵の強さ（ふつう／むずかしい）。倒れた仲間の扱い（カジュアル／クラシック）のボタンで始まる。 */
+let pickHard = false;
+function setLevel(hard: boolean) {
+  pickHard = hard;
+  for (const b of document.querySelectorAll<HTMLButtonElement>('#levelPick button')) b.setAttribute('aria-pressed', String((b.dataset.level === 'hard') === hard));
+  $('levelNote').textContent = hard ? '敵の能力が上がる（HP・攻撃・守備など。ボスは控えめ）。敵の数と配置は同じ。' : '標準の敵の強さ。';
+}
+for (const b of document.querySelectorAll<HTMLButtonElement>('#levelPick button')) b.onclick = () => setLevel(b.dataset.level === 'hard');
 for (const b of document.querySelectorAll<HTMLButtonElement>('#diffPick button[data-diff]')) {
   b.onclick = async () => {
     camp = null; seen = [];
     $('title').hidden = true;
     const ch = chapterDef(0);
     if (ch.prologue) await playScene(ch.prologue); // 序章：戦闘のない会話パート
-    start(newChapter(0, undefined, undefined, b.dataset.diff as Difficulty), true);
+    start(newChapter(0, undefined, undefined, b.dataset.diff as Difficulty, undefined, pickHard), true);
   };
 }
 $('btnDiffBack').onclick = () => showTitle();
@@ -1244,7 +1255,7 @@ requestAnimationFrame(render);
   },
   /** Test helper: what the enemy AI would do with this unit (used by automated play-throughs). */
   plan(u: Unit) { return planEnemy(S, u); },
-  spawnEnemy(e: EnemyDef) { if (!S) return null; const u = makeEnemy(e, Math.max(...S.units.map(v => v.uid)) + 1); S.units.push(u); return u; },
+  spawnEnemy(e: EnemyDef) { if (!S) return null; const u = makeEnemy(e, Math.max(...S.units.map(v => v.uid)) + 1, S.hard ? S.chapter : undefined); S.units.push(u); return u; },
   /** Camera (map pixels of the view's top-left), the view size in tiles, and the enemy-follow log. */
   get cam() { return { ...cam, w: VIEW_W, h: VIEW_H, t: T }; }, followLog,
   /** Test helper: the pre-drawn terrain layer (to check that tiles read as their terrain). */
@@ -1274,7 +1285,7 @@ requestAnimationFrame(render);
   addToRoster(id: string, out = false) { const u = makeUnit(id); if (!u || !camp) return null; if (out) u.out = true; camp.roster.push(u); return u; },
   /** Development: start a test chapter (90 = 防衛→制圧, 91 = 耐久→離脱・最終章扱い) or a story chapter by number (1–10). */
   devChapter: (index: number) => devStart(index),
-  startChapter: (n: number) => devStart(n - 1),
+  startChapter: (n: number, hard?: boolean) => devStart(n - 1, 'casual', hard ?? !!camp?.hard),
   /** Development: open the camp with the dev roster (after a fresh page), optionally as if `cleared` chapters were done. */
   devCamp(cleared = 2, gold = 0) { camp = { next: cleared, cleared, roster: devRoster(), bonds: initBonds(), difficulty: 'casual', gold }; showCamp(); return camp; },
   /** Development: set a pair's bond (on the camp, and on the battle state when in a chapter). */
