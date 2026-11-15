@@ -2,7 +2,10 @@ import type { Chapter, EnemyAI, EnemyDef, Tile } from '../data';
 
 // 迷宮の魔物（残滓の魔物。名前は「迷宮の岩人形」など）。結晶は prefix なしで「残滓の結晶」。
 const mon = (cls: string, wp: string) => (lv: number, x: number, y: number, ai: EnemyAI): EnemyDef => ({ cls, lv, x, y, wps: [wp], ai, prefix: '迷宮の' });
-const golem = mon('golem', 'golemFist'), wolf = mon('wolf', 'wolfFang');
+const wolf = mon('wolf', 'wolfFang');
+// 岩人形は ENEMY_BASE のままだと守備が高すぎて剣や斧がほとんど通らないので、能力値を固定して少し柔らかくする（魔術・光がよく効く相手のまま）。
+const golem = (lv: number, x: number, y: number, ai: EnemyAI): EnemyDef =>
+  ({ ...mon('golem', 'golemFist')(lv, x, y, ai), st: { hp: 30 + lv, str: 12 + Math.floor(lv / 6), mag: 0, skl: 5, spd: 3, lck: 1, def: 10 + Math.floor(lv / 6), res: 3 } });
 const shade = (lv: number, x: number, y: number, ai: EnemyAI): EnemyDef => ({ cls: 'shade', lv, x, y, wps: ['shadeBolt'], ai, prefix: '' });
 const crystal = (x: number, y: number, tag: string): EnemyDef => ({ cls: 'crystal', lv: 12, x, y, wps: [], ai: 'guard', prefix: '', tag });
 
@@ -15,7 +18,7 @@ const MAP = [
   'MMMFFYQQQQFGKGFQQQYFFMMM',
   'MMQQQQQQHUYGKGYUHQQQQMMM',
   'MQKKKUKKKKKKKKKKKQQQQQMM',
-  'QKKQQQQQQUGHKGUGKKKKUGQM',
+  'QKKGUGGHGUGHKGUGKKKKUGQM',
   'QGKUQMMMQQQQKQQQQQKHGUGQ',
   'QPBWWWXMMXWWWXMMMQKGWGUQ',
   'QHKGQXMWWWWWWWMXMQKGWGGQ',
@@ -23,14 +26,14 @@ const MAP = [
   'QGKHQXMWWWWWWMXXQQKGUGYQ',
   'QYKGQMXXMMWWMMXQKKKGHGQQ',
   'QGKPQMMMMQMMQMMQKQQQQQQM',
-  'QGKUQQMMQQMMMMQKKQQMMXXM',
+  'QGKUGUMMQQMMMMQKKQQMMXXM',
   'QKKKKKUKGYUHGKYKQMMMXXMM',
   'QQQQMMQKKKKKKKKQMMMMXXMM',
   'MMMMMMQGUKHKGUGQMMMMMXMM',
   'MMMMQMMQMUGKGUMMMMMMMMMM',
 ];
-// 崩落（plot.md §2 の 4・7・10 ターン目、南から順に3行ずつ）：通れる床（石床・廃墟・丘・浅瀬・橋）が岩壁になる。
-const PASSABLE = new Set(['K', 'U', 'H', 'P', 'B', 'G', 'F', 'Y']);
+// 崩落（plot.md §2 の 4・7・10 ターン目、南から順に3行ずつ）：通れるマス（石床・廃墟・丘・浅瀬・橋・岩棚）が岩壁になる。
+const PASSABLE = new Set(['K', 'U', 'H', 'P', 'B', 'G', 'F', 'Y', 'M']);
 const band = (y0: number, y1: number): Tile[] =>
   MAP.flatMap((row, y) => (y >= y0 && y <= y1 ? [...row].flatMap((c, x) => (PASSABLE.has(c) ? [[x, y] as Tile] : [])) : []));
 
@@ -41,29 +44,29 @@ export const ch08: Chapter = {
   win: { type: 'escape', tiles: [[11, 0], [12, 0], [13, 0]] }, lose: { units: ['rudeus'] },
   map: MAP,
   // 核の間。シルフィエットは殿として一番後ろ。
-  players: [{ id: 'rudeus', x: 11, y: 13 }, { id: 'isolde', x: 12, y: 12 }, { id: 'sylphiette', x: 11, y: 14 }],
-  slots: [{ x: 10, y: 13 }, { x: 12, y: 13 }, { x: 13, y: 13 }, { x: 10, y: 12 }, { x: 13, y: 12 }, { x: 12, y: 14 }],
+  players: [{ id: 'rudeus', x: 12, y: 13 }, { id: 'isolde', x: 12, y: 12 }, { id: 'sylphiette', x: 11, y: 14 }],
+  slots: [{ x: 10, y: 13 }, { x: 11, y: 13 }, { x: 13, y: 13 }, { x: 10, y: 12 }, { x: 13, y: 12 }, { x: 12, y: 14 }],
   sortie: 9,
   enemies: [
     // 結晶（増援の発生源）：西の縦穴・北の大広間の窪み・主の広間
     crystal(1, 10, 'c1'), crystal(12, 4, 'c2'), crystal(21, 7, 'c3'),
-    // 西の縦穴と西の上の坑道
-    wolf(11, 1, 12, 'charge'), wolf(11, 2, 9, 'charge'), wolf(11, 1, 8, 'hold'), shade(12, 3, 7, 'hold'),
-    golem(12, 2, 6, 'hold'), golem(12, 2, 3, 'hold'), shade(12, 6, 2, 'hold'),
-    // 北の大広間（出口の手前）
-    golem(13, 12, 2, 'hold'), wolf(12, 9, 1, 'hold'), shade(13, 15, 1, 'hold'),
-    // 近道：東の細い坑道と主の広間
-    golem(12, 16, 10, 'hold'), golem(13, 19, 4, 'hold'), shade(13, 19, 6, 'hold'), wolf(12, 19, 8, 'charge'), wolf(12, 21, 9, 'hold'),
+    // 遠回り（西の縦穴）：数は少ない（橋の番の岩人形と狼。こちらからは攻めてこない）
+    wolf(11, 2, 9, 'hold'), golem(11, 2, 6, 'hold'),
+    // 北の大広間（出口の手前。どちらの道でも最後に通る）
+    golem(11, 12, 2, 'hold'), wolf(11, 9, 1, 'hold'), shade(11, 15, 1, 'hold'),
+    // 近道（東）：主の広間に魔物が群れている
+    golem(11, 19, 4, 'hold'), golem(11, 20, 3, 'hold'), golem(11, 22, 8, 'hold'), shade(11, 19, 6, 'hold'), shade(11, 22, 5, 'hold'),
+    wolf(11, 16, 9, 'hold'), wolf(11, 19, 8, 'hold'), wolf(11, 21, 9, 'hold'), wolf(11, 21, 3, 'hold'), shade(11, 20, 9, 'hold'),
     { cls: 'golem', lv: 17, x: 17, y: 3, wps: ['golemFist'], ai: 'guard', boss: '迷宮の主',
       st: { hp: 52, str: 17, mag: 0, skl: 8, spd: 5, lck: 3, def: 14, res: 6 } },
   ],
   reinforce: [
-    { turn: 3, from: 'c1', units: [shade(12, 1, 11, 'charge')] },
-    { turn: 3, from: 'c2', units: [shade(12, 12, 3, 'hold')] },
-    { turn: 3, from: 'c3', units: [shade(12, 21, 6, 'charge')] },
-    { turn: 6, from: 'c1', units: [shade(12, 1, 11, 'charge')] },
-    { turn: 6, from: 'c2', units: [shade(12, 12, 3, 'hold')] },
-    { turn: 6, from: 'c3', units: [shade(12, 21, 6, 'charge')] },
+    { turn: 3, from: 'c1', units: [shade(11, 1, 11, 'hold')] },
+    { turn: 3, from: 'c2', units: [shade(11, 12, 3, 'hold')] },
+    { turn: 3, from: 'c3', units: [shade(11, 21, 6, 'hold')] },
+    { turn: 6, from: 'c1', units: [shade(11, 1, 11, 'hold')] },
+    { turn: 6, from: 'c2', units: [shade(11, 12, 3, 'hold')] },
+    { turn: 6, from: 'c3', units: [shade(11, 21, 6, 'hold')] },
   ],
   terrainChanges: [
     { turn: 4, tiles: band(13, 15), to: 'Q' },

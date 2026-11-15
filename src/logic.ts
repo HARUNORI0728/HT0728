@@ -2,7 +2,7 @@
 import {
   CAST, CHARS, chapterDef, CLASSES, ENEMY_BASE, FANG_BASE, FANG_MAX, MAGIC, PROMOS, RANKS, RANK_PTS, STAT_KEYS, SUPPORTS, SUPPORT_BONUS, SUPPORT_CAP, SUPPORT_GAIN, SUPPORT_RANGE,
   S_LIMIT, S_LIMIT_DEFAULT, TERRAIN, TRIANGLE, WEAPONS, moveCost,
-  type AllyDef, type ArtId, type Chapter, type EnemyAI, type EnemyDef, type LoseCond, type Reinforce, type Tile, type WinCond, type PromoReq, type Stats, type SupportBonus, type SupportPair, type SupportRank, type TalkEvent, type TalkWhen, type Team, type Weapon,
+  type AllyDef, type ArtId, type Chapter, type EnemyAI, type EnemyDef, type LoseCond, type Reinforce, type Tile, type WinCond, type PromoReq, type Stats, type SupportBonus, type SupportPair, type SupportRank, type TalkEvent, type TalkWhen, type Team, type TerrainChange, type Weapon,
 } from './data';
 import { idForName } from './render/who';
 
@@ -522,11 +522,36 @@ export function advanceStage(s: State): StageChange | null {
  */
 export function applyTerrainChanges(s: State, when: 'stage' | 'turn' | 'both' = 'both'): Tile[] {
   const out: Tile[] = [];
+  const dueOf = (c: TerrainChange) => c.stage !== undefined ? stageOf(s) >= c.stage : c.turn !== undefined && s.turn >= c.turn && when !== 'stage';
+  // 崩落（通れない地形への変化）で味方が閉じ込められないように：変化する一帯の中にいる味方から、崩れない場所までの最短の道は残す
+  // （そのマスは味方が抜けたあとのフェイズで変わる。8章の崩落）。
+  const keep = new Set<string>();
+  const closing = new Set<string>();
+  const doomed = new Set<string>(); // これから通れなくなるマス（まだ時期が来ていないものも含む）。逃げ先はその外。
+  for (const c of curChapter(s).terrainChanges ?? []) if (moveCost(c.to, 'foot') === Infinity) for (const [x, y] of c.tiles) {
+    doomed.add(x + ',' + y);
+    if (dueOf(c) && s.map[y]?.[x] !== c.to) closing.add(x + ',' + y);
+  }
+  if (closing.size) for (const u of s.units) {
+    if (u.team !== 'blue' || !onMap(u) || !closing.has(u.x + ',' + u.y)) continue;
+    const mt = CLASSES[u.cls].mtype, prev = new Map<string, string>([[u.x + ',' + u.y, '']]), q: Tile[] = [[u.x, u.y]];
+    let end = '';
+    while (q.length && !end) {
+      const [x, y] = q.shift()!;
+      for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]] as Tile[]) {
+        const k = nx + ',' + ny;
+        if (prev.has(k) || s.map[ny]?.[nx] === undefined || moveCost(s.map[ny][nx], mt) === Infinity) continue;
+        prev.set(k, x + ',' + y);
+        if (!doomed.has(k)) { end = k; break; }
+        q.push([nx, ny]);
+      }
+    }
+    for (let k = end && prev.get(end)!; k; k = prev.get(k)!) keep.add(k);
+  }
   (curChapter(s).terrainChanges ?? []).forEach(c => {
-    const due = c.stage !== undefined ? stageOf(s) >= c.stage : c.turn !== undefined && s.turn >= c.turn && when !== 'stage';
-    if (!due) return;
+    if (!dueOf(c)) return;
     for (const [x, y] of c.tiles) {
-      if (s.map[y]?.[x] === undefined || s.map[y][x] === c.to || unitAt(s, x, y)) continue;
+      if (s.map[y]?.[x] === undefined || s.map[y][x] === c.to || unitAt(s, x, y) || keep.has(x + ',' + y)) continue;
       s.map[y] = s.map[y].slice(0, x) + c.to + s.map[y].slice(x + 1);
       out.push([x, y]);
     }
