@@ -3,7 +3,7 @@ import { CAST, CHAPTERS, CHARS, CLASSES, RANKS, RANK_PTS, STAT_KEYS, STAT_NAMES,
 import {
   DIFFICULTY_NAMES, POTION_HEAL, addExp, alive, bondStatus, canEscape, canSeize, dist, expGain, fight, forecast, gainBonds, goalText, heal, healAmount, healExp, healTargets,
   initBonds, inRange, key, loseCond, makeEnemy, makeUnit, maxRank, newChapter, nextNeed, outcome, pairKey, planEnemy, promote, promoOptions, rankName, rankUp, readyPairs,
-  rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
+  benchExp, rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
   bossId, dueTalks, fightTalks, onMap, talkKey,
   CANDIDATES, advanceStage, answerConfession, applyAiSwitch, applyTerrainChanges, ensureMarried, isConfession, markedTiles, marriedTo, seizeFlag, stageBgm, stageOf,
   type Bonds, type Difficulty, type SortiePlan, type State, type Unit,
@@ -104,7 +104,11 @@ const followLog: { name: string; x: number; y: number; before: boolean; after: b
 
 // ---------- save ----------
 /** Between chapters: the party, its bonds, the difficulty, and which chapter comes next. ended = the story was finished. */
-interface Camp { next: number; cleared: number; roster: Unit[]; bonds: Bonds; difficulty: Difficulty; ended?: boolean }
+interface Camp {
+  next: number; cleared: number; roster: Unit[]; bonds: Bonds; difficulty: Difficulty; ended?: boolean;
+  /** 直前の章で控えが得た経験値（部隊タブに表示）。 */
+  bench?: { id: string; exp: number; fromLv: number; lv: number }[];
+}
 /**
  * seen = conversations watched (for the camp's 記録): scene ids (序章・開幕・終幕・幕間) and support talks
  * (`sup:<pairKey>:<rank>`). Battle conversations that have played are State.flags `talk:<scene>`.
@@ -155,7 +159,7 @@ function normalize(d: any): SaveData | null {
   const c = d?.camp;
   let cp: Camp | null = null;
   if (c && Array.isArray(c.roster) && typeof c.next === 'number' && typeof c.cleared === 'number' && c.cleared >= 1) {
-    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), ...(c.ended === true ? { ended: true } : {}) };
+    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), ...(c.ended === true ? { ended: true } : {}), ...(Array.isArray(c.bench) ? { bench: c.bench.filter((g: any) => g && typeof g.id === 'string' && typeof g.exp === 'number') } : {}) };
   }
   const married = Array.isArray(d?.married) ? d.married.filter((k: unknown) => typeof k === 'string' && CANDIDATES.includes(k as string)) : [];
   if (cp) ensureMarried(cp.bonds, married);
@@ -624,7 +628,8 @@ async function checkEnd(): Promise<boolean> {
     const ch = chapterDef(S.chapter);
     // The camp is saved first (with the closing scenes marked seen), so closing the page mid-scene loses nothing:
     // they can be watched again from the camp's 記録.
-    camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster: rosterOf(S), bonds: S.bonds, difficulty: S.difficulty, ...(camp?.ended ? { ended: true } : {}) };
+    const roster = rosterOf(S), benchUp = benchExp(S, roster);
+    camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster, bonds: S.bonds, difficulty: S.difficulty, bench: benchUp.map(g => ({ id: g.id, exp: g.exp, fromLv: g.fromLv, lv: g.lv })), ...(camp?.ended ? { ended: true } : {}) };
     markSeen(ch.outro); if (ch.interlude) markSeen(ch.interlude);
     inBattle = false; save();
     await playScene(ch.outro);
@@ -632,7 +637,8 @@ async function checkEnd(): Promise<boolean> {
     await supportTalks(camp);
     if (ch.ending) { await playEnding(true); return true; }
     const lost = camp.roster.filter(u => u.out && !S.bench.some(b => b.id === u.id)).map(u => u.name);
-    showCamp(chapterDef(camp.cleared - 1).title.replace(/\s+/g, '　') + '　クリア！' + (lost.length ? `　${lost.join('、')}は戦線離脱した。` : ''));
+    const benchMsg = camp.bench?.length ? `　控えの${camp.bench.length}人も経験値 +${camp.bench[0].exp}${camp.bench.some(g => g.lv > g.fromLv) ? `（${camp.bench.filter(g => g.lv > g.fromLv).map(g => `${castName(g.id)} Lv${g.lv}`).join('、')}）` : ''}。` : '';
+    showCamp(chapterDef(camp.cleared - 1).title.replace(/\s+/g, '　') + '　クリア！' + (lost.length ? `　${lost.join('、')}は戦線離脱した。` : '') + benchMsg);
   } else {
     await outcomeBanner(false);
     showDefeat();
@@ -846,12 +852,17 @@ function el(tag: string, cls: string, html = '') { const e = document.createElem
 function btn(label: string, fn: () => void, cls = '', disabled = false) {
   const b = document.createElement('button'); b.textContent = label; if (cls) b.className = cls; b.disabled = disabled; b.onclick = fn; return b;
 }
+/** 控えで経験値を得た仲間の一行（直前の章の分）。 */
+function benchNote(u: Unit) {
+  const g = camp?.bench?.find(b => b.id === u.id);
+  return g ? `<div class="benchUp">控えで経験値 +${g.exp}${g.lv > g.fromLv ? `　<b>Lv ${g.fromLv} → ${g.lv}</b>` : ''}</div>` : '';
+}
 function unitCard(u: Unit) {
   const c = CLASSES[u.cls];
   const st = STAT_KEYS.map(k => `<div><span>${STAT_NAMES[k]}</span>${u.st[k]}</div>`).join('');
   const wps = wpsText(u, false);
   const card = el('div', 'card' + (u.out ? ' out' : ''), `<div class="uhead"><b class="blue">${esc(u.name)}</b><span>${c.name}${tierOf(u.cls) === 2 ? '（上級職）' : ''}　Lv ${u.lv}　EXP ${u.exp}　移動 ${c.mov}</span>${u.out ? '<em class="outTag">戦線離脱（療養中）・出撃不可</em>' : ''}</div>
-    <div class="stats">${st}</div><div class="wps">武器：${wps}　／　使える武器種：${c.wtypes.map(t => WTYPE_NAMES[t]).join('・')}</div>`);
+    <div class="stats">${st}</div><div class="wps">武器：${wps}　／　使える武器種：${c.wtypes.map(t => WTYPE_NAMES[t]).join('・')}</div>${benchNote(u)}`);
   const head = card.querySelector('.uhead')!, face = faceHtml(u, 'card' + (u.out ? ' out' : ''));
   if (face) head.insertAdjacentHTML('afterbegin', face);
   else { const icon = document.createElement('canvas'); icon.width = icon.height = 112; icon.className = 'uicon' + (u.out ? ' out' : ''); drawIcon(icon, u); head.prepend(icon); }

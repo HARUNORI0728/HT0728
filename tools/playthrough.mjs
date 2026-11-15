@@ -454,7 +454,7 @@ function campaign(seed, startIndex = C0 - 1, startCamp = null) {
       else { // newcomers of this chapter still join
         for (const u of L.rosterOf(r.s)) if (!roster.some(v => v.id === u.id)) roster.push(u);
       }
-    } else { roster = L.rosterOf(r.s); bonds = r.s.bonds; }
+    } else { roster = L.rosterOf(r.s); bonds = r.s.bonds; if (L.benchExp) entry.bench = L.benchExp(r.s, roster, rnd).map(g => `${g.id}+${g.exp}:${g.fromLv}→${g.lv}`); }
     for (const u of roster) u.joined ??= i;
     entry.promoted = campStep(roster, bonds, i + 1);
     camps.push({ next: i + 1, roster: clone(roster), bonds: clone(bonds) });

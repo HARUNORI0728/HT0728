@@ -124,6 +124,9 @@ export const CLASSES: Record<string, ClassDef> = {
   // 牙爪系の上級職。gift は持たない（牙爪は武器欄を使わない）。
   shadowFang: { name: '影牙', mov: 7, mtype: 'foot', sprite: 'thief', tier: 2, wtypes: ['fang'], bonus: B(3, 1, 0, 3, 3, 1, 1, 1), crit: 10, desc: '身軽さを極めた牙爪の使い手。必殺+10。' },
   fierceFang: { name: '猛牙', mov: 7, mtype: 'foot', sprite: 'fang', tier: 2, wtypes: ['fang'], bonus: B(5, 3, 0, 1, 2, 0, 2, 0), desc: '攻めに徹する牙爪の使い手。力とHPが伸びる。' },
+  // 王女（アリエル）の上級職。見た目は王女のまま。
+  sovereign: { name: '王威の姫', mov: 6, mtype: 'foot', sprite: 'princess', tier: 2, wtypes: ['sword', 'light'], bonus: B(4, 2, 2, 1, 2, 0, 1, 2), gift: 'lightning', desc: '王の器として剣と光魔術をふるう。光魔術も扱える。' },
+  graceLady: { name: '慈光の姫', mov: 6, mtype: 'foot', sprite: 'princess', tier: 2, wtypes: ['sword', 'staff'], bonus: B(4, 1, 2, 1, 1, 2, 1, 3), gift: 'healStaff', desc: '剣と杖で仲間を支える。杖で傷を癒やせる。' },
   // ペルギウス専用。最初から上級職でクラスチェンジなし（PROMOS に載せない）。
   summoner: { name: '召喚術師', mov: 5, mtype: 'foot', sprite: 'summoner', tier: 2, wtypes: ['anima'], desc: '使い魔を呼ぶ甲龍王の術。上級職固定。' },
   // ---- 魔物・残滓（M4。敵用。移動力・能力値は仮） ----
@@ -158,6 +161,7 @@ export const PROMOS: Record<string, Promo[]> = {
   shieldFencer: P('guardian'),
   healer: P('saintHealer', 'sage'),
   magicGuard: P('sage', 'guardMage'),
+  princess: P('sovereign', 'graceLady'),
   beastWarrior: P('fierceFang'),
   horseKnight: P('paladin'),
   archer: P('sniper', 'bowRider'),
