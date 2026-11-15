@@ -1271,7 +1271,7 @@ export const SCENES: Record<SceneId, Scene> = {
     lines: [
       {"who":"リニア","text":"野営地の檻は三つ。子どもらが閉じこめられてる。","face":"normal"},
       {"who":"リニア","text":"鍵なら、あたしが開ける。……まあ、あたしがいなくても、壊せば開くけど。","face":"smile"},
-      {"who":"ルーデウス","text":"檻の脇に、奪われた荷も積んであります。開ければ、役に立つものもありそうですね。","face":"normal"},
+      {"who":"ルーデウス","text":"檻の脇に、奪われた荷も積んであります。後で持ち主に返しましょう。","face":"normal"},
     ],
   },
   "ch7.battle4": {
@@ -1411,7 +1411,7 @@ export const SCENES: Record<SceneId, Scene> = {
     cond: "1ターン目・自軍フェイズ開始時", bg: "none",
     lines: [
       {"who":"イゾルテ","text":"出口は北です。道は二つ。東は迷宮の主の広間を抜ける近道。","face":"normal"},
-      {"who":"イゾルテ","text":"西は遠回りですが、来る途中、宝箱が残っているのを見ました。","face":"normal"},
+      {"who":"イゾルテ","text":"西は遠回りですが、来る途中、敵の気配は薄いようでした。","face":"normal"},
       {"who":"ルーデウス","text":"崩れてくるのは南からです。全員が北の出口を出られれば、それでいい。急ぎましょう。","face":"normal"},
     ],
   },

@@ -10,8 +10,8 @@
 
 | 作業 | ファイル | 状態 |
 |---|---|---|
-| 第3・4章の仕上げ | `src/chapters/ch03.ts`、`ch04.ts` | 作業中（上限が解除されたため再開） |
-| 第7・8章の章データ | `src/chapters/ch07.ts`、`ch08.ts` | 作業中（同上） |
+| 第3・4章 | `src/chapters/ch03.ts`、`ch04.ts` | 完成（バランスの直しは Q-06 の提案を受けて Claude が行う） |
+| 第7・8章 | `src/chapters/ch07.ts`、`ch08.ts` | 完成（同上） |
 | 台本の文面と選曲 | `design/script-*.md` | 随時 |
 
 ## キュー

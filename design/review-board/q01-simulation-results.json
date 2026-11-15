@@ -1,32 +1,23 @@
 {
-  "seeds": 24,
+  "seeds": 12,
   "method": "Rule-level simulation; normal addExp growth to scenario entry levels; not a chapter 1–10 campaign or UI playthrough",
   "chapters": [
     {
       "chapter": 9,
       "counts": {
-        "win": 20,
-        "lose": 4
+        "win": 11,
+        "lose": 1
       },
       "winningTurns": [
         13,
-        13,
-        14,
-        14,
         14,
         14,
         15,
-        15,
-        15,
-        15,
-        16,
         16,
         16,
         16,
         16,
         17,
-        17,
-        18,
         19,
         19
       ],
@@ -43,44 +34,30 @@
       ],
       "falls": {
         "ghislaine": 3,
-        "zanoba": 8,
-        "cliff": 18,
+        "zanoba": 3,
+        "cliff": 9,
         "ruijerd": 2,
-        "paul": 5,
+        "paul": 4,
         "sylphiette": 1,
-        "rudeus": 3,
-        "eris": 2,
-        "ariel": 1,
-        "perugius": 1
+        "rudeus": 1
       }
     },
     {
       "chapter": 10,
       "counts": {
-        "win": 21,
-        "lose": 3
+        "win": 10,
+        "lose": 2
       },
       "winningTurns": [
         12,
         12,
-        12,
-        12,
-        12,
-        13,
-        13,
         13,
         13,
         13,
         13,
         14,
-        14,
         15,
         15,
-        15,
-        15,
-        16,
-        16,
-        17,
         21
       ],
       "triggeredBattleScenes": [
@@ -95,16 +72,15 @@
         "ch10.battle9"
       ],
       "falls": {
-        "zanoba": 21,
-        "cliff": 22,
-        "roxy": 8,
-        "paul": 4,
-        "sylphiette": 4,
-        "eris": 2,
-        "ghislaine": 5,
+        "zanoba": 12,
+        "cliff": 11,
+        "roxy": 5,
+        "paul": 3,
+        "sylphiette": 3,
+        "eris": 1,
+        "ghislaine": 3,
         "orsted": 1,
-        "rudeus": 2,
-        "ruijerd": 1
+        "rudeus": 1
       }
     }
   ],
