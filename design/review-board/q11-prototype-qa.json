@@ -1,0 +1,32 @@
+[
+  {
+    "path": "art-samples/q11-ch01-prototype.png",
+    "width": 1512,
+    "height": 1040,
+    "grid": [
+      16,
+      11
+    ],
+    "pixels_per_tile": [
+      94.5,
+      94.54545454545455
+    ],
+    "minimum_96px_per_tile_met": false,
+    "sha256": "f0079a5a50459e2db44edf5ad4b1535793a3f622fc52eb590ce4d4da68b27bb9"
+  },
+  {
+    "path": "art-samples/q11-ch08-prototype.png",
+    "width": 1536,
+    "height": 1024,
+    "grid": [
+      24,
+      16
+    ],
+    "pixels_per_tile": [
+      64.0,
+      64.0
+    ],
+    "minimum_96px_per_tile_met": false,
+    "sha256": "e44b4b52042207ba7af8304a43661a6b530fd6554ef01735255a32f53ef6994b"
+  }
+]

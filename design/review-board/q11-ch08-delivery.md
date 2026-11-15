@@ -1,0 +1,11 @@
+# Q-11 第8章地図試作
+
+内蔵画像生成で最新の `design/map-guides/ch08-guide.png` を編集対象にし、配置を維持した画風変更を試作。
+
+保存先：`art-samples/q11-ch08-prototype.png`。生成元：exec-109566e5-5883-4f98-b233-bf43203ab229.png。原寸1536×1024（24×16マス、64px/マス）。比率3:2は一致するが、指定96px/マス以上には未達。3072×2048を要求しても出力は下絵と同寸だった。無加工原本を保持し、ゲーム採用は保留。
+
+```text
+Use case: style-transfer. Production prototype of chapter8 tactical battle map. INPUT IMAGE is exact layout blueprint and EDIT TARGET, not loose inspiration. Retain every outline and positional boundary exactly, normalized pixel-for-pixel. Output3072x2048, exact3:2. A hand-painted fantasy tactics battle map, seen from directly above with a slight tilt, redrawn from the input image with the same layout. Storybook illustration style: soft painterly brushwork, gentle gradients, restrained thin outlines in warm dark brown (not black), subtle texture on stone and water. Muted, even lighting, soft shadows to lower left. Fills canvas edge to edge. Deep underground: dark cave labyrinth inside old mine. Keep all walkable worn flagstone passages/halls as readable light cool-grey stone, every existing dark violet rock WALL area a solid impassable cave wall, preserve exact borders. Existing brown rocky shelf areas remain visibly climbable rock shelves, not new walls. Central lake and small east pool stay EXACTLY same shape and position, dark slate blue. Existing western wooden bridge and rocky shallow ford remain at precisely their input positions and sizes. Tiny subtle blue crystal glow and a few timber details only inside existing rock areas. At topcentre preserve the THREE TILE exit and its surrounding green outdoor vegetation in the exact original mask. No other greenery in cave. DO NOT add/delete/move terrain features or cover existing walkable tiles. No characters people animals text symbols grid frames border compass vignette. No horizon sky perspective or isometric shift. This is a texture-only painterly refinement; preserve the asymmetric ring of corridors, central lake, jagged walls, the west bridge, narrow east passage, southern starting chamber and north exit. No dramatic redesign.
+```
+
+確認：中央湖、西橋と浅瀬、東池、南の開始室、北の出口の大まかな配置を維持。元絵の岩壁と登れる岩棚を別の色にした。正確な境界一致の判定は独立確認の `q11-independent-review.md` を参照。目視だけで全マスの一致を保証しない。章データ・地形判定は変更していない。
