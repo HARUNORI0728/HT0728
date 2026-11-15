@@ -26,6 +26,8 @@ export interface Unit {
   left?: boolean;
   /** ボスが倒されたときの扱い（EnemyDef.defeat）。 */
   defeat?: 'captured' | 'retreat';
+  /** 出撃した時点の累計経験値（totalXp）。章クリア時の控えの経験値の計算に使う。 */
+  xp0?: number;
 }
 /**
  * Bond progress per pair (key = pairKey). rank: 0 = none, 1 = C … 4 = S.
@@ -121,7 +123,7 @@ export function newChapter(index: number, roster?: Unit[], bonds?: Bonds, diffic
   const units: Unit[] = [], used = new Set<string>();
   const deploy = (base: Unit, x: number, y: number, guest = false) => {
     used.add(base.id);
-    units.push({ ...base, uid: uid++, x, y, hp: base.st.hp, done: false, potions: 3, left: false, guest: guest || undefined });
+    units.push({ ...base, uid: uid++, x, y, hp: base.st.hp, done: false, potions: 3, left: false, guest: guest || undefined, xp0: totalXp(base) });
   };
   for (const p of ch.players) {
     const kept = pool.find(r => r.id === p.id);
@@ -458,6 +460,38 @@ export function rosterOf(s: State): Unit[] {
   return [...deployed, ...clone(s.bench ?? [])].map(u => ({ ...u, hp: u.st.hp, done: false, left: false, x: 0, y: 0 }));
 }
 
+// ---------- bench experience (systems.md §5) ----------
+
+/** 控えが得る割合：出撃した仲間がその章で得た経験値の平均 × 0.3。 */
+export const BENCH_SHARE = 0.3;
+/** 累計経験値（実効Lv × 100 + EXP）。 */
+export const totalXp = (u: Unit) => effLv(u) * 100 + u.exp;
+export interface BenchGain { id: string; name: string; exp: number; fromLv: number; lv: number; ups: Partial<Stats>[] }
+/**
+ * 章クリア時：出撃しなかった名簿の仲間（離脱中・ゲストは除く）に、出撃した仲間（ゲスト除く）がこの章で得た経験値の
+ * 平均の30%を与える。レベルアップは addExp の通常の成長の抽選。`roster` は rosterOf(s) の結果（書き換える）。
+ */
+export function benchExp(s: State, roster: Unit[], rnd = Math.random): BenchGain[] {
+  const blue = s.units.filter(u => u.team === 'blue' && !u.guest);
+  const fought = blue.filter(u => u.gr && typeof u.xp0 === 'number');
+  if (!fought.length) return [];
+  const avg = fought.reduce((a, u) => a + Math.max(0, totalXp(u) - u.xp0!), 0) / fought.length;
+  const share = Math.floor(avg * BENCH_SHARE);
+  if (share <= 0) return [];
+  const went = new Set(blue.map(u => u.id));
+  return roster.filter(u => !went.has(u.id) && !u.out && !u.guest && u.gr && u.lv < 20).map(u => {
+    const fromLv = u.lv, ups: Partial<Stats>[] = [];
+    let left = share;
+    while (left > 0 && u.lv < 20) {
+      const step = Math.min(left, 100 - u.exp);
+      left -= step;
+      const g = addExp(u, step, rnd);
+      if (g) ups.push(g);
+    }
+    return { id: u.id, name: u.name, exp: share, fromLv, lv: u.lv, ups };
+  });
+}
+
 // ---------- stages (M1) ----------
 
 /** The current stage (0 = the chapter's own win/enemies; 1… = Chapter.stages[n - 1]). Kept in State.flags so it is saved. */
@@ -492,7 +526,7 @@ export function addAlly(s: State, a: AllyDef): Unit | null {
   const fromBench = s.bench.findIndex(b => b.id === a.id && !b.out);
   const base = fromBench >= 0 ? s.bench.splice(fromBench, 1)[0] : makeUnit(a.id);
   if (!base || s.units.some(u => u.team === 'blue' && u.id === a.id && onMap(u))) return null;
-  const u: Unit = { ...clone(base), uid: Math.max(0, ...s.units.map(v => v.uid)) + 1, hp: base.st.hp, done: false, left: false, potions: 3, guest: a.guest || undefined };
+  const u: Unit = { ...clone(base), uid: Math.max(0, ...s.units.map(v => v.uid)) + 1, hp: base.st.hp, done: false, left: false, potions: 3, guest: a.guest || undefined, xp0: totalXp(base) };
   [u.x, u.y] = freeTileNear(s, a.x, a.y, u);
   s.units.push(u);
   return u;

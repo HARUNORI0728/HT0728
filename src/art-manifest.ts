@@ -104,4 +104,6 @@ export const EVENT_ART: Record<string, string> = {
 };
 /** Painted map backgrounds by chapter (ch01–ch10), stretched over the whole map. Chapters without one are drawn by code. */
 export const MAP_ART: Record<string, string> = {
+  ch01: 'assets/maps/ch01.webp?v=2ae57eda',
+  ch08: 'assets/maps/ch08.webp?v=09a110a5',
 };
