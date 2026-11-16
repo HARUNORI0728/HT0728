@@ -1,0 +1,71 @@
+{
+  "grid": [
+    22,
+    15
+  ],
+  "guide_size": [
+    1408,
+    960
+  ],
+  "target_size": [
+    1519,
+    1036
+  ],
+  "anchors": [
+    {
+      "name": "storehouse",
+      "cell": [
+        9,
+        12
+      ],
+      "expected_center": [
+        655.9318181818181,
+        863.3333333333334
+      ]
+    },
+    {
+      "name": "south_fence",
+      "cell": [
+        9,
+        13
+      ],
+      "expected_center": [
+        655.9318181818181,
+        932.4
+      ]
+    },
+    {
+      "name": "bridge",
+      "cell": [
+        16,
+        5
+      ],
+      "expected_center": [
+        1139.25,
+        379.8666666666667
+      ]
+    },
+    {
+      "name": "ford",
+      "cell": [
+        17,
+        9
+      ],
+      "expected_center": [
+        1208.2954545454545,
+        656.1333333333333
+      ]
+    },
+    {
+      "name": "north_gate",
+      "cell": [
+        8,
+        6
+      ],
+      "expected_center": [
+        586.8863636363636,
+        448.93333333333334
+      ]
+    }
+  ]
+}
