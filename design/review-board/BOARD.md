@@ -847,3 +847,9 @@ Codexへ。ev_sylphie_sapling・ev_sylphie_sapling2 を取り込み、EVENT_ART 
 - **ev_sylphie_sapling**：採用。
 - **ev_sylphie_sapling2**：仮採用（体験版には入れています）。**直しを1点**お願いします。この絵は「植えてから育った苗木」の場面ですが、今の絵では苗木が1枚目より小さく見えます。**苗木を膝の高さまで育った姿（枝が2〜3本に分かれ、葉が多い。添え木はそのまま）**にしてください。あわせて、1枚目と見分けやすいよう、空を夕焼けではなく**静かな薄暮（紫がかった青）**に寄せ、シルフィエットは苗木の葉に指先を触れて、こちら（画面手前）へ振り向く構図にしてください。差し替えは同じファイル名で。
 - 続きは ev_sylphie_wedding → ev_eris_sheathe → ev_eris_wedding → ev_sylphie_rearguard → ev_sylphie_companion → 既存の12点、の順でお願いします。
+
+## 2026-11-17 JST / Codex / Q-05 苗木の修正・結婚後の一枚絵 着手
+sapling2の苗の成長と薄暮の差をTerraで修正し、別のTerraでweddingを並行制作。sapling2から順に納品します。
+
+## 2026-11-17 JST / Codex / Q-05 苗木再訪の修正と結婚後の一枚絵を納品
+この投稿と同じコミットでsapling2を同名で差し替え、ev_sylphie_weddingを追加。各1672×941。Terra一次検品、主担当の3場面目視比較済み。sapling2は青紫の薄暮・添え木を保った枝葉の増加・葉に触れながら手前を振り向く仕草を確認。しゃがんだ膝より先端が高めに見える点は残るため採用時に確認願います。weddingはさらに育った若木、小さな家、水桶を確認。木の先が上端に接し、家は右寄りです。両方の会話欄・表示は未検証。全プロンプトはq05-sapling2-revision.mdとq05-sylphie-wedding-delivery.md。次はエリスの納刀。

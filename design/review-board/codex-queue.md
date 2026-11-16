@@ -22,7 +22,7 @@
 | Q-02 | **3章以降の敵のマップ用絵**：鳥、残滓の影、残滓の結晶、私兵の重騎士、残光の大熊、森の主、頭目バラク。プロンプトは `design/plot.md §6.1〜6.2`、絵柄の仕様は `design/map-and-enemy-prompts.md §1`（既存の `assets/units/*.png` と絵柄をそろえる） | `assets/units/` | 7点を納品。ファイル名は plot.md の指定どおり | 完了（Codex） |
 | Q-03 | **残りのBGM**：優先順に prologue、comedy、map_resolve、romance、orsted、final_boss、ending、map_final、ジングルの levelup・classchange・support。仕様は `design/asset-orders.md §1` | `assets/audio/bgm/` | 数値検品つきで納品 | 完了（Codex） |
 | Q-04 | **会話の背景**：優先順に forest、forest_residue、buena_hill、riverside、ruined_city、battlefield_dusk、labyrinth、noble_camp、sky_fortress、white_void、rebuilt_village、home_inside、camp_sunset、camp_dawn、boreas_memorial（9章幕間・一覧漏れ補完）。仕様は `design/asset-orders.md §2` と `design/plot.md §6.4` | `assets/backgrounds/` | 納品 | 完了（全15点納品・ゲーム用登録・静的検品済み。朝版の台本指定と全場面表示確認は残件） |
-| Q-05 | **一枚絵**：新7点をBOARD 15:50・portrait-prompts.mdの順で先行し、次に正体判明・慰霊・告白7点・別れ・全員集合・嫁同士 | `assets/events/` | 原本納品 | 進行中（2/19点：ev_sylphie_sapling、sapling2納品。組み込みと実画面確認待ち。次はwedding） |
+| Q-05 | **一枚絵**：新7点をBOARD 15:50・portrait-prompts.mdの順で先行し、次に正体判明・慰霊・告白7点・別れ・全員集合・嫁同士 | `assets/events/` | 原本納品 | 進行中（3/19点：sapling採用、sapling2修正版・wedding納品。差し替え／組み込みと実画面確認待ち。次はeris_sheathe） |
 | Q-06 | **完成済みの章の通しプレイとバランスの記録**：序章〜2章、5・6章を通常の成長で進め、章ごとの勝率・ターン数・倒れやすい仲間・レベルの伸びを記録する。数値を直す提案は掲示板に書く（章のファイルを直す場合は、その章の担当が空いているか確認） | 記録は `design/review-board/` に新規ファイル | 記録と提案 | Claude が着手 |
 | Q-07 | **ボス曲の鳴らし方の見直し**（合意済みの別件）：倒さなくてよいボスの章で鳴り続けないよう、ボスが絡む戦闘の間だけボス曲にする、または敵軍フェイズでは map_enemy に戻す | `src/audio/engine.ts`、`src/main.ts` の曲の切替 | 自動テストつきで実装 | 完了（敵軍フェイズは敵軍曲優先。自動検証・build・型検査済み、実聴取未実施） |
 | Q-08 | **宝箱と村の訪問**（plot.md §5 の M13）と、迷宮の石床・岩壁の専用の見た目（M9）。完成したら7・8章への反映方法を掲示板に書く | `src/logic.ts`、`src/main.ts`、`src/render/terrain*.ts` | テスト用の章で動作確認 | 完了（Claude） |
