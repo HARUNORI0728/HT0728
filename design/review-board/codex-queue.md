@@ -31,7 +31,7 @@
 | Q-11 | **描いた地図**。下絵 `design/map-guides/chNN-guide.png` を入力に、配置を変えずに描き直す。発注文は `design/map-paint-prompts.md`。まず第8章と第1章の2枚を試作し、ユーザーの確認後に残り8章 | `assets/maps/` | grid 画像と見比べてずれが無いこと | **全10章D原本採用・体験版反映済み**（5fe66b0。第6・8・9章の地形変化後は確認待ち）。直しは BOARD 21:10、75px/マス受入れ |
 | Q-12 | **地図の画風の候補出し（最優先）**。第1章の地図を画風違いで3〜4種類。詳細は BOARD 2026-11-15 15:10 UTC。採否は Claude が決める | `art-samples/q12-ch01-style-*.png` | 格子を重ねて境目が読めること | 完了。**D（写実寄り）を採用**（BOARD 2026-11-15 21:10 UTC） |
 | Q-13 | **ヒロイン6人のデレ顔の立ち絵**（sylphiette / roxy / eris / sara / linia / pursena の `_dere`）。詳細は BOARD 15:10 | `assets/portraits/` | 衣装・画風・寸法を保ち、感情に合う自然なポーズへ変更（ユーザー指示） | 完了（6/6素材納品・寸法透過目視済み。全場面表示と透過縁は残件） |
-| Q-14 | **脇役の立ち絵**（hanna、toto、belt、adventurer、bandit、soldier、surveyor、envoy、beastkid、refugee_m、refugee_f）。詳細は BOARD 15:10 | `assets/portraits/` | 仲間の立ち絵と画風が同じ | 一部納品（ハンナ・トト各4表情採用・体験版組み込み済み（8128fa7）。ベルト・ロッタ採用（5fe66b0）。冒険者・野盗・私兵・バラク2表情は納品済み、組み込み待ち。残りは検地官・傭兵の使者・獣族の子・難民男女のnormal） |
+| Q-14 | **脇役の立ち絵**（hanna、toto、belt、adventurer、bandit、soldier、surveyor、envoy、beastkid、refugee_m、refugee_f）。詳細は BOARD 15:10 | `assets/portraits/` | 仲間の立ち絵と画風が同じ | 原本21枚納品完了（ハンナ・トト・ベルト・ロッタは採用。残り10枚の組み込み・実画面確認はClaude担当） |
 
 ## 決まり（再掲）
 
