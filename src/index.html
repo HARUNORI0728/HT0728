@@ -473,47 +473,52 @@
     #menu button { flex: 1 1 100px; }
     #menu button.back { order: -1; flex: 0 1 auto; }
   }
-  /* ---- スマホ横向き：地図を左に高さいっぱい、右の縦列に HUD・行動メニュー・情報欄。スクロールなしで1画面に収める。 ---- */
+  .mapToggle, .mapDrawer, #mapBackdrop { display: none; }
+  /* スマホ横向き：地図を画面いっぱいに広げ、必要な欄だけ左右から開く。 */
   @media (orientation: landscape) and (max-height: 540px) {
     body {
       --pt: max(4px, env(safe-area-inset-top, 0px)); --pb: max(4px, env(safe-area-inset-bottom, 0px));
-      --pl: max(8px, env(safe-area-inset-left, 0px)); --pr: max(8px, env(safe-area-inset-right, 0px));
+      --pl: max(4px, env(safe-area-inset-left, 0px)); --pr: max(4px, env(safe-area-inset-right, 0px));
       height: 100vh; height: 100dvh; padding: var(--pt) var(--pr) var(--pb) var(--pl); font-size: 13px; line-height: 1.5; overflow: hidden;
     }
-    #app { max-width: none; height: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto auto; gap: 5px 10px; }
-    #stage { grid-column: 1; grid-row: 1 / -1; align-self: center;
-      width: min(calc((100dvh - var(--pt) - var(--pb) - 4px) * 1.5), calc(100vw - var(--pl) - var(--pr) - 10px - 210px)); }
-    #hud { grid-column: 2; grid-row: 1; gap: 2px 6px; align-items: center; min-width: 0; }
-    #hud { flex-wrap: wrap; }
-    #chTitle { font-size: 13px; letter-spacing: .02em; flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
-    #turn { font-size: 11.5px; line-height: 1.3; white-space: nowrap; margin-left: auto; }
+    #app { position: relative; max-width: none; height: 100%; display: block; }
+    #stage, #cv { width: 100%; height: 100%; }
+    #panel:empty { display: none; }
+    .mapToggle { display: block; position: absolute; top: 6px; z-index: 7; min-width: 56px; min-height: 44px; padding: 4px 8px; background: #211c30; }
+    .mapToggle[aria-expanded="true"] { color: var(--gold); border-color: var(--gold); }
+    #mapInfoToggle { left: 6px; }
+    #mapActionsToggle { right: 6px; }
+    #mapBackdrop { display: block; position: absolute; inset: 0; z-index: 5; background: #08071038; }
+    .mapDrawer {
+      position: absolute; top: 56px; bottom: 6px; z-index: 6; width: min(320px, 60%); display: flex; flex-direction: column;
+      gap: 8px; overflow: auto; overscroll-behavior: contain; padding: 8px; border: 1.5px solid #6a5a3a; border-radius: 8px;
+      background: #211c30; box-shadow: 0 4px 16px #0009;
+    }
+    .mapDrawer > * { flex-shrink: 0; }
+    .mapDrawer[hidden], #mapBackdrop[hidden], .mapToggle[hidden] { display: none; }
+    #mapInfoDrawer { left: 6px; }
+    #mapActionsDrawer { right: 6px; }
+    #hud { gap: 4px 6px; align-items: center; }
+    #chTitle { font-size: 14px; }
+    #turn { font-size: 12px; }
     #hud .hudR { display: contents; }
     #hud .hudBreak { display: block; flex-basis: 100%; height: 0; }
-    #hud #gridBtn { margin-left: auto; }
-    #hud button { min-height: 30px; min-width: 30px; padding: 2px 6px; font-size: 11.5px; }
+    #hud #gridBtn { margin-left: 0; }
+    #hud button { min-height: 44px; min-width: 44px; padding: 2px 6px; font-size: 12px; }
     #hud .gridBtn span, #hud .sndBtn span { display: none; }
-    #hud svg { width: 16px; height: 16px; }
-    #speedBtn { min-width: 0; }
-    #panel { display: contents; }
-    #menu { grid-column: 2; grid-row: 2; flex-direction: row; flex-wrap: wrap; gap: 5px; }
-    #menu button { flex: 1 1 72px; min-height: 36px; padding: 3px 6px; font-size: 13px; line-height: 1.25; }
-    #menu button.back { order: -1; flex: 1 1 100%; min-height: 32px; }
-    #info { grid-column: 2; grid-row: 3; min-height: 0; overflow-y: auto; padding: 6px 8px; overscroll-behavior: contain; }
+    #menu { order: 0; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+    #menu button { flex: 1 1 78px; min-height: 44px; padding: 4px 8px; font-size: 13px; line-height: 1.25; }
+    #info { min-height: 0; padding: 8px; }
     #info .face.big { width: 52px; height: 52px; }
     #info .fc .face { display: none; }
     #info .fc { row-gap: 0; }
+    #goal, #bonusGoal { font-size: 12.5px; }
     .uhead b { font-size: 15px; }
     .stats { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); font-size: 12px; }
     .fc .n { font-size: 14px; }
     .fc .fcwho span { font-size: 13px; }
-    /* 勝敗条件・副目標：1行に畳み、タップで開く */
-    #goal, #bonusGoal { grid-column: 2; font-size: 11.5px; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
-    #goal { grid-row: 4; } #bonusGoal { grid-row: 5; margin: 0; }
-    #goal::before { content: "▸ "; color: var(--gold); }
-    #app.goalsOpen #goal, #app.goalsOpen #bonusGoal { white-space: normal; }
-    #app.goalsOpen #goal::before { content: "▾ "; }
-    #tut { font-size: 12.5px; padding: 6px 10px; gap: 4px; left: 6px; right: 6px; top: 6px; }
-    #tut.low { bottom: 6px; }
+    #tut { font-size: 12.5px; padding: 6px 10px; gap: 4px; left: 66px; right: 66px; top: 6px; }
+    #tut.low { bottom: 6px; left: 6px; right: 6px; }
     #tut .tutBtns button { min-height: 32px; }
     #rushBtn { min-height: 32px; }
     #banner { top: 34%; }
@@ -564,6 +569,11 @@
   <section id="panel"><div id="info"></div><div id="menu"></div></section>
   <p id="goal"></p>
   <p id="bonusGoal" hidden></p>
+  <button id="mapInfoToggle" class="mapToggle" type="button" aria-controls="mapInfoDrawer" aria-expanded="false" hidden>情報</button>
+  <button id="mapActionsToggle" class="mapToggle" type="button" aria-controls="mapActionsDrawer" aria-expanded="false" hidden>操作</button>
+  <div id="mapBackdrop" aria-hidden="true" hidden></div>
+  <section id="mapInfoDrawer" class="mapDrawer" aria-labelledby="mapInfoToggle" tabindex="-1" hidden></section>
+  <section id="mapActionsDrawer" class="mapDrawer" aria-labelledby="mapActionsToggle" tabindex="-1" hidden></section>
 </main>
 
 <div id="camp" class="overlay" hidden>

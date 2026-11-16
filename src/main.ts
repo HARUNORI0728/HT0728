@@ -30,6 +30,7 @@ import { BLOCKING, changedTiles, drawGrid, drawGuideMarks, paintedLayer } from '
 import { audio } from './audio/engine';
 import { chooseMapTrack, engagedBoss, openingTrack, restoresMapTrack } from './audio/map-track';
 import { mountAudioUi } from './audio/ui';
+import { mountMobileMap } from './ui/mobile-map';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const cv = $<HTMLCanvasElement>('cv'), ctx = cv.getContext('2d')!;
@@ -93,13 +94,24 @@ const dying = new Map<number, Dying>();
 let shakeFx = { t0: 0, dur: 0, amp: 0 }, flashFx = { t0: 0, dur: 0, a: 0 };
 
 // ---------- camera ----------
-// The canvas shows 12×8 tiles; larger maps scroll. `cam` is the top-left of the view in map pixels.
+// The default canvas shows 12×8 tiles; larger maps scroll. `cam` is the top-left of the view in map pixels.
 // Figures stand taller than a tile, so the view may scroll TOP_PAD above row 0 to keep the top row's heads on screen.
 const cam = { x: 0, y: 0 };
 /** The view in map pixels (12×8 tiles). The canvas backing store is RES times larger so sprites stay sharp. */
-const VW = 12 * T, VH = 8 * T;
+const DEFAULT_VW = 12 * T, DEFAULT_VH = 8 * T;
+let VW = DEFAULT_VW, VH = DEFAULT_VH;
 cv.width = VW * RES; cv.height = VH * RES;
-const VIEW_W = VW / T, VIEW_H = VH / T;
+
+function fitMapViewport(aspect: number | null) {
+  const width = aspect === null ? DEFAULT_VW : Math.round(Math.max(DEFAULT_VW, DEFAULT_VH * aspect));
+  const height = aspect === null ? DEFAULT_VH : Math.round(Math.max(DEFAULT_VH, DEFAULT_VW / aspect));
+  if (width === VW && height === VH) return;
+  cam.x += (VW - width) / 2;
+  cam.y += (VH - height) / 2;
+  VW = width; VH = height;
+  cv.width = VW * RES; cv.height = VH * RES;
+  if (S) { clampCam(); cv.style.touchAction = scrolls() ? 'none' : 'manipulation'; }
+}
 const TOP_PAD = Math.round(T * 0.45);
 const cols = () => S.map[0].length, rows = () => S.map.length;
 /** Camera limits in map pixels (a map smaller than the view is centred). */
@@ -496,9 +508,14 @@ function menu(items: [string, () => void, string?][]) {
   const m = $('menu'); m.innerHTML = '';
   for (const [label, fn, cls] of items) {
     const b = document.createElement('button'); b.textContent = label; if (cls) b.className = cls;
-    b.onclick = () => { if (mode !== 'busy') fn(); };
+    b.onclick = () => {
+      if (mode === 'busy') return;
+      fn();
+      if ((mode as string) === 'busy') mobileMap.close();
+    };
     m.appendChild(b);
   }
+  mobileMap.updateMenu(mode === 'menu' ? 'commands' : (mode === 'target' || mode === 'heal') && picked ? 'forecast' : 'map');
 }
 
 // ---------- music ----------
@@ -812,7 +829,7 @@ cv.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.id)
 cv.addEventListener('contextmenu', e => { e.preventDefault(); if (mode !== 'busy' && goBack()) audio.sfx('cancel'); });
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape' || mode === 'busy' || ['help', 'snd', 'dlg', 'title', 'camp', 'show'].some(id => !$(id).hidden)) return;
-  if (goBack()) { e.preventDefault(); audio.sfx('cancel'); }
+  if (mobileMap.close() || goBack()) { e.preventDefault(); audio.sfx('cancel'); }
 }, true);
 cv.addEventListener('click', e => {
   if (performance.now() < skipClickUntil) { skipClickUntil = 0; return; }
@@ -1700,6 +1717,7 @@ function devStart(index: number, difficulty: Difficulty = 'casual', hard = !!cam
 audio.attach();
 mountAudioUi();
 mountHelp();
+const mobileMap = mountMobileMap(fitMapViewport);
 document.addEventListener('click', e => {
   const b = (e.target as HTMLElement | null)?.closest?.('button');
   if (!b || b.disabled || b.closest('#menu') && mode === 'busy') return;
@@ -1750,8 +1768,6 @@ $('gridBtn').onclick = () => {
   syncGridBtn();
 };
 syncGridBtn();
-/** 横向きスマホでは勝敗条件・副目標を1行に畳んでいる：タップで開閉。 */
-for (const id of ['goal', 'bonusGoal']) $(id).addEventListener('click', () => $('app').classList.toggle('goalsOpen'));
 /** 速度の切り替え（ふつう／はやい）。押すたびに入れ替わり、端末に保存する。 */
 function syncSpeedBtn() {
   const b = $('speedBtn');
@@ -1782,7 +1798,7 @@ requestAnimationFrame(render);
   plan(u: Unit) { return planEnemy(S, u); },
   spawnEnemy(e: EnemyDef) { if (!S) return null; const u = makeEnemy(e, Math.max(...S.units.map(v => v.uid)) + 1, S.hard ? S.chapter : undefined); S.units.push(u); return u; },
   /** Camera (map pixels of the view's top-left), the view size in tiles, and the enemy-follow log. */
-  get cam() { return { ...cam, w: VIEW_W, h: VIEW_H, t: T }; }, followLog,
+  get cam() { return { ...cam, w: VW / T, h: VH / T, t: T }; }, followLog,
   /** Test helper: the pre-drawn terrain layer (to check that tiles read as their terrain). */
   get terrain() { return terrain; },
   /** Test helpers: whether the current map is a painted one, and whether the grid is shown. */
