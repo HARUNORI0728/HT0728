@@ -408,7 +408,7 @@ export interface Line { who: string; text: string; face?: 'normal' | 'smile' | '
  * 完全一致のあと「名前の末尾」で照合するので、肩書きつき（「野盗頭ガズ」）は短い名前だけでよい。
  */
 export const SPEAKER_IDS: Record<string, string> = {
-  'ガズ': 'gaz', 'ドルガン': 'dolgan', 'ロッタ': 'lotta', 'ハンナ': 'hanna', 'トト': 'toto', 'ベルト': 'belt',
+  'ガズ': 'gaz', 'ドルガン': 'dolgan', 'ロッタ': 'lotta', 'ハンナ': 'hanna', 'トト': 'toto', 'ベルト': 'belt', '獣族の子': 'beastkid', '冒険者': 'adventurer', '野盗': 'bandit', '私兵': 'soldier', '検地官': 'surveyor', '傭兵の使者': 'envoy', '密猟者': 'bandit',
   'ナナホシ': 'nanahoshi', // 仲間にはせず会話パートだけに出る（第3章以降）
   'オーベール': 'auber', 'ガル・ファリオン': 'gall', 'ダリウス': 'darius', 'オルステッド': 'orsted',
   '傭兵団長': 'mercboss', '使徒': 'apostle', '迷宮の主': 'labyrinth',
