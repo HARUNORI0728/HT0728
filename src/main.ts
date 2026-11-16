@@ -28,7 +28,7 @@ import { SCENES, SCENE_ORDER, type SceneId } from './script/scenes';
 import { faceHtml, idForName, idForUnit, loadMapArt, loadUnitArt, mapArtUrl, portraitUrl, preloadPortrait, spriteUrl } from './render/art';
 import { BLOCKING, changedTiles, drawGrid, drawGuideMarks, paintedLayer } from './render/mapart';
 import { audio } from './audio/engine';
-import { chooseMapTrack } from './audio/map-track';
+import { chooseMapTrack, engagedBoss, openingTrack, restoresMapTrack } from './audio/map-track';
 import { mountAudioUi } from './audio/ui';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -507,7 +507,9 @@ function menu(items: [string, () => void, string?][]) {
 const engaged = new Set<number>();
 /** Whether this boss's first-clash conversation has played (also after reloading mid-chapter). */
 const bossTalkPlayed = (u: Unit) => (chapterDef(S.chapter).talks ?? []).some(e => e.when.type === 'bossFight' && e.when.boss === bossId(u) && S.flags[talkKey(e.scene)]);
-const bossEngaged = () => S.units.some(u => u.team === 'red' && u.boss && !u.unkillable && u.hp > 0 && !u.left && (engaged.has(u.uid) || bossTalkPlayed(u)));
+const bossEngaged = () => engagedBoss(S.units, S.flags, engaged, u => bossTalkPlayed(u as Unit));
+/** A conversation's opening music: the scene's own cue if it has one, otherwise the fallback (never both). */
+const sceneMusic = (cue: string | undefined, fallback: string) => audio.bgm(openingTrack(cue, fallback));
 /**
  * The map's track: enemy phases always use their own theme; allied phases use an engaged boss's theme, otherwise the
  * chapter's own (Chapter.bgm) or the default by chapter — map_dawn 1–3, map_resolve 4–7, map_final 8–10 — and
@@ -555,7 +557,7 @@ async function runTalks(evs: ReturnType<typeof dueTalks>) {
     await playScene(ev.scene, true);
     played = true;
   }
-  if (played) mapMusic(); // a battle talk's own track lasts only as long as the talk
+  if (played && restoresMapTrack(outcome(S))) mapMusic(); // a battle talk's own track lasts only as long as the talk (a decided battle goes on to its jingle)
 }
 const turnTalks = () => runTalks(dueTalks(S, w => w.type === 'turn' && w.turn === S.turn && w.phase === S.phase));
 
@@ -960,7 +962,7 @@ async function battle(att: Unit, wid: string, def: Unit) {
     if (gains) audio.jingle('levelup');
     if (gains) await banner(`${me.name} レベルアップ！ Lv ${me.lv}　` + (Object.keys(gains).map(k => STAT_NAMES[k as keyof typeof STAT_NAMES] + '+1').join(' ') || '成長なし'), 1700);
   }
-  mapMusic(); // a boss that fell (or retreated) gives the map its own track back
+  if (restoresMapTrack(outcome(S))) mapMusic(); // a boss that fell (or retreated) gives the map its own track back, unless that decided the battle
   await sleep(120);
 }
 
@@ -1142,8 +1144,7 @@ async function supportTalks(c: Camp) {
 /** Plays a support conversation: the screenplay's when written (its own music and background), else data.ts, else a placeholder. */
 async function playSupport(p: SupportPair, rank: string) {
   const sc = supportScene(p, rank as 'C');
-  audio.bgm(supportTrack(p));
-  if (sc?.bgm) cueBgm(sc.bgm);
+  sceneMusic(sc?.bgm, supportTrack(p));
   await play(sc ? sc.lines : placeholderTalk(p), { bg: sc?.bg });
 }
 /**
@@ -1154,8 +1155,7 @@ async function confession(c: Camp, p: SupportPair) {
   const id = p.a === 'rudeus' ? p.b : p.a, sc = confessionScene(id);
   await banner(`告白　${castName(id)}`, 1100);
   playedLog.push(`confess.${id}`); markSeen(`confess.${id}`);
-  audio.bgm('romance');
-  if (sc?.bgm) cueBgm(sc.bgm);
+  sceneMusic(sc?.bgm, 'romance');
   const k = await play(sc?.lines ?? [{ who: '', text: `${castName(id)}から、想いを告げられた。（この告白の場面は制作中です）` }],
     { bg: sc?.bg, choice: sc?.choice ?? { options: ['応える', '応えられない'], branches: [[], []] } });
   const accept = k === 0;
@@ -1244,7 +1244,7 @@ const unreadWife = () => (camp ? [...availableDailies(), ...wifeTalksAvailable(m
 const availableDailies = (): DailyTalk[] => (camp ? dailyTalksAvailable(camp.roster, camp.cleared) : []);
 /** Plays a camp talk; present = the ids in the roster now (skipAbsent scenes drop the lines of absent members). */
 async function playDaily(d: DailyTalk, present?: string[]) {
-  audio.bgm('daily'); if (d.scene.bgm) cueBgm(d.scene.bgm);
+  sceneMusic(d.scene.bgm, 'daily');
   await play(dailyLines(d, present), { bg: d.scene.bg });
 }
 /** ふたりの時間 watchable now. A partner married before the confession date was recorded counts from this camp. */
@@ -1255,7 +1255,7 @@ function availableDates(): DateTalk[] {
   return dateTalksAvailable(wed, camp.cleared, seen, !!camp.ended);
 }
 async function playDate(d: DateTalk) {
-  audio.bgm('romance'); if (d.scene.bgm) cueBgm(d.scene.bgm);
+  sceneMusic(d.scene.bgm, 'romance');
   await play(d.scene.lines, { bg: d.scene.bg });
 }
 function renderCamp() {
@@ -1389,7 +1389,7 @@ function renderTent() {
   const s3 = section('wife', '嫁どうしの会話', list.filter(w => !seen.includes(w.id)).length), l3 = el('div', 'logList');
   l3.appendChild(el('p', 'hint', wed.length >= 2 ? '天幕の奥から、にぎやかな声が聞こえる。結婚した相手どうしの会話を見られる。' : `結婚した相手が2人以上になると、ここで嫁どうしの会話を見られる（いまは${wed.length}人）。`));
   for (const w of list) l3.appendChild(item(!seen.includes(w.id), `${w.scene.title}　（${w.common ? wed.map(castName).join('・') : w.members.map(castName).join(' × ')}）`, async () => {
-    audio.bgm('daily'); if (w.scene.bgm) cueBgm(w.scene.bgm);
+    sceneMusic(w.scene.bgm, 'daily');
     await play(wifeLines(w, wed), { bg: w.scene.bg });
   }, w.id));
   if (wed.length >= 2 && !list.length) l3.appendChild(el('p', 'hint', 'いまは見られる会話がない。'));
@@ -1442,7 +1442,7 @@ function renderLog() {
   sec3.appendChild(l3);
   const sec4 = section('嫁どうしの会話', WIFE_TALKS.filter(w => has(w.id)).length, WIFE_TALKS.length), l4 = el('div', 'logList');
   const wedNow = (w: WifeTalk) => [...new Set([...(camp ? marriedTo(camp.bonds) : lastWed), ...w.members])];
-  for (const w of WIFE_TALKS) l4.appendChild(has(w.id) ? btn(w.scene.title, () => replay(async () => { audio.bgm('daily'); if (w.scene.bgm) cueBgm(w.scene.bgm); await play(wifeLines(w, wedNow(w)), { bg: w.scene.bg }); }), 'logItem') : lock());
+  for (const w of WIFE_TALKS) l4.appendChild(has(w.id) ? btn(w.scene.title, () => replay(async () => { sceneMusic(w.scene.bgm, 'daily'); await play(wifeLines(w, wedNow(w)), { bg: w.scene.bg }); }), 'logItem') : lock());
   sec4.appendChild(l4);
   // キャンプの日々（離脱した仲間の行は、いまの名簿で飛ばす）
   const secD = section('キャンプの日々', DAILY_TALKS.filter(d => has(d.id)).length, DAILY_TALKS.length), lD = el('div', 'logList');
@@ -1739,6 +1739,7 @@ $('btnLoad').onclick = () => {
 $('btnRetryPhase').onclick = () => { const d = load(); if (d?.battle) { camp = d.camp; seen = d.seen; d.battle.phase = 'blue'; start(d.battle, false); } };
 $('btnRetryChapter').onclick = () => start(chapterStart(), false);
 $('btnDefeatTitle').onclick = () => showTitle();
+$('btnDefeatCamp').onclick = () => retreat();
 /** Next chapter: carries the roster (with classic losses), bonds and difficulty. */
 $('btnNext').onclick = goNext;
 $('btnToTitle').onclick = () => showTitle();
@@ -1822,6 +1823,8 @@ requestAnimationFrame(render);
   playEnding: () => playEnding(false),
   /** Development: the ending's parts (ids and lines) for the camp's current marriages. */
   endingParts: () => (camp ? endingSequence({ married: marriedTo(camp.bonds), bonds: camp.bonds, out: camp.roster.filter(u => u.out && CANDIDATES.includes(u.id)).map(u => u.id) }) : []),
+  /** Test helper: retreat to the camp the chapter was started from (false when there is none, e.g. chapter 1). */
+  retreat: () => { if (!inBattle || !retreatCamp()) return false; retreat(); return true; },
   checkEnd: () => checkEnd(), endTurn: () => endTurn(), finish: (u: Unit) => finish(u), idle: () => idle(),
   /** Test helpers: a full-screen moment, and one battle between two units on the map (for screenshots of the effects). */
   showcase: (o: ShowOpts, ms = 1500) => showcase(o, ms), portrait: (id: string, face?: Parameters<typeof portraitUrl>[1]) => picOf(id, face), battle: (att: Unit, wid: string, def: Unit) => battle(att, wid, def), skillBand: (u: Unit, n: string) => skillBand(u, n),

@@ -464,6 +464,9 @@
   /* 「もどる／選択解除」：地図の操作を1段戻すボタン（行動メニューの中。縦向きスマホと横向きでは先頭に出す）。 */
   #menu button.back { color: var(--dim); border-style: dashed; }
   #menu button.back:hover { color: var(--ink); }
+  /* 「撤退する」：待機中の行動メニューの末尾に控えめに（誤操作しにくいよう小さく・薄く。押すと確認が出る）。 */
+  #menu button.retreat { flex: 0 1 auto; color: var(--dim); border-style: dashed; font-size: 13px; min-height: 36px; }
+  #menu button.retreat:hover { color: var(--ink); }
   @media (max-width: 560px) {
     /* 縦向きスマホ：行動メニューを地図のすぐ下に（情報欄はその下）。スクロールせずに押せる。 */
     #menu { order: -1; gap: 6px; }
@@ -626,6 +629,7 @@
   <div id="defeat" class="btns" hidden>
     <button id="btnRetryPhase" class="primary">直前の自軍フェイズから</button>
     <button id="btnRetryChapter">章の最初から</button>
+    <button id="btnDefeatCamp" hidden>キャンプに戻る</button>
     <button id="btnDefeatTitle">タイトルへ</button>
   </div>
 </div>
