@@ -163,3 +163,28 @@
   | ev_eris_wedding | 後日談（結婚版）。道場と慰霊の石（script-endings.md） | `Clear morning in front of a small village sword dojo with a wooden training yard, wide shot, she grins with her wooden sword on her shoulder and holds out a hand toward the viewer, a small stone memorial visible on the hill behind, warm sunlight, confident and tender smile.` |
 - 他の候補（採用していない）：後日談の仲間版（剣の修行に出る）、第4章でシルフィに張り合う場面、ふたりの時間3「剣を置く日」
 - 未決：アリエルのイベント絵を増やすか
+
+## 実装担当への申し送り（まとめ・2026-11-16）
+このセッションは `design/hearing-notes.md` しか触れないため、依頼はここに集約する。上から順に対応してほしい。
+
+### 1. イベント絵の追加（シルフィ5枚・エリス2枚）
+- プロンプト下書きは、上の「シルフィエット専用イベント絵」「エリス専用イベント絵」の表にある
+- やること
+  1. 下書きを `design/portrait-prompts.md` の「イベント絵」の節へ移す。外見文は各キャラの sylphiette／eris の文を先頭に付ける
+  2. 台本の該当場面に `一枚絵：<ID>` の行を足す（ev_sylphie_sapling は script-ch3-5.md の第4章の幕間、ev_sylphie_rearguard は第8章の見せ場、ev_sylphie_sapling2 は script-romance.md「ふたりの時間・シルフィエット・3」、ev_sylphie_wedding と ev_sylphie_companion は script-endings.md の後日談、ev_eris_sheathe は script-ch9-10.md の第9章の終幕、ev_eris_wedding は script-endings.md の「後日談・エリス（結婚）」）
+  3. 納品された画像は `assets/events/<ID>.png` に置き、`src/art-manifest.ts` の `EVENT_ART` に登録する（現在は空）
+- 予算が足りないときの優先順：苗木の3枚（sapling／sapling2／wedding）と ev_eris_sheathe を先に。ev_sylphie_rearguard と ev_sylphie_companion は後回し可
+- 既存のイベント絵（告白7枚、嫁同士の集合1枚、ev_sylphie_reveal、ev_eris_memorial）も未納品のまま
+
+### 2. 設定書の確認事項（未決のまま）
+- 訓練要素を入れるか、嫁同士の会話の量、サラ×ルークとクリフ×エリナリーゼの組の扱い
+- implementation-todo.md は 2026-11-11 時点の記述が中心で、現状とずれている可能性がある。最新の状態に更新してほしい
+
+### 3. 確認が取れていない点
+- 支援会話・告白の本文が、すべてゲームに入っているか（入っていない組は「制作中です」の代用文が出る）
+- 第7・9・10章のマップ絵は未納品（コード描画で代用）、背景は残りが未納品との記録あり
+- 音楽24曲は、実際に聴いての最終確認が未実施
+
+### 4. 次の打合せで聞くこと
+- アリエルのイベント絵を増やすか
+- 上の「未決」の項目
