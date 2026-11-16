@@ -5,19 +5,17 @@
     {
       "chapter": 9,
       "counts": {
-        "win": 9,
-        "lose": 3
+        "win": 6,
+        "lose": 4,
+        "timeout": 2
       },
       "winningTurns": [
+        13,
         14,
-        14,
-        14,
-        15,
-        15,
-        15,
-        15,
         16,
-        26
+        18,
+        19,
+        23
       ],
       "triggeredBattleScenes": [
         "ch9.battle1",
@@ -31,34 +29,35 @@
         "ch9.battle9"
       ],
       "falls": {
-        "cliff": 6,
-        "sylphiette": 1,
-        "perugius": 4,
+        "cliff": 10,
+        "eris": 2,
+        "perugius": 6,
+        "rudeus": 3,
         "zanoba": 2,
-        "ghislaine": 2,
-        "ariel": 1,
-        "rudeus": 2,
-        "paul": 1,
-        "ruijerd": 1
+        "ghislaine": 3,
+        "paul": 3,
+        "ruijerd": 1,
+        "sylphiette": 2
       }
     },
     {
       "chapter": 10,
       "counts": {
-        "win": 10,
-        "lose": 2
+        "win": 12
       },
       "winningTurns": [
         12,
         12,
         13,
+        13,
+        14,
+        14,
         15,
-        15,
+        16,
         16,
         17,
         17,
-        19,
-        21
+        18
       ],
       "triggeredBattleScenes": [
         "ch10.battle1",
@@ -72,14 +71,13 @@
         "ch10.battle9"
       ],
       "falls": {
-        "zanoba": 3,
-        "ruijerd": 3,
-        "cliff": 9,
-        "roxy": 3,
-        "paul": 2,
-        "eris": 2,
-        "rudeus": 2,
-        "ghislaine": 1
+        "sylphiette": 2,
+        "zanoba": 8,
+        "cliff": 7,
+        "ghislaine": 4,
+        "roxy": 7,
+        "ruijerd": 1,
+        "paul": 1
       }
     }
   ],
@@ -96,10 +94,10 @@
     {
       "seed": 2,
       "chapter9": "win",
-      "chapter10": "lose",
+      "chapter10": "win",
       "turns": [
-        15,
-        7
+        18,
+        15
       ]
     },
     {
@@ -107,26 +105,21 @@
       "chapter9": "win",
       "chapter10": "win",
       "turns": [
-        15,
-        13
+        13,
+        10
       ]
     },
     {
       "seed": 4,
-      "chapter9": "win",
-      "chapter10": "win",
-      "turns": [
-        14,
-        12
-      ]
+      "chapter9": "lose"
     },
     {
       "seed": 5,
       "chapter9": "win",
       "chapter10": "win",
       "turns": [
-        15,
-        14
+        19,
+        13
       ]
     },
     {
