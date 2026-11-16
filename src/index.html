@@ -481,11 +481,12 @@
     #speedBtn { min-width: 0; }
     #panel { display: contents; }
     #menu { grid-column: 2; grid-row: 2; flex-direction: row; flex-wrap: wrap; gap: 5px; }
-    #menu button { flex: 1 1 88px; min-height: 36px; padding: 3px 6px; font-size: 13px; }
+    #menu button { flex: 1 1 72px; min-height: 36px; padding: 3px 6px; font-size: 13px; line-height: 1.25; }
     #menu button.back { order: -1; flex: 1 1 100%; min-height: 32px; }
     #info { grid-column: 2; grid-row: 3; min-height: 0; overflow-y: auto; padding: 6px 8px; overscroll-behavior: contain; }
     #info .face.big { width: 52px; height: 52px; }
-    #info .face.fcface { width: 40px; height: 40px; }
+    #info .fc .face { display: none; }
+    #info .fc { row-gap: 0; }
     .uhead b { font-size: 15px; }
     .stats { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); font-size: 12px; }
     .fc .n { font-size: 14px; }

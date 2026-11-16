@@ -647,7 +647,7 @@ async function autoPlace(i: number) {
 /** 予測の下に足すボタン：自動移動なら「位置を変える」。 */
 function autoItems(): [string, () => void, string?][] {
   const a = auto;
-  return a && a.cands.length > 1 ? [[`位置を変える（${a.idx + 1}/${a.cands.length}）`, () => void autoPlace((a.idx + 1) % a.cands.length)]] : [];
+  return a && a.cands.length > 1 ? [[`位置を変える ${a.idx + 1}/${a.cands.length}`, () => void autoPlace((a.idx + 1) % a.cands.length)]] : [];
 }
 function openMenu() {
   const u = sel!; mode = 'menu'; picked = null; targets = []; auto = null;
@@ -704,7 +704,7 @@ function pickTarget(t: Unit) {
     ${f.d?.block || f.a.block ? row('', f.d?.block ? `${SKILLS.shieldBlock.name} ${f.d.block}%` : '', f.a.block ? `${SKILLS.shieldBlock.name} ${f.a.block}%` : '') : ''}
     ${row('武器', weaponLabel(u, curW), f.d ? (f.d.w.type === 'fang' ? weaponLabel(t, 'fang') : f.d.w.name) : '反撃不可')}</div>${supRow(f.a.sup)}${linkRow(u, t)}${skillRow(f.a.skills, f.d?.skills ?? [])}`);
   const ws = usable(u).filter(w => inRange(WEAPONS[w], dist(u, t)));
-  const swap: [string, () => void][] = ws.length > 1 ? [[`武器を変える（→${weaponLabel(u, ws[(ws.indexOf(curW) + 1) % ws.length]).replace(/威力\d+$/, '')}）`, () => { curW = ws[(ws.indexOf(curW) + 1) % ws.length]; pickTarget(t); }]] : [];
+  const swap: [string, () => void][] = ws.length > 1 ? [[`武器→${weaponLabel(u, ws[(ws.indexOf(curW) + 1) % ws.length]).replace(/（固有）威力\d+$/, '')}`, () => { curW = ws[(ws.indexOf(curW) + 1) % ws.length]; pickTarget(t); }]] : [];
   menu([['戦う', async () => { mode = 'busy'; auto = null; await battle(u, curW, t); finish(u); }, 'primary'], ...autoItems(), ...swap, ['もどる', goBack, 'back']]);
 }
 function chooseHeal(sid: string, ts: Unit[]) {
