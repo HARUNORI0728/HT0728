@@ -1,7 +1,7 @@
 // Screen, input and turn flow. Rules live in logic.ts.
 import { CAST, CHAPTERS, CHARS, CLASSES, RANKS, RANK_PTS, STAT_KEYS, STAT_NAMES, SCHOOLS, SKILLS, SUPPORTS, SUPPORT_BONUS, WEAPONS, WTYPE_NAMES, chapterDef, hasChapter, type EnemyDef, type Line, type Stats, type SupportPair } from './data';
 import {
-  DIFFICULTY_NAMES, levelName, POTION_HEAL, addExp, alive, bondStatus, canEscape, canSeize, dist, expGain, fight, forecast, gainBonds, goalText, heal, healAmount, healExp, healTargets,
+  DIFFICULTY_NAMES, levelName, POTION_HEAL, addExp, alive, bondStatus, canEscape, canSeize, dangerTiles, dist, expGain, fight, forecast, gainBonds, goalText, heal, healAmount, healExp, healTargets,
   initBonds, inRange, key, loseCond, makeEnemy, makeUnit, maxRank, newChapter, nextNeed, outcome, pairKey, planEnemy, promote, promoOptions, rankName, rankUp, readyPairs,
   WEAPON_SLOTS, benchExp, chapterPicks, rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
   bossId, dueTalks, fightTalks, onMap, talkKey, clearSlow, expBoost, familiarHeal, hasSkill, healingWind, skillsOf, shownVisits, visitFlag, visitsFor,
@@ -51,6 +51,22 @@ type Mode = 'idle' | 'move' | 'menu' | 'target' | 'heal' | 'busy';
 let mode: Mode = 'busy';
 let sel: Unit | null = null, picked: Unit | null = null, inspect: Unit | null = null;
 let stops = new Set<string>(), threat = new Set<string>();
+/** 危険範囲（全敵の次ターンの攻撃範囲）の表示。見る人ごとに覚えておく。盤面が変わったときだけ計算し直す。 */
+const DANGER_KEY = 'fittoa-danger';
+let dangerOn = false;
+try { dangerOn = localStorage.getItem(DANGER_KEY) === '1'; } catch { /* storage unavailable */ }
+let dangerSig = '', dangerSet = new Set<string>();
+function dangerNow(): Set<string> {
+  const sig = S.turn + S.phase + S.map.join('') + S.units.map(u => `${u.uid}:${u.x},${u.y},${u.hp},${u.ai ?? ''}`).join('|');
+  if (sig !== dangerSig) { dangerSig = sig; dangerSet = dangerTiles(S); }
+  return dangerSet;
+}
+function toggleDanger() {
+  dangerOn = !dangerOn;
+  try { localStorage.setItem(DANGER_KEY, dangerOn ? '1' : '0'); } catch { /* lasts for this visit */ }
+  audio.sfx('cursor');
+  idle();
+}
 let origin = { x: 0, y: 0 }, targets: Unit[] = [], curW = '';
 const offs = new Map<number, { dx: number; dy: number }>();
 const shownHp = new Map<number, number>();
@@ -211,6 +227,7 @@ function render(now = performance.now()) {
     ctx.save(); ctx.translate(-cam.x, -cam.y);
     if (gridOn()) drawGrid(ctx, Math.max(0, Math.floor(cam.x / T)), Math.max(0, Math.floor(cam.y / T)), Math.min(cols(), Math.ceil((cam.x + W) / T)) - 1, Math.min(rows(), Math.ceil((cam.y + H) / T)) - 1);
     const tile = (k: string, kind: Parameters<typeof drawTile>[1], a = 1) => { const [x, y] = k.split(',').map(Number); drawTile(ctx, kind, x, y, a); };
+    if (dangerOn && inBattle && S.phase === 'blue') for (const k of dangerNow()) tile(k, 'attack', 0.38);
     if (mode === 'move' || (mode === 'idle' && inspect)) {
       for (const k of threat) if (!stops.has(k)) tile(k, 'attack');
       for (const k of stops) tile(k, 'move');
@@ -416,8 +433,8 @@ function idle() {
   mode = 'idle'; sel = picked = null; targets = []; probe = null;
   if (!inspect) { stops = new Set(); threat = new Set(); }
   hud();
-  info(inspect ? unitHtml(inspect) : `<p class="hint">青いユニットをタップして移動先を選ぼう。敵をタップすると移動・攻撃範囲が見られる。${scrolls() ? '地図はドラッグで動かせる。' : ''}</p>`);
-  menu([['ターン終了', endTurn]]);
+  info(inspect ? unitHtml(inspect) : `<p class="hint">青いユニットをタップして移動先を選ぼう。敵をタップすると移動・攻撃範囲が見られる。「危険範囲」で敵全員の届くマスを赤く重ねられる。${scrolls() ? '地図はドラッグで動かせる。' : ''}</p>`);
+  menu([[dangerOn ? '危険範囲：表示中' : '危険範囲を表示', toggleDanger, dangerOn ? 'toggle on' : 'toggle'], ['ターン終了', endTurn]]);
 }
 function selectUnit(u: Unit) {
   audio.sfx('select');
@@ -478,7 +495,7 @@ function pickTarget(t: Unit) {
     ${row('威力', f.a.dmg + (f.a.double ? ' ×2' : ''), f.d ? f.d.dmg + (f.d.double ? ' ×2' : '') : '—')}
     ${row('命中', f.a.hit + '%', f.d ? f.d.hit + '%' : '—')}${row('必殺', f.a.crit + '%', f.d ? f.d.crit + '%' : '—')}
     ${f.d?.block || f.a.block ? row('', f.d?.block ? `${SKILLS.shieldBlock.name} ${f.d.block}%` : '', f.a.block ? `${SKILLS.shieldBlock.name} ${f.a.block}%` : '') : ''}
-    ${row('武器', weaponLabel(u, curW), f.d ? (f.d.w.type === 'fang' ? weaponLabel(t, 'fang') : f.d.w.name) : '反撃不可')}</div>${supRow(f.a.sup.from)}${skillRow(f.a.skills, f.d?.skills ?? [])}`);
+    ${row('武器', weaponLabel(u, curW), f.d ? (f.d.w.type === 'fang' ? weaponLabel(t, 'fang') : f.d.w.name) : '反撃不可')}</div>${supRow(f.a.sup)}${skillRow(f.a.skills, f.d?.skills ?? [])}`);
   menu([['戦う', async () => { mode = 'busy'; await battle(u, curW, t); finish(u); }, 'primary'], ['もどる', openMenu]]);
 }
 function chooseHeal(sid: string, ts: Unit[]) {
@@ -512,8 +529,10 @@ async function doHeal(u: Unit, sid: string, t: Unit) {
 function skillRow(a: string[], d: string[]) {
   return a.length || d.length ? `<p class="fcsup">スキル：${[...a.map(n => `<span class="blue">${n}</span>`), ...d.map(n => `<span class="red">${n}</span>`)].join('、')}</p>` : '';
 }
-function supRow(from: { name: string; rank: string }[]) {
-  return from.length ? `<p class="fcsup">支援：${from.map(f => `${f.name} ${f.rank}`).join('、')}</p>` : '';
+function supRow(sup: { hit: number; avo: number; crit: number; dmg: number; from: { name: string; rank: string }[] }) {
+  if (!sup.from.length) return '';
+  const fx = [sup.hit && `命中+${sup.hit}`, sup.avo && `回避+${sup.avo}`, sup.crit && `必殺+${sup.crit}`, sup.dmg && `威力+${sup.dmg}`].filter(Boolean).join(' ');
+  return `<p class="fcsup">絆：${sup.from.map(f => `${f.name}（${f.rank}）`).join('、')}　${fx}</p>`;
 }
 async function finish(u: Unit) {
   mode = 'busy'; u.done = true; sel = picked = inspect = null; targets = [];

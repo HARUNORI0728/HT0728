@@ -344,6 +344,20 @@ export function threatTiles(s: State, u: Unit, stops = stopTiles(s, u)) {
 }
 
 /**
+ * 危険範囲：敵全員について、次の敵軍フェイズに攻撃が届くマスの和集合。待機型（guard）は今いるマスからの射程だけ。
+ * 杖しか持たない敵は数えない。
+ */
+export function dangerTiles(s: State, team: Team = 'red') {
+  const out = new Set<string>();
+  for (const u of alive(s, team)) {
+    if (u.retreated) continue;
+    const st = u.ai === 'guard' ? new Set([key(u.x, u.y)]) : stopTiles(s, u);
+    for (const k of threatTiles(s, u, st)) out.add(k);
+  }
+  return out;
+}
+
+/**
  * block = 盾受け（守る側のエリナリーゼ）の発動率%。skills = この側に効いたスキル名（確定の補正。予測欄の補足）。
  */
 export interface Side { dmg: number; hit: number; crit: number; double: boolean; w: Weapon; sup: SupportInfo; block: number; skills: string[] }
