@@ -1,0 +1,18 @@
+[
+  {
+    "file": "assets\\maps\\ch04.png",
+    "size": [
+      1499,
+      1049
+    ],
+    "sha256": "956ad5ada6367d62760612d81998df72919e0de8f9c8f079bb9c8090c70f06e3"
+  },
+  {
+    "file": "assets\\maps\\ch05.png",
+    "size": [
+      1499,
+      1049
+    ],
+    "sha256": "ef3d3120841e5962ab5d7373705d81df764efade87b5ee82278915bd5ee69e9e"
+  }
+]
