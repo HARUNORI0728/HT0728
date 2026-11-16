@@ -60,7 +60,7 @@ export const PORTRAIT_ART: Record<string, Partial<Record<Face, string>>> = {
   darius: { normal: 'assets/portraits/darius_normal.webp?v=8a9eaa88', angry: 'assets/portraits/darius_angry.webp?v=24d46690' },
   dolgan: { normal: 'assets/portraits/dolgan_normal.webp?v=6c3c3352', angry: 'assets/portraits/dolgan_angry.webp?v=e9b5c2f3' },
   elinalise: { normal: 'assets/portraits/elinalise_normal.webp?v=96e37752', smile: 'assets/portraits/elinalise_smile.webp?v=d0600cff', angry: 'assets/portraits/elinalise_angry.webp?v=74f919d4', sad: 'assets/portraits/elinalise_sad.webp?v=39f40b49' },
-  eris: { normal: 'assets/portraits/eris_normal.webp?v=05d92c7b', smile: 'assets/portraits/eris_smile.webp?v=4e081235', angry: 'assets/portraits/eris_angry.webp?v=8e03905e', sad: 'assets/portraits/eris_sad.webp?v=a190a5f8' },
+  eris: { normal: 'assets/portraits/eris_normal.webp?v=05d92c7b', smile: 'assets/portraits/eris_smile.webp?v=4e081235', angry: 'assets/portraits/eris_angry.webp?v=8e03905e', sad: 'assets/portraits/eris_sad.webp?v=a190a5f8', dere: 'assets/portraits/eris_dere.webp?v=ed0e1aa5' },
   gall: { normal: 'assets/portraits/gall_normal.webp?v=b718f3d8', angry: 'assets/portraits/gall_angry.webp?v=84beef93' },
   gaz: { normal: 'assets/portraits/gaz_normal.webp?v=415d8a58', angry: 'assets/portraits/gaz_angry.webp?v=3e775cec' },
   ghislaine: { normal: 'assets/portraits/ghislaine_normal.webp?v=ac05d147', smile: 'assets/portraits/ghislaine_smile.webp?v=02868f04', angry: 'assets/portraits/ghislaine_angry.webp?v=494d7a7a', sad: 'assets/portraits/ghislaine_sad.webp?v=ba82eace' },
@@ -77,8 +77,8 @@ export const PORTRAIT_ART: Record<string, Partial<Record<Face, string>>> = {
   roxy: { normal: 'assets/portraits/roxy_normal.webp?v=65f235b0', smile: 'assets/portraits/roxy_smile.webp?v=8fe891ef', angry: 'assets/portraits/roxy_angry.webp?v=2b6b1128', sad: 'assets/portraits/roxy_sad.webp?v=d3740636', dere: 'assets/portraits/roxy_dere.webp?v=ffd40b40' },
   rudeus: { normal: 'assets/portraits/rudeus_normal.webp?v=717a45e2', smile: 'assets/portraits/rudeus_smile.webp?v=4df873fa', angry: 'assets/portraits/rudeus_angry.webp?v=15e5c916', sad: 'assets/portraits/rudeus_sad.webp?v=b0b00f20' },
   ruijerd: { normal: 'assets/portraits/ruijerd_normal.webp?v=842eabc6', smile: 'assets/portraits/ruijerd_smile.webp?v=665cc7e1', angry: 'assets/portraits/ruijerd_angry.webp?v=16b5ce4d', sad: 'assets/portraits/ruijerd_sad.webp?v=c87d17e5' },
-  sara: { normal: 'assets/portraits/sara_normal.webp?v=45711161', smile: 'assets/portraits/sara_smile.webp?v=3fe355ba', angry: 'assets/portraits/sara_angry.webp?v=e2d466cf', sad: 'assets/portraits/sara_sad.webp?v=6a31c149' },
-  sylphiette: { normal: 'assets/portraits/sylphiette_normal.webp?v=1db0e298', smile: 'assets/portraits/sylphiette_smile.webp?v=4f364a9c', angry: 'assets/portraits/sylphiette_angry.webp?v=5e2bed36', sad: 'assets/portraits/sylphiette_sad.webp?v=352dee7b', dere: 'assets/portraits/sylphiette_dere.webp?v=cbe4bde2' },
+  sara: { normal: 'assets/portraits/sara_normal.webp?v=45711161', smile: 'assets/portraits/sara_smile.webp?v=3fe355ba', angry: 'assets/portraits/sara_angry.webp?v=e2d466cf', sad: 'assets/portraits/sara_sad.webp?v=6a31c149', dere: 'assets/portraits/sara_dere.webp?v=454ab86f' },
+  sylphiette: { normal: 'assets/portraits/sylphiette_normal.webp?v=1db0e298', smile: 'assets/portraits/sylphiette_smile.webp?v=4f364a9c', angry: 'assets/portraits/sylphiette_angry.webp?v=5e2bed36', sad: 'assets/portraits/sylphiette_sad.webp?v=352dee7b', dere: 'assets/portraits/sylphiette_dere.webp?v=20b83a7b' },
   zanoba: { normal: 'assets/portraits/zanoba_normal.webp?v=f4ce24fc', smile: 'assets/portraits/zanoba_smile.webp?v=043f2313', angry: 'assets/portraits/zanoba_angry.webp?v=6d68f7cc', sad: 'assets/portraits/zanoba_sad.webp?v=f5d4e2f7' },
 };
 /** Conversation backgrounds by name (screenplay 背景：<名前>). 16:9, width 1280. */
