@@ -284,6 +284,10 @@ section{position:relative}
 .profile dt{color:var(--gold);font-family:var(--serif-jp);letter-spacing:.14em}
 
 .profile .profile-catch{font-family:var(--serif-jp);font-size:clamp(17px,1.9vw,21px);letter-spacing:.14em;line-height:1.9;color:var(--text);margin-top:18px}
+.career{margin-top:34px;display:grid;gap:26px}
+.career li{display:grid;grid-template-columns:84px 1fr;gap:22px;position:relative}
+.career li>span{font-family:var(--serif-jp);font-size:14px;letter-spacing:.2em;color:var(--gold-light);padding-top:3px;border-top:1px solid var(--gold);align-self:start;line-height:2.4}
+.profile .career p{margin-top:0}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:34px}
 .stats li{background:var(--bg);padding:24px 12px 22px;text-align:center}
 .stats b{white-space:nowrap;font-family:var(--serif-en);font-weight:500;font-size:clamp(34px,3.4vw,46px);line-height:1;display:inline-block;letter-spacing:.02em}
@@ -327,6 +331,8 @@ footer small{font-family:var(--serif-en);letter-spacing:.2em;font-size:12px}
   .hero-cta .btn{width:100%;justify-content:center}
   .profile dl div{grid-template-columns:96px 1fr}
   .stats li{padding:18px 4px 16px}
+  .career li{grid-template-columns:1fr;gap:8px}
+  .career li>span{justify-self:start;padding-right:18px}
   .stats b{font-size:26px}
   .stats b i{font-size:11px;margin-left:2px}
   .chain li{grid-template-columns:1fr;gap:8px;padding:22px 4px}
@@ -396,7 +402,7 @@ footer small{font-family:var(--serif-en);letter-spacing:.2em;font-size:12px}
         <p class="eyebrow">MESSAGE</p>
         <h2>効率化は、<br>ゴールではありません。</h2>
         <p>AIで手間を減らすことは、入口にすぎません。日々の営業日報、見積や契約の積み重ね、ベテランの経験。どの会社にも、まだ活かしきれていない資源があります。</p>
-        <p>それらをAIで「いつでも引き出せる資産」に変え、次の一手に使える状態にする。営業と企画の現場を10年以上経験し、自ら業務ツールを開発してきた診断士として、そこまでご一緒します。</p>
+        <p>それらをAIで「いつでも引き出せる資産」に変え、次の一手に使える状態にする。大手メーカーの営業・事業企画の現場で、自ら業務ツールを開発してきた診断士として、そこまでご一緒します。</p>
       </div>
       <div class="ph-offset reveal d2">
         <!-- 画像差し替え：メインビジュアル -->
@@ -442,7 +448,7 @@ footer small{font-family:var(--serif-en);letter-spacing:.2em;font-size:12px}
         <article class="card reveal d2">
           <p class="card-num gold-text">03</p>
           <h3>現場を知るからこそ、<br>定着する</h3>
-          <p>営業・企画の実務を10年以上経験し、自ら開発したツールで年間1,000時間以上の効率化を実現。現場で使われ続ける形に落とし込みます。</p>
+          <p>営業・事業企画の現場に身を置き、自ら開発したツールで年間1,000時間以上の効率化を実現。現場で使われ続ける形に落とし込みます。</p>
         </article>
       </div>
     </div>
@@ -525,11 +531,14 @@ footer small{font-family:var(--serif-en);letter-spacing:.2em;font-size:12px}
         <p class="profile-catch">現場を知り、自ら作れる。<br>営業・企画 × AI開発の中小企業診断士。</p>
         <ul class="stats">
           <li><b class="gold-text">1,000<i>時間超</i></b><span>年間の効率化を<br>自作ツールで実現</span></li>
-          <li><b class="gold-text">10<i>年超</i></b><span>大手メーカーでの<br>営業・企画の実務</span></li>
-          <li><b class="gold-text">4<i>領域</i></b><span>契約・設計・見積・営業の<br>業務ツールを開発</span></li>
+          <li><b class="gold-text">4<i>領域</i></b><span>契約・設計・見積・営業<br>のツールを開発</span></li>
+          <li><b class="gold-text">2<i>社</i></b><span>大手メーカーで<br>営業・企画を経験</span></li>
         </ul>
-        <p>大手住宅設備メーカーで法人営業を約7年、商品企画・販売戦略・マーケティングを約3年経験。その後、大手総合化学メーカーで営業・事業企画に従事しています。</p>
-        <p>実務のかたわら、生成AIとプログラミングで業務ツールを自ら開発。契約書の自動チェック、設計計算、見積・積算などを企画から運用まで一貫して手がけ、年間1,000時間以上の効率化を実現しました。営業日報から過去の営業記録をすぐに引き出せる営業支援システムも開発しています。</p>
+        <ol class="career">
+          <li><span>現場</span><p>大手メーカーで営業・事業企画に従事し、商品企画、販売戦略、マーケティングまで、事業の最前線で「売れる仕組みづくり」に取り組んできました。</p></li>
+          <li><span>開発</span><p>現場の課題を、生成AIとプログラミングで自ら解決。契約書の自動チェック、設計計算、見積・積算などの業務ツールを企画から運用まで一貫して手がけ、年間1,000時間以上の効率化を実現しました。営業日報から過去の営業記録をすぐに引き出せる営業支援システムも開発しています。</p></li>
+          <li><span>診断士</span><p>この経験を中小企業の力にするため、中小企業診断士の資格を取得。経営の視点と、自ら作れる技術の両面から、会社に眠る資源を次の成長へつなげます。</p></li>
+        </ol>
         <dl>
           <div><dt>資格</dt><dd>中小企業診断士</dd></div>
           <div><dt>得意分野</dt><dd>AI活用による業務効率化・生産性向上／補助金活用</dd></div>
