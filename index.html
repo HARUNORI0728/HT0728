@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>HAL経営相談室｜AI導入と補助金に強い中小企業診断士</title>
-<meta name="description" content="HAL経営相談室は、AI導入支援と補助金活用に強みを持つ中小企業診断士事務所です。業務ツールを自ら開発してきた診断士が、構想から実装、定着まで伴走します。">
+<meta name="description" content="HAL経営相談室は、AI導入支援と補助金活用に強みを持つ中小企業診断士事務所です。会社に眠る経営資源を、AIで次の成長につなげます。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Noto+Sans+JP:wght@300;400;500&family=Shippori+Mincho:wght@400;500;600&display=swap" rel="stylesheet">
@@ -155,12 +155,6 @@ ul{list-style:none}
   margin-top:34px;max-width:560px;font-size:clamp(14px,1.3vw,16px);color:#cfcbc2;
 }
 .hero-cta{margin-top:48px;display:flex;flex-wrap:wrap;gap:18px}
-.hero-tags{
-  margin-top:72px;display:flex;flex-wrap:wrap;gap:12px 38px;
-  font-family:var(--serif-jp);font-size:13px;letter-spacing:.2em;color:var(--muted);
-}
-.hero-tags li{display:flex;align-items:center;gap:12px}
-.hero-tags li::before{content:"";width:5px;height:5px;background:var(--gold);transform:rotate(45deg)}
 .scroll{
   position:absolute;right:44px;bottom:56px;z-index:2;
   font-family:var(--serif-en);font-size:11px;letter-spacing:.4em;color:var(--gold);
@@ -234,9 +228,9 @@ section{position:relative}
 .card p{font-size:14px;color:#bdb9b0}
 
 /* ---------- Services ---------- */
-.svc{display:grid;grid-template-columns:repeat(2,1fr);gap:28px}
+.svc{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
 .svc-item{
-  border:1px solid var(--line-soft);padding:clamp(32px,4vw,52px);position:relative;
+  border:1px solid var(--line-soft);padding:clamp(30px,3vw,42px);position:relative;
   background:linear-gradient(160deg,rgba(255,255,255,.035),transparent 55%);
   transition:border-color .5s,transform .6s var(--ease);
 }
@@ -260,16 +254,12 @@ section{position:relative}
   border-block:1px solid var(--line);
 }
 .band h2{font-family:var(--serif-jp);font-weight:500;font-size:clamp(24px,3.6vw,46px);letter-spacing:.14em;line-height:1.7}
-.eq{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:16px 30px;margin:54px 0 40px}
-.eq div{
-  width:clamp(120px,17vw,170px);aspect-ratio:1;border:1px solid var(--gold);border-radius:50%;
-  display:grid;place-items:center;font-family:var(--serif-jp);font-size:clamp(15px,1.7vw,19px);letter-spacing:.16em;line-height:1.6;
-}
-.eq div small{display:block;font-family:var(--serif-en);font-size:11px;letter-spacing:.3em;color:var(--gold)}
-.eq span{font-family:var(--serif-en);font-size:34px;color:var(--gold)}
-.eq .result{background:linear-gradient(135deg,var(--gold-light),var(--gold));color:#14110a;border:none}
-.eq .result small{color:#5d4a1f}
-.band p{max-width:640px;margin-inline:auto;color:#c5c1b8}
+.chain{margin:clamp(44px,6vw,70px) auto 0;max-width:920px;border-top:1px solid var(--line);text-align:left}
+.chain li{display:grid;grid-template-columns:minmax(0,.8fr) 90px minmax(0,1.2fr);align-items:center;gap:20px;padding:26px 8px;border-bottom:1px solid var(--line)}
+.chain .from{font-family:var(--serif-jp);font-size:clamp(16px,1.8vw,20px);letter-spacing:.14em;color:var(--gold-light)}
+.chain i{height:1px;background:linear-gradient(90deg,transparent,var(--gold));position:relative}
+.chain i::after{content:"";position:absolute;right:0;top:-3px;width:7px;height:7px;border-top:1px solid var(--gold);border-right:1px solid var(--gold);transform:rotate(45deg)}
+.chain .to{font-size:15px;color:var(--text)}
 
 /* ---------- Flow ---------- */
 .flow{display:grid;grid-template-columns:repeat(5,1fr);gap:0;counter-reset:step}
@@ -296,7 +286,7 @@ section{position:relative}
 .profile .profile-catch{font-family:var(--serif-jp);font-size:clamp(17px,1.9vw,21px);letter-spacing:.14em;line-height:1.9;color:var(--text);margin-top:18px}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:34px}
 .stats li{background:var(--bg);padding:24px 12px 22px;text-align:center}
-.stats b{font-family:var(--serif-en);font-weight:500;font-size:clamp(40px,4.6vw,58px);line-height:1;display:inline-block;letter-spacing:.02em}
+.stats b{white-space:nowrap;font-family:var(--serif-en);font-weight:500;font-size:clamp(34px,3.4vw,46px);line-height:1;display:inline-block;letter-spacing:.02em}
 .stats b i{font-family:var(--serif-jp);font-style:normal;font-size:.3em;letter-spacing:.1em;margin-left:4px}
 .stats span{display:block;font-size:12px;line-height:1.7;color:#bdb9b0;margin-top:12px}
 
@@ -335,10 +325,12 @@ footer small{font-family:var(--serif-en);letter-spacing:.2em;font-size:12px}
   .header .wrap{height:66px}
   .hero .wrap{padding:120px 0 90px}
   .hero-cta .btn{width:100%;justify-content:center}
-  .hero-tags{margin-top:52px;gap:10px 24px}
-  .eq span{font-size:24px}
   .profile dl div{grid-template-columns:96px 1fr}
   .stats li{padding:18px 4px 16px}
+  .stats b{font-size:26px}
+  .stats b i{font-size:11px;margin-left:2px}
+  .chain li{grid-template-columns:1fr;gap:8px;padding:22px 4px}
+  .chain i{width:44px;margin:4px 0}
   .profile .profile-catch{font-size:16px;letter-spacing:.06em}
   .stats span{font-size:11px;letter-spacing:.02em}
   .profile-name small{display:block;margin:6px 0 0}
@@ -387,18 +379,12 @@ footer small{font-family:var(--serif-en);letter-spacing:.2em;font-size:12px}
     <div class="hero-frame"></div>
     <div class="wrap">
       <p class="eyebrow intro">AI × MANAGEMENT × SUBSIDY</p>
-      <h1 class="intro"><span>AIを、</span><span class="gold-text">経営の力に。</span></h1>
-      <p class="hero-lead intro">AI導入から補助金の活用まで。<br>業務ツールを自ら開発してきた中小企業診断士が、<br>構想から実装、現場への定着まで伴走します。</p>
+      <h1 class="intro"><span>経営資源を、</span><span class="gold-text">AIで未来へ。</span></h1>
+      <p class="hero-lead intro">日報、見積、ベテランの経験。<br>会社に眠る資源を、AIで次の成長につなげます。</p>
       <div class="hero-cta intro">
         <a href="#contact" class="btn solid">無料相談を申し込む<i></i></a>
         <a href="#service" class="btn">支援内容を見る<i></i></a>
       </div>
-      <ul class="hero-tags intro">
-        <li>中小企業診断士</li>
-        <li>AI導入支援</li>
-        <li>補助金申請支援</li>
-        <li>事業計画策定</li>
-      </ul>
     </div>
     <div class="scroll">SCROLL</div>
   </section>
@@ -408,14 +394,30 @@ footer small{font-family:var(--serif-en);letter-spacing:.2em;font-size:12px}
     <div class="wrap message">
       <div class="reveal">
         <p class="eyebrow">MESSAGE</p>
-        <h2>AIは、大企業だけの<br>ものではありません。</h2>
-        <p>人手不足、属人化、紙と手作業。中小企業が抱える課題の多くは、AIと仕組みづくりで着実に軽くできます。</p>
-        <p>大切なのは、流行のツールを入れることではなく、経営課題から逆算して「どこに、何を、どの順で」入れるかを設計すること。大手メーカーで営業と企画の現場を10年以上経験し、自らの手で業務ツールを開発してきた診断士として、投資に見合う成果が出るまでご一緒します。</p>
+        <h2>効率化は、<br>ゴールではありません。</h2>
+        <p>AIで手間を減らすことは、入口にすぎません。日々の営業日報、見積や契約の積み重ね、ベテランの経験。どの会社にも、まだ活かしきれていない資源があります。</p>
+        <p>それらをAIで「いつでも引き出せる資産」に変え、次の一手に使える状態にする。営業と企画の現場を10年以上経験し、自ら業務ツールを開発してきた診断士として、そこまでご一緒します。</p>
       </div>
       <div class="ph-offset reveal d2">
         <!-- 画像差し替え：メインビジュアル -->
         <div class="ph tall">IMAGE</div>
       </div>
+    </div>
+  </section>
+
+  <!-- 資源を未来へ -->
+  <section class="band">
+    <div class="wrap">
+      <div class="reveal">
+        <p class="eyebrow" style="justify-content:center">OUR APPROACH</p>
+        <h2>削減で終わらせない。<br>資源を、<span class="gold-text">未来へつなぐ。</span></h2>
+      </div>
+      <ul class="chain">
+        <li class="reveal"><span class="from">営業日報・商談記録</span><i></i><span class="to">担当が替わっても引き継げる営業資産に</span></li>
+        <li class="reveal d1"><span class="from">見積・契約のノウハウ</span><i></i><span class="to">誰が作っても速く正確な、標準の仕組みに</span></li>
+        <li class="reveal d2"><span class="from">ベテランの経験と判断</span><i></i><span class="to">次の世代が使える、共有の知恵に</span></li>
+        <li class="reveal d3"><span class="from">削減で生まれた時間</span><i></i><span class="to">お客様と向き合い、次の事業を考える時間に</span></li>
+      </ul>
     </div>
   </section>
 
@@ -430,17 +432,17 @@ footer small{font-family:var(--serif-en);letter-spacing:.2em;font-size:12px}
         <article class="card reveal">
           <p class="card-num gold-text">01</p>
           <h3>語るだけでなく、<br>自ら作れる診断士</h3>
-          <p>生成AIとプログラミングで、契約書チェックや見積・積算などの業務ツールを自ら開発・運用。机上の助言ではなく、動く仕組みとしてお示しします。</p>
+          <p>契約書チェック、見積・積算、営業支援システムなどを自ら開発・運用。助言だけでなく、動く仕組みとしてお示しします。</p>
         </article>
         <article class="card reveal d1">
           <p class="card-num gold-text">02</p>
           <h3>補助金と投資計画を<br>一体で設計</h3>
-          <p>AI・IT投資の計画づくりと補助金申請を切り離さず、ひとつの事業計画として組み立てます。資金面の不安を抑えて前に進めます。</p>
+          <p>AI・IT投資の計画と補助金申請を、ひとつの事業計画として組み立てます。資金面の不安を抑えて前に進めます。</p>
         </article>
         <article class="card reveal d2">
           <p class="card-num gold-text">03</p>
-          <h3>営業・企画の現場を<br>知るからこその定着支援</h3>
-          <p>法人営業と企画の実務で、年間約330時間の業務削減を実現した経験があります。現場で使われ続ける形に落とし込み、成果が見えるまで伴走します。</p>
+          <h3>現場を知るからこそ、<br>定着する</h3>
+          <p>営業・企画の実務を10年以上経験し、自ら開発したツールで年間1,000時間以上の効率化を実現。現場で使われ続ける形に落とし込みます。</p>
         </article>
       </div>
     </div>
@@ -452,17 +454,17 @@ footer small{font-family:var(--serif-en);letter-spacing:.2em;font-size:12px}
       <div class="sec-head center reveal">
         <p class="sec-en">Service</p>
         <h2 class="sec-title">支援内容</h2>
-        <p class="sec-desc">経営課題の整理から、AI導入、資金調達、実行支援まで。必要なところだけのご依頼も承ります。</p>
+        <p class="sec-desc">必要なところだけのご依頼も承ります。</p>
       </div>
       <div class="svc">
         <article class="svc-item feature reveal">
           <span class="badge">注力分野</span>
           <p class="svc-label">01 — AI</p>
           <h3>AI導入支援</h3>
-          <p>業務の棚卸しから活用領域の選定、ツール選び、試験導入、社内展開までを一貫して支援します。</p>
+          <p>業務の棚卸しから活用領域の選定、試験導入、社内展開まで一貫して支援します。</p>
           <ul>
-            <li>生成AIの業務活用設計・社内ルール整備</li>
-            <li>問い合わせ対応・文書作成・集計業務の自動化</li>
+            <li>生成AIの業務活用と社内ルールづくり</li>
+            <li>営業記録・見積・契約書など社内情報の活用</li>
             <li>経営者・社員向けAI研修</li>
           </ul>
         </article>
@@ -472,49 +474,23 @@ footer small{font-family:var(--serif-en);letter-spacing:.2em;font-size:12px}
           <h3>補助金申請支援</h3>
           <p>事業に合う制度の選定から、事業計画書の作成、採択後の手続きまでサポートします。</p>
           <ul>
-            <li>IT・AI導入、省力化投資に関する補助金</li>
-            <li>新事業・設備投資に関する補助金</li>
+            <li>IT・AI導入、省力化投資の補助金</li>
+            <li>新事業・設備投資の補助金</li>
             <li>採択後の実績報告サポート</li>
           </ul>
         </article>
-        <article class="svc-item reveal">
+        <article class="svc-item reveal d2">
           <p class="svc-label">03 — STRATEGY</p>
-          <h3>経営戦略・事業計画策定</h3>
-          <p>現状分析をもとに、数字と行動に落とし込んだ実行可能な計画をつくります。金融機関への説明資料としても活用いただけます。</p>
+          <h3>経営戦略・事業計画</h3>
+          <p>現状分析をもとに、数字と行動に落とし込んだ実行可能な計画をつくります。</p>
           <ul>
             <li>経営診断・課題整理</li>
-            <li>中期経営計画・事業計画書の策定</li>
-            <li>経営改善計画・資金繰り計画</li>
-          </ul>
-        </article>
-        <article class="svc-item reveal d1">
-          <p class="svc-label">04 — DX</p>
-          <h3>DX・業務改善</h3>
-          <p>紙や手作業、属人化した業務を見える化し、無理のない順序でデジタル化を進めます。</p>
-          <ul>
-            <li>業務フローの可視化と改善</li>
-            <li>クラウドツール・基幹システムの選定支援</li>
-            <li>データ活用の仕組みづくり</li>
+            <li>事業計画・経営改善計画の策定</li>
+            <li>業務の見える化と改善</li>
           </ul>
         </article>
       </div>
       <p class="note center">※ 補助金は審査があり、採択を保証するものではありません。対象となる制度は時期により変わります。</p>
-    </div>
-  </section>
-
-  <!-- AI × 補助金 -->
-  <section class="band">
-    <div class="wrap reveal">
-      <p class="eyebrow" style="justify-content:center">OUR APPROACH</p>
-      <h2>AI投資の負担を抑え、<br>効果を<span class="gold-text">最大に。</span></h2>
-      <div class="eq">
-        <div><span style="font:inherit;color:inherit">AI導入<small>TECHNOLOGY</small></span></div>
-        <span>×</span>
-        <div><span style="font:inherit;color:inherit">補助金<small>FUNDING</small></span></div>
-        <span>=</span>
-        <div class="result"><span style="font:inherit;color:inherit">攻めの経営<small>GROWTH</small></span></div>
-      </div>
-      <p>「何に投資するか」と「どう資金を手当てするか」を同時に考えることで、計画は現実的になります。ひとつの窓口で両方をご相談いただけます。</p>
     </div>
   </section>
 
@@ -526,10 +502,10 @@ footer small{font-family:var(--serif-en);letter-spacing:.2em;font-size:12px}
         <h2 class="sec-title">ご支援の流れ</h2>
       </div>
       <div class="flow">
-        <div class="step reveal"><div class="step-line"></div><h3>無料相談</h3><p>現状のお悩みや実現したいことをお聞かせください。オンラインでも承ります。</p></div>
-        <div class="step reveal d1"><div class="step-line"></div><h3>現状診断</h3><p>業務と数字を整理し、AI活用の余地と優先順位を明らかにします。</p></div>
-        <div class="step reveal d2"><div class="step-line"></div><h3>計画策定・申請</h3><p>投資計画を固め、活用できる補助金があれば申請を進めます。</p></div>
-        <div class="step reveal d3"><div class="step-line"></div><h3>導入・実装</h3><p>小さく試して確かめながら、現場に合う形に整えていきます。</p></div>
+        <div class="step reveal"><div class="step-line"></div><h3>無料相談</h3><p>お悩みや実現したいことをお聞かせください。</p></div>
+        <div class="step reveal d1"><div class="step-line"></div><h3>現状診断</h3><p>業務と数字を整理し、活かせる資源と優先順位を明らかにします。</p></div>
+        <div class="step reveal d2"><div class="step-line"></div><h3>計画策定・申請</h3><p>投資計画を固め、使える補助金があれば申請を進めます。</p></div>
+        <div class="step reveal d3"><div class="step-line"></div><h3>導入・実装</h3><p>小さく試して確かめながら、現場に合う形に整えます。</p></div>
         <div class="step reveal d4"><div class="step-line"></div><h3>定着・効果検証</h3><p>使われ続ける仕組みにし、効果を数字で振り返ります。</p></div>
       </div>
     </div>
@@ -548,17 +524,16 @@ footer small{font-family:var(--serif-en);letter-spacing:.2em;font-size:12px}
         <h2 class="profile-name">武内 治憲<small>HARUNORI TAKEUCHI</small></h2>
         <p class="profile-catch">現場を知り、自ら作れる。<br>営業・企画 × AI開発の中小企業診断士。</p>
         <ul class="stats">
-          <li><b class="gold-text">330<i>時間</i></b><span>年間の業務削減を<br>自動化で実現</span></li>
+          <li><b class="gold-text">1,000<i>時間超</i></b><span>年間の効率化を<br>自作ツールで実現</span></li>
           <li><b class="gold-text">10<i>年超</i></b><span>大手メーカーでの<br>営業・企画の実務</span></li>
-          <li><b class="gold-text">3<i>領域</i></b><span>契約・設計・見積の<br>業務ツールを開発</span></li>
+          <li><b class="gold-text">4<i>領域</i></b><span>契約・設計・見積・営業の<br>業務ツールを開発</span></li>
         </ul>
-        <p>立教大学卒業後、TOTO株式会社に入社。法人営業を約7年、商品企画・販売戦略・マーケティングを約3年経験。並行してVBA・Python・RPAによる業務自動化を自ら推進し、年間約330時間の業務削減を実現しました。</p>
-        <p>その後、旭化成株式会社にて建設資材分野の営業・営業企画・事業企画に従事。生成AIとプログラミングを活用し、契約書の自動チェック、あと施工アンカーの設計計算、見積・積算などの業務ツールを、企画・設計・開発から運用・改善まで一貫して手がけています。</p>
+        <p>TOTO株式会社で法人営業を約7年、商品企画・販売戦略・マーケティングを約3年経験。その後、旭化成株式会社で営業・事業企画に従事しています。</p>
+        <p>実務のかたわら、生成AIとプログラミングで業務ツールを自ら開発。契約書の自動チェック、設計計算、見積・積算などを企画から運用まで一貫して手がけ、年間1,000時間以上の効率化を実現しました。営業日報から過去の営業記録をすぐに引き出せる営業支援システムも開発しています。</p>
         <dl>
           <div><dt>資格</dt><dd>中小企業診断士</dd></div>
-          <div><dt>得意分野</dt><dd>AI・IT活用による業務効率化／生産性向上／補助金活用</dd></div>
-          <div><dt>開発実績</dt><dd>契約書自動チェックツール／設計計算ツール／見積・積算ツール</dd></div>
-          <div><dt>活用技術</dt><dd>生成AI／Python／VBA／RPA</dd></div>
+          <div><dt>得意分野</dt><dd>AI活用による業務効率化・生産性向上／補助金活用</dd></div>
+          <div><dt>開発実績</dt><dd>契約書自動チェック／設計計算／見積・積算／営業支援システム</dd></div>
         </dl>
       </div>
     </div>
