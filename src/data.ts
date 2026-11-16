@@ -79,8 +79,30 @@ export const SKILLS: Record<string, SkillDef> = {
   lockpick: { name: '鍵開け', desc: '鍵なしで扉と宝箱を開けられる', kind: 'class' },
   beastInstinct: { name: '連撃の本能', desc: '追撃に必要な速さの差が4ではなく3', kind: 'class' },
   kingAura: { name: '王の威圧', desc: '隣接する敵の命中-10', kind: 'class' },
+  // 上級職の職業スキル（元の職のスキルに加えて1つ。上級職は戦闘中に有効なスキルの上限が+1）
+  arcaneFocus: { name: '魔力収束', desc: '魔術で攻撃するとき命中+10', kind: 'class' },
+  manaBarrier: { name: '魔力障壁', desc: '魔術を受けるとき魔防+3', kind: 'class' },
+  foresight: { name: '見切り', desc: '回避+10', kind: 'class' },
+  fightSpirit: { name: '闘気', desc: '自分から攻撃した戦闘で威力+2', kind: 'class' },
+  warDemon: { name: '戦鬼', desc: 'HPが最大の半分以下のとき命中・回避+10', kind: 'class' },
+  counterBlade: { name: '返しの太刀', desc: '敵から攻撃された戦闘で威力+2', kind: 'class' },
+  veteran: { name: '百戦錬磨', desc: '命中・回避+5', kind: 'class' },
+  torrent: { name: '奔流', desc: '2マス離れた相手と戦うとき威力+2', kind: 'class' },
+  wisdom: { name: '叡智', desc: '魔術で攻撃するとき必殺+10', kind: 'class' },
+  bulwark: { name: '鉄壁', desc: '隣接する味方がいるとき守備+2', kind: 'class' },
+  saintWard: { name: '聖なる加護', desc: '敵から攻撃された戦闘で回避+10', kind: 'class' },
+  guardVow: { name: '護りの誓い', desc: '隣接する味方の回避+10', kind: 'class' },
+  royalMight: { name: '王威', desc: '2マス以内の味方（自分を除く）の必殺+5（重ならない）', kind: 'class' },
+  graceLight: { name: '慈光', desc: '杖の回復量+3', kind: 'class' },
+  ferocity: { name: '猛攻', desc: '自分から攻撃した戦闘で必殺+10', kind: 'class' },
+  shadowStep: { name: '影走り', desc: '自分から攻撃した戦闘で回避+10', kind: 'class' },
+  knightShield: { name: '騎士の盾', desc: '敵から攻撃された戦闘で守備+2', kind: 'class' },
+  trueShot: { name: '必中の矢', desc: '弓で攻撃するとき命中+10', kind: 'class' },
+  horseArchery: { name: '騎射', desc: '4マス以上移動してから攻撃すると命中+10', kind: 'class' },
+  mightyArm: { name: '剛腕', desc: '斧で攻撃するとき威力+2', kind: 'class' },
+  holyLight: { name: '聖光', desc: '光魔術の威力+2', kind: 'class' },
 };
-/** 戦闘中に有効なスキルの上限（素質＋固有＋職業）。 */
+/** 戦闘中に有効なスキルの上限（素質＋固有＋職業。上級職は職業スキルが2つになるので +1）。 */
 export const SKILL_LIMIT = 3;
 /** パウロ（三流派の心得）が選べる流派。 */
 export const SCHOOLS = ['swordGod', 'waterGod', 'northGod'];
@@ -166,22 +188,22 @@ export const CLASSES: Record<string, ClassDef> = {
   princess: { name: '王女', mov: 5, mtype: 'foot', sprite: 'princess', tier: 1, wtypes: ['sword'], skills: ['protectMe'] },
   beastWarrior: { name: '獣戦士', mov: 6, mtype: 'foot', sprite: 'beast', tier: 1, wtypes: ['fang'], skills: ['beastInstinct'] },
   // ---- promoted classes (tier 2) ----
-  archmage: { name: '大魔術師', mov: 6, mtype: 'foot', sprite: 'mage', tier: 2, wtypes: ['anima', 'light'], bonus: B(3, 0, 3, 1, 1, 0, 1, 3), gift: 'lightning', desc: '魔力と魔防が伸びる。光魔術も扱える。', skills: ['magicBasics'] },
-  magicArmor: { name: '魔導鎧', mov: 5, mtype: 'armor', sprite: 'armor', tier: 2, wtypes: ['anima', 'axe'], bonus: B(6, 4, 1, 0, 0, 0, 5, 1), gift: 'ironAxe', desc: '魔力で動く鎧をまとう。重く硬い。斧も振るえる。', skills: ['magicBasics'] },
-  swordSaint: { name: '剣聖', mov: 6, mtype: 'foot', sprite: 'sword', tier: 2, wtypes: ['sword'], bonus: B(4, 2, 0, 3, 3, 0, 1, 1), crit: 10, desc: '速さと技を極める剣。必殺+10。', skills: ['school'] },
-  gladiator: { name: '闘剣士', mov: 6, mtype: 'foot', sprite: 'axe', tier: 2, wtypes: ['sword', 'axe'], bonus: B(6, 3, 0, 1, 1, 0, 2, 0), gift: 'ironAxe', desc: '力で押し切る前衛。斧も扱える。', skills: ['school'] },
-  superdWarlord: { name: 'スペルドの戦鬼', mov: 7, mtype: 'foot', sprite: 'lancer', tier: 2, wtypes: ['lance', 'sword'], bonus: B(4, 2, 0, 2, 2, 0, 2, 2), gift: 'ironSword', desc: '戦場を駆ける歴戦の戦士。剣も使う。', skills: ['spearEdge'] },
-  swordEmperor: { name: '剣帝', mov: 7, mtype: 'foot', sprite: 'sword', tier: 2, wtypes: ['sword'], bonus: B(4, 2, 0, 2, 2, 0, 2, 1), crit: 10, desc: '剣王のさらに上。必殺+10。', skills: ['swordGod'] },
-  swordMaster: { name: '剣豪', mov: 6, mtype: 'foot', sprite: 'merc', tier: 2, wtypes: ['sword', 'axe'], bonus: B(5, 2, 0, 2, 2, 0, 2, 1), gift: 'ironAxe', desc: '三流派をこなす万能の剣士。', skills: ['school'] },
-  waterEmperor: { name: '水帝級魔術師', mov: 5, mtype: 'foot', sprite: 'mage', tier: 2, wtypes: ['anima'], bonus: B(3, 0, 4, 2, 1, 0, 1, 3), desc: '水魔術を極める。魔力が大きく伸びる。', skills: ['highMagic'] },
-  sage: { name: '賢者', mov: 5, mtype: 'foot', sprite: 'mage', tier: 2, wtypes: ['anima', 'light', 'staff'], bonus: B(4, 0, 2, 1, 1, 0, 2, 4), gift: 'lightning', desc: '攻撃と治癒の両方に通じる。魔防が高い。', skills: ['healArts'] },
-  guardian: { name: '守護剣士', mov: 6, mtype: 'foot', sprite: 'shield', tier: 2, wtypes: ['sword', 'lance'], bonus: B(5, 2, 0, 1, 2, 0, 3, 2), gift: 'ironLance', desc: '仲間を守る盾役。槍も扱える。', skills: ['shieldStance'] },
-  saintHealer: { name: '聖級治癒術師', mov: 5, mtype: 'foot', sprite: 'healer', tier: 2, wtypes: ['anima', 'light', 'staff'], bonus: B(4, 0, 2, 1, 1, 0, 1, 4), gift: 'lightning', desc: '治癒魔術の聖級。魔防が高い。', skills: ['healArts'] },
-  paladin: { name: '聖騎士', mov: 8, mtype: 'horse', sprite: 'lancer', tier: 2, wtypes: ['sword', 'lance', 'axe'], bonus: B(5, 2, 0, 1, 1, 0, 2, 2), gift: 'ironAxe', desc: '騎馬の上級職。剣・槍・斧を使う。', skills: ['charge'] },
-  sniper: { name: '狙撃手', mov: 6, mtype: 'foot', sprite: 'archer', tier: 2, wtypes: ['bow'], bonus: B(4, 2, 0, 3, 1, 0, 2, 1), crit: 10, desc: '弓を極める。必殺+10。', skills: ['aim'] },
-  bowRider: { name: '弓騎兵', mov: 8, mtype: 'horse', sprite: 'archer', tier: 2, wtypes: ['bow', 'sword'], bonus: B(4, 1, 0, 2, 2, 0, 1, 1), gift: 'ironSword', desc: '馬上から弓を射る。剣も使う。', skills: ['aim'] },
-  colossus: { name: '剛力将', mov: 5, mtype: 'armor', sprite: 'brute', tier: 2, wtypes: ['axe', 'lance'], bonus: B(6, 3, 0, 1, 0, 0, 3, 2), gift: 'ironLance', desc: '怪力と装甲。槍も扱える。', skills: ['sturdy'] },
-  highPriest: { name: '大司祭', mov: 6, mtype: 'foot', sprite: 'priest', tier: 2, wtypes: ['light', 'anima', 'staff'], bonus: B(4, 0, 2, 1, 1, 0, 1, 4), gift: 'wind', desc: '神撃の上級職。理魔術も使う。', skills: ['divineArts'] },
+  archmage: { name: '大魔術師', mov: 6, mtype: 'foot', sprite: 'mage', tier: 2, wtypes: ['anima', 'light'], bonus: B(3, 0, 3, 1, 1, 0, 1, 3), gift: 'lightning', desc: '魔力と魔防が伸びる。光魔術も扱える。', skills: ['magicBasics', 'arcaneFocus'] },
+  magicArmor: { name: '魔導鎧', mov: 5, mtype: 'armor', sprite: 'armor', tier: 2, wtypes: ['anima', 'axe'], bonus: B(6, 4, 1, 0, 0, 0, 5, 1), gift: 'ironAxe', desc: '魔力で動く鎧をまとう。重く硬い。斧も振るえる。', skills: ['magicBasics', 'manaBarrier'] },
+  swordSaint: { name: '剣聖', mov: 6, mtype: 'foot', sprite: 'sword', tier: 2, wtypes: ['sword'], bonus: B(4, 2, 0, 3, 3, 0, 1, 1), crit: 10, desc: '速さと技を極める剣。必殺+10。', skills: ['school', 'foresight'] },
+  gladiator: { name: '闘剣士', mov: 6, mtype: 'foot', sprite: 'axe', tier: 2, wtypes: ['sword', 'axe'], bonus: B(6, 3, 0, 1, 1, 0, 2, 0), gift: 'ironAxe', desc: '力で押し切る前衛。斧も扱える。', skills: ['school', 'fightSpirit'] },
+  superdWarlord: { name: 'スペルドの戦鬼', mov: 7, mtype: 'foot', sprite: 'lancer', tier: 2, wtypes: ['lance', 'sword'], bonus: B(4, 2, 0, 2, 2, 0, 2, 2), gift: 'ironSword', desc: '戦場を駆ける歴戦の戦士。剣も使う。', skills: ['spearEdge', 'warDemon'] },
+  swordEmperor: { name: '剣帝', mov: 7, mtype: 'foot', sprite: 'sword', tier: 2, wtypes: ['sword'], bonus: B(4, 2, 0, 2, 2, 0, 2, 1), crit: 10, desc: '剣王のさらに上。必殺+10。', skills: ['swordGod', 'counterBlade'] },
+  swordMaster: { name: '剣豪', mov: 6, mtype: 'foot', sprite: 'merc', tier: 2, wtypes: ['sword', 'axe'], bonus: B(5, 2, 0, 2, 2, 0, 2, 1), gift: 'ironAxe', desc: '三流派をこなす万能の剣士。', skills: ['school', 'veteran'] },
+  waterEmperor: { name: '水帝級魔術師', mov: 5, mtype: 'foot', sprite: 'mage', tier: 2, wtypes: ['anima'], bonus: B(3, 0, 4, 2, 1, 0, 1, 3), desc: '水魔術を極める。魔力が大きく伸びる。', skills: ['highMagic', 'torrent'] },
+  sage: { name: '賢者', mov: 5, mtype: 'foot', sprite: 'mage', tier: 2, wtypes: ['anima', 'light', 'staff'], bonus: B(4, 0, 2, 1, 1, 0, 2, 4), gift: 'lightning', desc: '攻撃と治癒の両方に通じる。魔防が高い。', skills: ['healArts', 'wisdom'] },
+  guardian: { name: '守護剣士', mov: 6, mtype: 'foot', sprite: 'shield', tier: 2, wtypes: ['sword', 'lance'], bonus: B(5, 2, 0, 1, 2, 0, 3, 2), gift: 'ironLance', desc: '仲間を守る盾役。槍も扱える。', skills: ['shieldStance', 'bulwark'] },
+  saintHealer: { name: '聖級治癒術師', mov: 5, mtype: 'foot', sprite: 'healer', tier: 2, wtypes: ['anima', 'light', 'staff'], bonus: B(4, 0, 2, 1, 1, 0, 1, 4), gift: 'lightning', desc: '治癒魔術の聖級。魔防が高い。', skills: ['healArts', 'saintWard'] },
+  paladin: { name: '聖騎士', mov: 8, mtype: 'horse', sprite: 'lancer', tier: 2, wtypes: ['sword', 'lance', 'axe'], bonus: B(5, 2, 0, 1, 1, 0, 2, 2), gift: 'ironAxe', desc: '騎馬の上級職。剣・槍・斧を使う。', skills: ['charge', 'knightShield'] },
+  sniper: { name: '狙撃手', mov: 6, mtype: 'foot', sprite: 'archer', tier: 2, wtypes: ['bow'], bonus: B(4, 2, 0, 3, 1, 0, 2, 1), crit: 10, desc: '弓を極める。必殺+10。', skills: ['aim', 'trueShot'] },
+  bowRider: { name: '弓騎兵', mov: 8, mtype: 'horse', sprite: 'archer', tier: 2, wtypes: ['bow', 'sword'], bonus: B(4, 1, 0, 2, 2, 0, 1, 1), gift: 'ironSword', desc: '馬上から弓を射る。剣も使う。', skills: ['aim', 'horseArchery'] },
+  colossus: { name: '剛力将', mov: 5, mtype: 'armor', sprite: 'brute', tier: 2, wtypes: ['axe', 'lance'], bonus: B(6, 3, 0, 1, 0, 0, 3, 2), gift: 'ironLance', desc: '怪力と装甲。槍も扱える。', skills: ['sturdy', 'mightyArm'] },
+  highPriest: { name: '大司祭', mov: 6, mtype: 'foot', sprite: 'priest', tier: 2, wtypes: ['light', 'anima', 'staff'], bonus: B(4, 0, 2, 1, 1, 0, 1, 4), gift: 'wind', desc: '神撃の上級職。理魔術も使う。', skills: ['divineArts', 'holyLight'] },
   assassin: { name: '暗殺者', mov: 7, mtype: 'foot', sprite: 'sword', tier: 2, wtypes: ['sword'], bonus: B(3, 1, 0, 3, 2, 0, 1, 1), crit: 10, desc: '急所を突く。必殺+10。' },
   rogue: { name: '義賊', mov: 7, mtype: 'foot', sprite: 'archer', tier: 2, wtypes: ['sword', 'bow'], bonus: B(4, 1, 0, 2, 2, 2, 1, 1), gift: 'ironBow', desc: '身軽な万能職。弓も使う。' },
   halberdier: { name: '重槍兵', mov: 6, mtype: 'foot', sprite: 'lancer', tier: 2, wtypes: ['lance'], bonus: B(5, 2, 0, 1, 1, 0, 3, 1), desc: '槍兵の上級職。' },
@@ -189,13 +211,13 @@ export const CLASSES: Record<string, ClassDef> = {
   warrior: { name: '戦士長', mov: 6, mtype: 'foot', sprite: 'axe', tier: 2, wtypes: ['axe', 'bow'], bonus: B(6, 2, 0, 1, 1, 0, 2, 1), gift: 'ironBow', desc: '斧と弓を使う。' },
   // ---- 打合せ後の新上級職（仮。候補・名前・数値はクラスチェンジ担当と要調整） ----
   // 魔導護衛の前衛寄りの上級職（もう一方の候補は賢者）。
-  guardMage: { name: '守護魔導士', mov: 6, mtype: 'foot', sprite: 'healer', tier: 2, wtypes: ['anima', 'light', 'staff'], bonus: B(5, 1, 2, 1, 1, 0, 3, 2), gift: 'lightning', desc: '仲間の前に立つ魔導護衛の上級職。HPと守備が伸びる。', skills: ['healArts'] },
+  guardMage: { name: '守護魔導士', mov: 6, mtype: 'foot', sprite: 'healer', tier: 2, wtypes: ['anima', 'light', 'staff'], bonus: B(5, 1, 2, 1, 1, 0, 3, 2), gift: 'lightning', desc: '仲間の前に立つ魔導護衛の上級職。HPと守備が伸びる。', skills: ['healArts', 'guardVow'] },
   // 牙爪系の上級職。gift は持たない（牙爪は武器欄を使わない）。
-  shadowFang: { name: '影牙', mov: 7, mtype: 'foot', sprite: 'thief', tier: 2, wtypes: ['fang'], bonus: B(3, 1, 0, 3, 3, 1, 1, 1), crit: 10, desc: '身軽さを極めた牙爪の使い手。必殺+10。', skills: ['lockpick'] },
-  fierceFang: { name: '猛牙', mov: 7, mtype: 'foot', sprite: 'fang', tier: 2, wtypes: ['fang'], bonus: B(5, 3, 0, 1, 2, 0, 2, 0), desc: '攻めに徹する牙爪の使い手。力とHPが伸びる。', skills: ['beastInstinct'] },
+  shadowFang: { name: '影牙', mov: 7, mtype: 'foot', sprite: 'thief', tier: 2, wtypes: ['fang'], bonus: B(3, 1, 0, 3, 3, 1, 1, 1), crit: 10, desc: '身軽さを極めた牙爪の使い手。必殺+10。', skills: ['lockpick', 'shadowStep'] },
+  fierceFang: { name: '猛牙', mov: 7, mtype: 'foot', sprite: 'fang', tier: 2, wtypes: ['fang'], bonus: B(5, 3, 0, 1, 2, 0, 2, 0), desc: '攻めに徹する牙爪の使い手。力とHPが伸びる。', skills: ['beastInstinct', 'ferocity'] },
   // 王女（アリエル）の上級職。見た目は王女のまま。
-  sovereign: { name: '王威の姫', mov: 6, mtype: 'foot', sprite: 'princess', tier: 2, wtypes: ['sword', 'light'], bonus: B(4, 2, 2, 1, 2, 0, 1, 2), gift: 'lightning', desc: '王の器として剣と光魔術をふるう。光魔術も扱える。', skills: ['protectMe'] },
-  graceLady: { name: '慈光の姫', mov: 6, mtype: 'foot', sprite: 'princess', tier: 2, wtypes: ['sword', 'staff'], bonus: B(4, 1, 2, 1, 1, 2, 1, 3), gift: 'healStaff', desc: '剣と杖で仲間を支える。杖で傷を癒やせる。', skills: ['protectMe'] },
+  sovereign: { name: '王威の姫', mov: 6, mtype: 'foot', sprite: 'princess', tier: 2, wtypes: ['sword', 'light'], bonus: B(4, 2, 2, 1, 2, 0, 1, 2), gift: 'lightning', desc: '王の器として剣と光魔術をふるう。光魔術も扱える。', skills: ['protectMe', 'royalMight'] },
+  graceLady: { name: '慈光の姫', mov: 6, mtype: 'foot', sprite: 'princess', tier: 2, wtypes: ['sword', 'staff'], bonus: B(4, 1, 2, 1, 1, 2, 1, 3), gift: 'healStaff', desc: '剣と杖で仲間を支える。杖で傷を癒やせる。', skills: ['protectMe', 'graceLight'] },
   // ペルギウス専用。最初から上級職でクラスチェンジなし（PROMOS に載せない）。
   summoner: { name: '召喚術師', mov: 5, mtype: 'foot', sprite: 'summoner', tier: 2, wtypes: ['anima'], desc: '使い魔を呼ぶ甲龍王の術。上級職固定。', skills: ['kingAura'] },
   // ---- 魔物・残滓（M4。敵用。移動力・能力値は仮） ----
@@ -443,6 +465,13 @@ export interface StageDef {
  * - gold：中身の銀（item と両方あれば両方）。talk：訪問・開けたときの会話（任意）。
  * - 宝箱はリニア（鍵開け）なら隣のマスからでも開けられる。敵は開けない。崩落などでマスが通れなくなると失われる。
  */
+/**
+ * 副目標（章の評価）。達成すると章クリア時に gold（銀）を追加でもらえる。label = 表示の言い換え（省略時は自動）。
+ * turns = max ターン以内にクリア／noLoss = 誰も倒れずにクリア（ゲストを除く）／visits = 宝箱・訪問マスを全部（kind で絞れる）／
+ * boss = そのボス（boss id）を倒す（撤退・捕縛を含む）。
+ */
+export type Objective = ({ type: 'turns'; max: number } | { type: 'noLoss' } | { type: 'visits'; kind?: 'chest' | 'village' } | { type: 'boss'; boss: string })
+  & { gold: number; label?: string };
 export interface VisitDef { x: number; y: number; kind: 'chest' | 'village'; item?: string; gold?: number; talk?: SceneId }
 export interface Chapter {
   title: string; map: string[];
@@ -464,6 +493,8 @@ export interface Chapter {
   terrainChanges?: TerrainChange[];
   /** 宝箱・訪問マス（M13。VisitDef）。 */
   visits?: VisitDef[];
+  /** 副目標（Objective。1〜2個）。 */
+  bonus?: Objective[];
   /**
    * 会話（場面ID。本文は design/script-*.md → src/script/scenes.ts）。prologue = ニューゲーム時に開幕より前に一度だけ。
    * intro = 開幕（出撃前）、outro = 終幕（勝利後）、interlude = 幕間（終幕のあと、支援会話と拠点の前）。

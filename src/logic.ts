@@ -2,7 +2,7 @@
 import {
   CAST, CHARS, chapterDef, CLASSES, ENEMY_BASE, FANG_BASE, FANG_MAX, MAGIC, PROMOS, RANKS, RANK_PTS, STAT_KEYS, SUPPORTS, SUPPORT_BONUS, SUPPORT_CAP, SUPPORT_GAIN, SUPPORT_RANGE,
   SKILLS, SKILL_LIMIT, S_LIMIT, S_LIMIT_DEFAULT, TERRAIN, TRIANGLE, WEAPONS, moveCost,
-  type AllyDef, type ArtId, type Chapter, type EnemyAI, type EnemyDef, type LoseCond, type Reinforce, type Tile, type WinCond, type PromoReq, type Stats, type SupportBonus, type SupportPair, type SupportRank, type TalkEvent, type TalkWhen, type Team, type TerrainChange, type VisitDef, type Weapon,
+  type AllyDef, type ArtId, type Chapter, type EnemyAI, type EnemyDef, type LoseCond, type Objective, type Reinforce, type Tile, type WinCond, type PromoReq, type Stats, type SupportBonus, type SupportPair, type SupportRank, type TalkEvent, type TalkWhen, type Team, type TerrainChange, type VisitDef, type Weapon,
 } from './data';
 import { idForName } from './render/who';
 
@@ -231,7 +231,7 @@ export function skillsOf(u: Unit): string[] {
   if (u.team === 'red') return (u.skills ?? []).slice(0, SKILL_LIMIT);
   const c = CHARS[u.id], school = u.school ?? c?.school;
   const cls = (CLASSES[u.cls].skills ?? []).map(k => (k === 'school' ? school : k)).filter((k): k is string => !!k && !!SKILLS[k]);
-  return [...(c?.skills ?? []), ...(u.skills ?? []), ...cls].filter((k, i, a) => a.indexOf(k) === i).slice(0, SKILL_LIMIT);
+  return [...(c?.skills ?? []), ...(u.skills ?? []), ...cls].filter((k, i, a) => a.indexOf(k) === i).slice(0, SKILL_LIMIT + (CLASSES[u.cls].tier === 2 ? 1 : 0));
 }
 export const hasSkill = (u: Unit, id: string) => skillsOf(u).includes(id);
 /** 移動力（泥沼の減少込み。最低1）。 */
@@ -396,7 +396,29 @@ function side(s: State, att: Unit, w: Weapon, def: Unit, dw: Weapon | null, init
   if (magic && A.includes('muei')) spdB += 2;
   if (royalNear(s, att)) hitB += 5;
   if (alive(s, def.team).some(e => { const p = e.uid === def.uid ? def : e; return dist(p, att) === 1 && hasSkill(p, 'kingAura'); })) hitB -= 10;
+  // 上級職の職業スキル（systems.md §4「上級職の職業スキル」）
+  if (magic && A.includes('arcaneFocus') && on('arcaneFocus')) hitB += 10;
+  if (init && A.includes('fightSpirit') && on('fightSpirit')) dmgB += 2;
+  if (A.includes('warDemon') && att.hp * 2 <= att.st.hp && on('warDemon')) hitB += 10;
+  if (!init && A.includes('counterBlade') && on('counterBlade')) dmgB += 2;
+  if (A.includes('veteran')) hitB += 5;
+  if (dist(att, def) === 2 && A.includes('torrent') && on('torrent')) dmgB += 2;
+  if (magic && A.includes('wisdom') && on('wisdom')) critB += 10;
+  if (init && A.includes('ferocity') && on('ferocity')) critB += 10;
+  if (w.type === 'bow' && A.includes('trueShot') && on('trueShot')) hitB += 10;
+  if (init && mv >= 4 && A.includes('horseArchery') && on('horseArchery')) hitB += 10;
+  if (w.type === 'axe' && A.includes('mightyArm') && on('mightyArm')) dmgB += 2;
+  if (w.type === 'light' && A.includes('holyLight') && on('holyLight')) dmgB += 2;
+  if (alive(s, att.team).some(a => a.uid !== att.uid && dist(a, att) <= 2 && hasSkill(a, 'royalMight'))) critB += 5;
   const terrAvo = flying || A.includes('thirdEye') ? 0 : t.avo;
+  if (D.includes('foresight')) avoB += 10;
+  if (D.includes('warDemon') && def.hp * 2 <= def.st.hp) avoB += 10;
+  if (D.includes('veteran')) avoB += 5;
+  if (!magic && D.includes('bulwark') && alive(s, def.team).some(a => a.uid !== def.uid && dist(a, def) === 1)) guard += 2;
+  if (init && D.includes('saintWard')) avoB += 10;
+  if (!init && D.includes('shadowStep')) avoB += 10;
+  if (!magic && init && D.includes('knightShield')) guard += 2;
+  if (alive(s, def.team).some(a => a.uid !== def.uid && dist(a, def) === 1 && hasSkill(a, 'guardVow'))) avoB += 10;
   // 守る側
   if (D.includes('forestFolk') && s.map[def.y]?.[def.x] === 'F') avoB += 10;
   if (D.includes('pride') && def.hp >= def.st.hp) avoB += 10;
@@ -404,7 +426,7 @@ function side(s: State, att: Unit, w: Weapon, def: Unit, dw: Weapon | null, init
   if (init && D.includes('waterGod')) dmgB -= 2;
   if (!magic && alive(s, def.team).some(a => a.uid !== def.uid && dist(a, def) === 1 && hasSkill(a, 'guardian'))) guard += 2;
   if (!magic && dist(att, def) === 2 && D.includes('shieldStance')) guard += 3;
-  const dmg = Math.max(0, (magic ? att.st.mag : att.st.str) + weaponMight(att, w) * (effective(w, def) ? 2 : 1) + tri + sa.dmg + dmgB - (magic ? def.st.res : def.st.def + guard) - (flying ? 0 : t.def));
+  const dmg = Math.max(0, (magic ? att.st.mag : att.st.str) + weaponMight(att, w) * (effective(w, def) ? 2 : 1) + tri + sa.dmg + dmgB - (magic ? def.st.res + (D.includes('manaBarrier') ? 3 : 0) : def.st.def + guard) - (flying ? 0 : t.def));
   const hit = Math.round(w.hit + att.st.skl * 2 + att.st.lck / 2 + tri * 15 + sa.hit + hitB - (def.st.spd * 2 + def.st.lck + terrAvo + sd.avo + avoB));
   const crit = Math.round(w.crit + att.st.skl / 2 + (CLASSES[att.cls].crit ?? 0) + sa.crit + critB - def.st.lck);
   const clamp = (v: number) => Math.max(0, Math.min(100, v));
@@ -429,6 +451,28 @@ export function forecast(s: State, att: Unit, wid: string, def: Unit, from?: { x
   // Evaluate terrain at the tile the attacker will stand on.
   const moved = { ...att, x: at.x, y: at.y };
   return { a: side(s, moved, w, def, dw, true, mv), d: dw ? side(s, def, dw, moved, w, false) : null };
+}
+
+/**
+ * 連携攻撃：自軍から仕掛けたとき、仕掛けた本人に隣接する支援A以上（結婚＝S を含む）の相手が、敵に武器が届くなら
+ * 最初の打ち合いのあとに確率で1回だけ攻撃を加える。発動率 = min(LINK_MAX, 5 + 相手の技)。複数いれば率の高い1人。
+ */
+export const LINK_RANK = 3, LINK_MAX = 25, LINK_NAME = '連携';
+export interface Link { u: Unit; wid: string; rate: number; side: Side }
+export function linkPartner(s: State, att: Unit, def: Unit): Link | null {
+  if (att.team !== 'blue' || def.team === 'blue' || !s.bonds) return null;
+  let best: Link | null = null;
+  for (const p of alive(s, 'blue')) {
+    if (p.uid === att.uid || p.out || dist(p, att) !== 1) continue;
+    const pr = findPair(att.id, p.id);
+    if (!pr || bondOf(s.bonds, pr).rank < LINK_RANK) continue;
+    const d = dist(p, def), ws = usable(p).filter(w => inRange(WEAPONS[w], d));
+    if (!ws.length) continue;
+    const wid = ws.includes(p.wps[p.eq]) ? p.wps[p.eq] : ws[0];
+    const rate = Math.min(LINK_MAX, 5 + p.st.skl);
+    if (!best || rate > best.rate) best = { u: p, wid, rate, side: side(s, p, WEAPONS[wid], def, null, true, 1) };
+  }
+  return best;
 }
 
 /** skill = この一撃で出た確率発動などのスキル名（盾受け・泥沼。戦闘中に短く表示する）。 */
@@ -459,6 +503,12 @@ export function fight(s: State, att: Unit, wid: string, def: Unit, rnd = Math.ra
   };
   strike(att, def, f.a);
   if (f.d) strike(def, att, f.d);
+  const link = linkPartner(s, att, def);
+  if (link && def.hp > 0 && !def.retreated && att.hp > 0 && rnd() * 100 < link.rate) {
+    const n = out.length;
+    strike(link.u, def, link.side);
+    if (out.length > n) out[n].skill = LINK_NAME;
+  }
   if (f.a.double) strike(att, def, f.a);
   if (f.d?.double) strike(def, att, f.d);
   for (const [k, v] of [[att, def], [def, att]] as const) if (v.hp <= 0 && k.hp > 0 && hasSkill(k, 'shrewd')) s.flags.loot = (Number(s.flags.loot) || 0) + SHREWD_GOLD;
@@ -491,7 +541,7 @@ export function addExp(u: Unit, amount: number, rnd = Math.random): Partial<Stat
 /** HP a staff restores on `t`: staff value + floor(mag / 2), capped at the target's missing HP. */
 export function healAmount(u: Unit, wid: string, t: Unit): number {
   const w = WEAPONS[wid];
-  return Math.max(0, Math.min(t.st.hp - t.hp, (w.heal ?? 0) + Math.floor(u.st.mag / 2) + (hasSkill(u, 'healArts') ? 2 : 0)));
+  return Math.max(0, Math.min(t.st.hp - t.hp, (w.heal ?? 0) + Math.floor(u.st.mag / 2) + (hasSkill(u, 'healArts') ? 2 : 0) + (hasSkill(u, 'graceLight') ? 3 : 0)));
 }
 /** Experience for a heal: 10 + floor(healed / 2), at most 25. */
 export const healExp = (healed: number) => Math.min(25, 10 + Math.floor(healed / 2));
@@ -518,7 +568,7 @@ function planHeal(s: State, u: Unit, stops: Set<string>, foes: Unit[]): Plan | n
     const [x, y] = k.split(',').map(Number);
     const safe = foes.length ? Math.min(...foes.map(f => dist({ x, y }, f))) : 0;
     for (const sid of staves(u)) for (const t of healTargets(s, u, sid, { x, y })) {
-      const amt = healAmount(u, sid, t), full = (WEAPONS[sid].heal ?? 0) + Math.floor(u.st.mag / 2) + (hasSkill(u, 'healArts') ? 2 : 0);
+      const amt = healAmount(u, sid, t), full = (WEAPONS[sid].heal ?? 0) + Math.floor(u.st.mag / 2) + (hasSkill(u, 'healArts') ? 2 : 0) + (hasSkill(u, 'graceLight') ? 3 : 0);
       if (t.st.hp - t.hp < full / 2) continue;
       const score = amt + (t.boss ? 8 : 0);
       if (score > bestScore || (score === bestScore && safe > bestSafe)) { bestScore = score; bestSafe = safe; best = { x, y, heal: t, wid: sid }; }
@@ -594,6 +644,21 @@ function stepToward(s: State, u: Unit, gx: number, gy: number, stops = stopTiles
 function planTarget(s: State, u: Unit, foes: Unit[]): Plan {
   const [gx, gy] = u.goal!;
   const stops = stopTiles(s, u);
+  // 目標マスを相手がふさいでいるときは、その相手に届くマスまで寄って攻撃する（立ち止まらない）。
+  const blocker = foes.find(f => f.x === gx && f.y === gy);
+  if (blocker && !(u.x === gx && u.y === gy)) {
+    let best: Plan | null = null, bestScore = -Infinity;
+    for (const k of stops) {
+      const [x, y] = k.split(',').map(Number);
+      for (const wid of usable(u)) {
+        if (!inRange(WEAPONS[wid], dist({ x, y }, blocker))) continue;
+        const f = forecast(s, u, wid, blocker, { x, y });
+        const score = Math.min(blocker.hp, f.a.dmg * (f.a.double ? 2 : 1)) * f.a.hit / 100 - (f.d ? f.d.dmg * (f.d.double ? 2 : 1) * f.d.hit / 100 : 0) * 0.4;
+        if (score > bestScore) { bestScore = score; best = { x, y, target: blocker, wid }; }
+      }
+    }
+    if (best) return best;
+  }
   const to = stepToward(s, u, gx, gy, stops) ?? [u.x, u.y];
   let best: Plan = { x: to[0], y: to[1] }, bestScore = -Infinity;
   for (const t of foes) for (const wid of usable(u)) {
@@ -865,6 +930,27 @@ export function visitsFor(s: State, u: Unit): VisitDef[] {
   const pick = hasSkill(u, 'lockpick');
   return (curChapter(s).visits ?? []).filter(v => !visitDone(s, v) && !visitLost(s, v) &&
     (dist(u, v) === 0 || (v.kind === 'chest' && pick && dist(u, v) === 1)));
+}
+
+// ---------- 副目標（章の評価。Chapter.bonus） ----------
+export interface ObjState { o: Objective; text: string; ok: boolean; failed: boolean }
+/** 各副目標のいまの状態。ok = いま章を終えれば達成、failed = もう達成できない。 */
+export function objectives(s: State): ObjState[] {
+  const ch = curChapter(s);
+  return (ch.bonus ?? []).map(o => {
+    let ok = false, failed = false, text = '';
+    if (o.type === 'turns') { ok = s.turn <= o.max; failed = !ok; text = `${o.max}ターン以内にクリア`; }
+    else if (o.type === 'noLoss') { failed = s.units.some(u => u.team === 'blue' && !u.guest && u.hp <= 0); ok = !failed; text = '誰も倒れずにクリア'; }
+    else if (o.type === 'visits') {
+      const vs = (ch.visits ?? []).filter(v => !o.kind || v.kind === o.kind), n = vs.filter(v => visitDone(s, v)).length;
+      ok = n === vs.length; failed = vs.some(v => !visitDone(s, v) && visitLost(s, v));
+      text = `${o.kind === 'village' ? '訪問マス' : o.kind === 'chest' ? '宝箱' : '宝箱・訪問マス'}をすべて調べる（${n}/${vs.length}）`;
+    } else {
+      const b = s.units.find(u => bossId(u) === o.boss);
+      ok = !!b && (b.hp <= 0 || !!b.retreated); text = `${b?.name ?? o.boss}を倒す`;
+    }
+    return { o, text: o.label ? o.label.replace('{n}', text.match(/（\d+\/\d+）/)?.[0] ?? '') : text, ok, failed };
+  });
 }
 
 const rfFlag = (stage: number, wi: number, ei: number) => (stage ? `rf${stage}.${wi}_${ei}` : `rf${wi}_${ei}`);

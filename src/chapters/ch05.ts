@@ -56,6 +56,8 @@ export const ch05: Chapter = {
   ],
   // 寄り道の宝箱（M13）：北西の森の隅。持てる者がいなければ銀に換わる。
   visits: [{ x: 0, y: 0, kind: 'chest', item: 'steelBow' }],
+  // 副目標（Chapter.bonus。ふつうの通しプレイの手数を見て、少し頑張れば届く線）
+  bonus: [{ type: 'turns', max: 8, gold: 200 }, { type: 'noLoss', gold: 150 }],
   intro: 'ch5.intro', outro: 'ch5.outro', interlude: 'ch5.interlude',
   talks: [
     { scene: 'ch5.battle1', when: { type: 'turn', turn: 1, phase: 'blue' } },

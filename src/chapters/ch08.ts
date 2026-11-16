@@ -79,6 +79,8 @@ export const ch08: Chapter = {
     { x: 1, y: 8, kind: 'chest', item: 'radiance' },
     { x: 2, y: 2, kind: 'chest', item: 'keenSword' },
   ],
+  // 副目標（Chapter.bonus。ふつうの通しプレイの手数を見て、少し頑張れば届く線）
+  bonus: [{ type: 'visits', kind: 'chest', gold: 250 }, { type: 'turns', max: 10, gold: 200 }],
   intro: 'ch8.intro', outro: 'ch8.outro', interlude: 'ch8.interlude',
   talks: [
     { scene: 'ch8.battle1', when: { type: 'turn', turn: 1, phase: 'blue' } },

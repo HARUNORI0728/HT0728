@@ -83,6 +83,8 @@ export const ch01: Chapter = {
       ] },
     ],
   }],
+  // 副目標（Chapter.bonus。ふつうの通しプレイの手数を見て、少し頑張れば届く線）
+  bonus: [{ type: 'turns', max: 11, gold: 100 }, { type: 'noLoss', gold: 100 }],
   prologue: 'prologue', intro: 'ch1.intro', outro: 'ch1.outro', interlude: 'ch1.interlude',
   talks: [
     { scene: 'ch1.battle8', when: { type: 'turn', turn: 1, phase: 'blue' } },

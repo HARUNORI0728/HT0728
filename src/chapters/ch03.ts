@@ -68,6 +68,8 @@ export const ch03: Chapter = {
   ],
   // 寄り道の宝箱（M13）：南西の森の奥。
   visits: [{ x: 0, y: 12, kind: 'chest', gold: 200 }],
+  // 副目標（Chapter.bonus。ふつうの通しプレイの手数を見て、少し頑張れば届く線）
+  bonus: [{ type: 'turns', max: 6, gold: 150 }, { type: 'visits', kind: 'chest', gold: 100 }],
   intro: 'ch3.intro', outro: 'ch3.outro', interlude: 'ch3.interlude',
   talks: [
     { scene: 'ch3.battle1', when: { type: 'turn', turn: 1, phase: 'blue' } },

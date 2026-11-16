@@ -70,6 +70,8 @@ export const ch04: Chapter = {
   ],
   // 寄り道の宝箱（M13）：南の畑の農家。
   visits: [{ x: 2, y: 13, kind: 'chest', item: 'rapier' }],
+  // 副目標（Chapter.bonus。ふつうの通しプレイの手数を見て、少し頑張れば届く線）
+  bonus: [{ type: 'boss', boss: 'auber', gold: 200, label: 'オーベールを退ける' }, { type: 'visits', kind: 'chest', gold: 100 }],
   intro: 'ch4.intro', outro: 'ch4.outro', interlude: 'ch4.interlude',
   talks: [
     { scene: 'ch4.battle1', when: { type: 'turn', turn: 1, phase: 'blue' } },

@@ -493,7 +493,11 @@ function campaign(seed, startIndex = C0 - 1, startCamp = null) {
     for (const u of roster) u.joined ??= i;
     entry.promoted = campStep(roster, bonds, i + 1);
     if (!NOSHOP) {
-      if (r.result === 'win') gold += SHOP.chapterReward(i + 1) + (Number(r.s.flags.loot) || 0); // loot = 抜け目なし
+      // 副目標（L.objectives。無い版もある）の銀も足す。entry.bonus = 達成した副目標の数/全体
+      const objs = r.result === 'win' && L.objectives ? L.objectives(r.s) : [];
+      if (objs.length) entry.bonus = `${objs.filter(o => o.ok).length}/${objs.length}`;
+      if (objs.length && !QUIET) console.error(`  bonus ch${i + 1}: ${objs.map(o => (o.ok ? '○' : '×') + o.text).join(' ')}`);
+      if (r.result === 'win') gold += SHOP.chapterReward(i + 1) + (Number(r.s.flags.loot) || 0) + objs.reduce((a, o) => a + (o.ok ? o.o.gold : 0), 0); // loot = 抜け目なし
       const sh = shopStep(roster, gold, i + 1);
       gold = sh.gold; entry.bought = sh.bought; entry.gold = gold;
     }

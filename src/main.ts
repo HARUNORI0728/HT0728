@@ -1,7 +1,7 @@
 // Screen, input and turn flow. Rules live in logic.ts.
 import { CAST, CHAPTERS, CHARS, CLASSES, RANKS, RANK_PTS, STAT_KEYS, STAT_NAMES, SCHOOLS, SKILLS, SUPPORTS, SUPPORT_BONUS, WEAPONS, WTYPE_NAMES, chapterDef, hasChapter, type EnemyDef, type Line, type Stats, type SupportPair } from './data';
 import {
-  DIFFICULTY_NAMES, levelName, POTION_HEAL, addExp, alive, bondStatus, canEscape, canSeize, dangerTiles, dist, expGain, fight, forecast, gainBonds, goalText, heal, healAmount, healExp, healTargets,
+  DIFFICULTY_NAMES, levelName, POTION_HEAL, addExp, alive, bondStatus, canEscape, canSeize, dangerTiles, linkPartner, objectives, dist, expGain, fight, forecast, gainBonds, goalText, heal, healAmount, healExp, healTargets,
   initBonds, inRange, key, loseCond, makeEnemy, makeUnit, maxRank, newChapter, nextNeed, outcome, pairKey, planEnemy, promote, promoOptions, rankName, rankUp, readyPairs,
   WEAPON_SLOTS, benchExp, chapterPicks, rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
   bossId, dueTalks, fightTalks, onMap, talkKey, clearSlow, expBoost, familiarHeal, hasSkill, healingWind, skillsOf, shownVisits, visitFlag, visitsFor,
@@ -299,7 +299,7 @@ async function tween(u: Unit, x: number, y: number) {
   for (let i = 1; i <= 8; i++) { o.dx = sx * (1 - i / 8); o.dy = sy * (1 - i / 8); await sleep(18); }
   offs.delete(u.uid);
 }
-async function banner(text: string, ms = 900) { const b = $('banner'); b.textContent = text; b.hidden = false; await sleep(ms); b.hidden = true; }
+async function banner(text: string, ms = 900, cls = '') { const b = $('banner'); b.textContent = text; b.className = cls; b.hidden = false; await sleep(ms); b.hidden = true; b.className = ''; }
 
 /** Outcome music finishes before dialogue; tapping or pressing Enter/Space fades it out. */
 async function outcomeBanner(win: boolean) {
@@ -329,6 +329,9 @@ function hud() {
   $('turn').innerHTML = `ターン ${S.turn}　<b class="${S.phase}">${S.phase === 'blue' ? '自軍フェイズ' : '敵軍フェイズ'}</b>`;
   const left = turnsLeft(S);
   $('goal').textContent = goalText(ch, stageOf(S)) + (left !== null ? `　（残り ${left} ターン）` : '');
+  const objs = objectives(S), bg = $('bonusGoal');
+  bg.hidden = !objs.length;
+  bg.innerHTML = objs.length ? `<b>副目標</b>　` + objs.map(o => `<span class="${o.failed ? 'ng' : o.ok && o.o.type !== 'turns' && o.o.type !== 'noLoss' ? 'ok' : ''}">${o.ok && !o.failed && (o.o.type === 'visits' || o.o.type === 'boss') ? '✓' : '・'}${o.text}${o.o.gold ? `（${o.o.gold}銀）` : ''}</span>`).join('　') : '';
 }
 /** Weapons as shown in panels: fang units get their built-in attack, staves are listed with the rest. */
 function wpsText(u: Unit, withType = true) {
@@ -495,7 +498,7 @@ function pickTarget(t: Unit) {
     ${row('威力', f.a.dmg + (f.a.double ? ' ×2' : ''), f.d ? f.d.dmg + (f.d.double ? ' ×2' : '') : '—')}
     ${row('命中', f.a.hit + '%', f.d ? f.d.hit + '%' : '—')}${row('必殺', f.a.crit + '%', f.d ? f.d.crit + '%' : '—')}
     ${f.d?.block || f.a.block ? row('', f.d?.block ? `${SKILLS.shieldBlock.name} ${f.d.block}%` : '', f.a.block ? `${SKILLS.shieldBlock.name} ${f.a.block}%` : '') : ''}
-    ${row('武器', weaponLabel(u, curW), f.d ? (f.d.w.type === 'fang' ? weaponLabel(t, 'fang') : f.d.w.name) : '反撃不可')}</div>${supRow(f.a.sup)}${skillRow(f.a.skills, f.d?.skills ?? [])}`);
+    ${row('武器', weaponLabel(u, curW), f.d ? (f.d.w.type === 'fang' ? weaponLabel(t, 'fang') : f.d.w.name) : '反撃不可')}</div>${supRow(f.a.sup)}${linkRow(u, t)}${skillRow(f.a.skills, f.d?.skills ?? [])}`);
   menu([['戦う', async () => { mode = 'busy'; await battle(u, curW, t); finish(u); }, 'primary'], ['もどる', openMenu]]);
 }
 function chooseHeal(sid: string, ts: Unit[]) {
@@ -528,6 +531,10 @@ async function doHeal(u: Unit, sid: string, t: Unit) {
 /** 予測欄の補足：この戦闘で効いている条件付きスキル。 */
 function skillRow(a: string[], d: string[]) {
   return a.length || d.length ? `<p class="fcsup">スキル：${[...a.map(n => `<span class="blue">${n}</span>`), ...d.map(n => `<span class="red">${n}</span>`)].join('、')}</p>` : '';
+}
+function linkRow(u: Unit, t: Unit) {
+  const l = linkPartner(S, u, t);
+  return l ? `<p class="fcsup">連携：${l.u.name}が${l.rate}%で追撃（威力${l.side.dmg} 命中${l.side.hit}%）</p>` : '';
 }
 function supRow(sup: { hit: number; avo: number; crit: number; dmg: number; from: { name: string; rank: string }[] }) {
   if (!sup.from.length) return '';
@@ -693,7 +700,9 @@ async function checkEnd(): Promise<boolean> {
     const ch = chapterDef(S.chapter);
     // The camp is saved first (with the closing scenes marked seen), so closing the page mid-scene loses nothing:
     // they can be watched again from the camp's 記録.
-    const roster = rosterOf(S), benchUp = benchExp(S, roster), reward = chapterReward(S.chapter + 1) + (Number(S.flags.loot) || 0); // loot = 抜け目なし
+    const objs = objectives(S), extra = objs.reduce((a, o) => a + (o.ok ? o.o.gold : 0), 0);
+    if (objs.length) await banner('副目標\n' + objs.map(o => `${o.ok ? '◎' : '×'} ${o.text}${o.ok && o.o.gold ? `　+${o.o.gold}銀` : ''}`).join('\n'), 2600, 'small');
+    const roster = rosterOf(S), benchUp = benchExp(S, roster), reward = chapterReward(S.chapter + 1) + (Number(S.flags.loot) || 0) + extra; // loot = 抜け目なし
     camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster, bonds: S.bonds, difficulty: S.difficulty, gold: (camp?.gold ?? 0) + reward, ...(camp?.school ? { school: camp.school } : {}), ...(S.hard ? { hard: true } : {}), bench: benchUp.map(g => ({ id: g.id, exp: g.exp, fromLv: g.fromLv, lv: g.lv })), ...(camp?.ended ? { ended: true } : {}) };
     markSeen(ch.outro); if (ch.interlude) markSeen(ch.interlude);
     inBattle = false; save();
@@ -703,7 +712,7 @@ async function checkEnd(): Promise<boolean> {
     if (ch.ending) { await playEnding(true); return true; }
     const lost = camp.roster.filter(u => u.out && !S.bench.some(b => b.id === u.id)).map(u => u.name);
     const benchMsg = camp.bench?.length ? `　控えの${camp.bench.length}人も経験値 +${camp.bench[0].exp}${camp.bench.some(g => g.lv > g.fromLv) ? `（${camp.bench.filter(g => g.lv > g.fromLv).map(g => `${castName(g.id)} Lv${g.lv}`).join('、')}）` : ''}。` : '';
-    showCamp(chapterDef(camp.cleared - 1).title.replace(/\s+/g, '　') + `　クリア！　報酬 ${reward}銀。` + (lost.length ? `　${lost.join('、')}は戦線離脱した。` : '') + benchMsg);
+    showCamp(chapterDef(camp.cleared - 1).title.replace(/\s+/g, '　') + `　クリア！　報酬 ${reward}銀${extra ? `（副目標 +${extra}銀）` : ''}。` + (lost.length ? `　${lost.join('、')}は戦線離脱した。` : '') + benchMsg);
   } else {
     await outcomeBanner(false);
     showDefeat();
@@ -976,7 +985,7 @@ function renderPromo(u: Unit) {
     const c = CLASSES[o.to];
     const newTypes = c.wtypes.filter(t => !CLASSES[u.cls].wtypes.includes(t));
     const card = el('div', 'card', `<div class="uhead"><b>${c.name}</b><span>移動 ${c.mov}（${MTYPE_NAMES[c.mtype]}）　武器種 ${c.wtypes.map(t => WTYPE_NAMES[t]).join('・')}</span></div>
-      <p class="pdesc">${c.desc ?? ''}</p><p class="pgain">${gainText(c.bonus ?? {})}${c.crit ? `　必殺+${c.crit}` : ''}${newTypes.length ? `　新たに ${newTypes.map(t => WTYPE_NAMES[t]).join('・')} を使える` : ''}${c.gift && !u.wps.some(w => WEAPONS[w].type === WEAPONS[c.gift!].type) ? (u.wps.length < WEAPON_SLOTS ? `（${WEAPONS[c.gift].name}を入手）` : `（武器枠がいっぱいのため${WEAPONS[c.gift].name}はもらえない）`) : ''}</p>`);
+      <p class="pdesc">${c.desc ?? ''}${(c.skills ?? []).filter(k => SKILLS[k] && !(CLASSES[u.cls].skills ?? []).includes(k)).map(k => `<br>新スキル「${SKILLS[k].name}」：${SKILLS[k].desc}`).join('')}</p><p class="pgain">${gainText(c.bonus ?? {})}${c.crit ? `　必殺+${c.crit}` : ''}${newTypes.length ? `　新たに ${newTypes.map(t => WTYPE_NAMES[t]).join('・')} を使える` : ''}${c.gift && !u.wps.some(w => WEAPONS[w].type === WEAPONS[c.gift!].type) ? (u.wps.length < WEAPON_SLOTS ? `（${WEAPONS[c.gift].name}を入手）` : `（武器枠がいっぱいのため${WEAPONS[c.gift].name}はもらえない）`) : ''}</p>`);
     card.appendChild(btn(o.ok ? `${c.name}にする` : '条件を満たしていない', () => confirmPromo(u, o.to), o.ok ? 'primary' : '', !o.ok));
     body.appendChild(card);
   }
