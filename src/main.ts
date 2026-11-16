@@ -566,7 +566,7 @@ function idle() {
   hud();
   info(inspect ? unitHtml(inspect) : `<p class="hint">青いユニットをタップして移動先を選ぼう（もう一度タップで解除）。届く敵をタップすると、自動で近づいて攻撃の予測が出る。敵だけをタップすると移動・攻撃範囲が見られる。「危険範囲」で敵全員の届くマスを赤く重ねられる。${scrolls() ? '地図はドラッグで動かせる。' : ''}</p>`);
   const left = alive(S, 'blue').filter(u => !u.done);
-  menu([[dangerOn ? '危険範囲：表示中' : '危険範囲を表示', toggleDanger, dangerOn ? 'toggle on' : 'toggle'], ...(left.length ? [[`次のユニット（残り${left.length}）`, nextUnit] as [string, () => void]] : []), ['ターン終了', askEndTurn]]);
+  menu([[dangerOn ? '危険範囲：表示中' : '危険範囲を表示', toggleDanger, dangerOn ? 'toggle on' : 'toggle'], ...(left.length ? [[`次のユニット（残り${left.length}）`, nextUnit] as [string, () => void]] : []), ['ターン終了', askEndTurn], ...(retreatCamp() ? [['撤退する', askRetreat, 'retreat'] as [string, () => void, string]] : [])]);
 }
 /** 未行動の自軍ユニットを順に選ぶ（地図もそこへ動く）。 */
 let nextIdx = -1;
@@ -582,6 +582,27 @@ function askEndTurn() {
   if (!left.length) { endTurn(); return; }
   info(`<p>まだ行動していない仲間が<b class="gold">${left.length}人</b>いる（${left.map(u => esc(u.name)).join('、')}）。ターンを終了する？</p>`);
   menu([['ターンを終了する', endTurn, 'primary'], ['もどる', idle]]);
+}
+/**
+ * 撤退で戻る章間：この章へ出撃したときのキャンプ（戦闘中は書き換えないので、そのまま出撃前の状態）。
+ * 第1章（その前に章間がない）では null で、撤退のボタンは出さない。
+ */
+const retreatCamp = () => (camp && S && camp.next === S.chapter ? camp : null);
+function askRetreat() {
+  info('<p>この章の戦闘を中断して、キャンプに戻ります。戦闘の内容は取り消されます。よろしいですか？</p>');
+  menu([['撤退する', retreat, 'primary'], ['もどる', idle, 'back']]);
+}
+/**
+ * 撤退（自軍フェイズの待機中・敗北画面）：戦闘を破棄して出撃前のキャンプへ。経験値・銀・宝箱・倒れた仲間・支援値は
+ * 戦闘の State にだけあるので、捨てれば戦闘前に戻る。キャンプで済ませた買い物・天幕・既読はキャンプ側に残る。
+ * 中断データはキャンプのセーブに置き換わる。合計ターン・倒れた仲間の数は勝利時にだけ足すので、この戦闘の分は数えない。
+ */
+function retreat() {
+  if (!retreatCamp()) return;
+  stopRush(); hideTutorial();
+  sel = picked = inspect = null; stops = new Set(); threat = new Set(); menu([]);
+  inBattle = false; engaged.clear(); save();
+  showCamp('撤退した。態勢を整えて、もう一度挑もう。');
 }
 function selectUnit(u: Unit) {
   audio.sfx('select');
@@ -987,6 +1008,7 @@ function showDefeat() {
   if (classic) { const st = S; S = chapterStart(); save(); S = st; } // クラシック：中断データも章の最初に戻す
   showTitle(classic ? '仲間が倒れてしまった。章の最初からやり直そう。' : '仲間が倒れてしまった。どこからやり直す？', 'defeat');
   $('btnRetryPhase').hidden = classic;
+  $('btnDefeatCamp').hidden = !retreatCamp();
 }
 
 // ---------- stages (M1) ----------
