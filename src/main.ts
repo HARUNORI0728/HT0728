@@ -6,7 +6,7 @@ import {
   WEAPON_SLOTS, benchExp, chapterPicks, rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
   bossId, dueTalks, fightTalks, onMap, talkKey, clearSlow, expBoost, familiarHeal, hasSkill, healingWind, skillsOf, shownVisits, visitFlag, visitsFor,
   CANDIDATES, advanceStage, answerConfession, applyAiSwitch, applyTerrainChanges, ensureMarried, isConfession, markedTiles, marriedTo, seizeFlag, stageBgm, stageOf,
-  type Bonds, type Difficulty, type SortiePlan, type State, type Unit,
+  LINK_NAME, type Bonds, type Difficulty, type SortiePlan, type State, type Unit,
 } from './logic';
 import { confessionScene, endingSequence, placeholderTalk, sceneById, supportScene, wifeLines, wifeTalksAvailable } from './story';
 import { adjacentBark, dateTalksAvailable, fallBark, wedChapters, wedKey } from './story';
@@ -775,7 +775,7 @@ async function battle(att: Unit, wid: string, def: Unit) {
     const dx = Math.sign(k.to.x - k.from.x) * T / 4, dy = Math.sign(k.to.y - k.from.y) * T / 4;
     offs.set(k.from.uid, { dx, dy }); await sleep(110); offs.delete(k.from.uid);
     float(k.to, k.hit ? (k.crit ? `必殺！${k.dmg}` : `${k.dmg}`) : 'ミス', k.hit ? (k.crit ? '#ffe36a' : '#ffffff') : '#a79fb8');
-    if (k.skill) skillPop(k.skill === SKILLS.shieldBlock.name ? k.to : k.from, k.skill);
+    if (k.skill) skillBand(k.skill === SKILLS.shieldBlock.name ? k.to : k.from, k.skill);
     shownHp.set(k.to.uid, (shownHp.get(k.to.uid) ?? 0) - k.dmg);
     audio.sfx(k.hit ? (k.crit ? 'crit' : 'hit') : 'miss');
     if (k.hit && k.crit && pace() > 0) shakeFx = { t0: performance.now(), dur: 260 * pace(), amp: 3 };
@@ -893,6 +893,17 @@ function fortHeal(team: 'blue' | 'red') {
   for (const g of familiarHeal(S, team)) float(g.unit, `+${g.hp}`, '#8fe0a0');
 }
 /** A skill's name popped above the unit for a moment (proc skills such as 盾受け). */
+/** A skill (or a link attack) going off in battle: a small band with the user's face, besides the word over the figure. */
+let skillBandT = 0;
+function skillBand(u: Unit, name: string) {
+  skillPop(u, name);
+  if (fast() || rush || rushHeld) return;
+  const el = $('skillBand'), link = name === LINK_NAME;
+  el.innerHTML = `${faceHtml(u, 'uicon')}<span><small>${esc(u.name)}</small>${esc(link ? `${name}攻撃` : name)}</span>`;
+  el.className = link ? 'link' : ''; el.hidden = false; void el.offsetWidth; el.classList.add('go');
+  const k = pace(); if (k > 0 && k < 1) for (const a of el.getAnimations()) a.playbackRate = 1 / k;
+  clearTimeout(skillBandT); skillBandT = window.setTimeout(() => { el.hidden = true; }, 900 * pace());
+}
 function skillPop(u: Unit, name: string) { floats.push({ x: u.x * T + T / 2, y: u.y * T - T * 0.2, text: name, color: '#9fe8ff', t: FLOAT_LIFE }); }
 async function endTurn() {
   if (mode === 'busy') return;
@@ -961,7 +972,11 @@ async function supportTalks(c: Camp) {
     await playSupport(p, next);
     const r = rankUp(c.bonds, p);
     save();
-    if (r) { audio.jingle('support'); await banner(`${castName(p.a)}と${castName(p.b)}の支援ランクが ${r} になった！`, 1300); }
+    if (r) {
+      audio.jingle('support');
+      if (fast()) await banner(`${castName(p.a)}と${castName(p.b)}の支援ランクが ${r} になった！`, 1300);
+      else await showcase({ kind: 'sup', sub: `支援ランク ${r}`, main: `${castName(p.a)}と${castName(p.b)}の支援ランクが ${r} になった`, pics: [picOf(p.a, 'smile'), picOf(p.b, 'smile')] }, 1700);
+    }
   }
 }
 /** Plays a support conversation: the screenplay's when written (its own music and background), else data.ts, else a placeholder. */
@@ -987,7 +1002,11 @@ async function confession(c: Camp, p: SupportPair) {
   answerConfession(c.bonds, p, accept, c.cleared);
   if (accept) markSeen(wedKey(id, c.cleared)); // ふたりの時間の解放に使う
   save();
-  if (accept) { audio.jingle('support'); await banner(`${castName(id)}と結婚の約束を交わした！（${marriedTo(c.bonds).length} / ${sLimit('rudeus')}人）`, 1600); }
+  if (accept) {
+    audio.jingle('support');
+    if (fast()) await banner(`${castName(id)}と結婚の約束を交わした！（${marriedTo(c.bonds).length} / ${sLimit('rudeus')}人）`, 1600);
+    else await showcase({ kind: 'wed', sub: `告白成立　${marriedTo(c.bonds).length} / ${sLimit('rudeus')}人`, main: `${castName(id)}と結ばれた`, note: '結婚の約束を交わした', pics: [picOf('rudeus', 'smile'), picOf(id, 'dere')] }, 2400);
+  }
   else await banner(`返事は保留した。次の章のあとで、もう一度向き合おう。`, 1400);
 }
 
@@ -1130,10 +1149,11 @@ function confirmPromo(u: Unit, to: string) {
   const body = $('campBody'); body.innerHTML = '';
   body.appendChild(el('div', 'card', `<p>${esc(u.name)}を<b class="gold">${CLASSES[to].name}</b>にクラスチェンジします。Lvは1に戻ります。よろしいですか？</p>`));
   const row = el('div', 'row');
-  row.appendChild(btn('はい', () => {
+  row.appendChild(btn('はい', async () => {
     const r = promote(u, to);
     if (!r) return renderCamp();
     save(); audio.jingle('classchange');
+    await showcase({ kind: 'cc', sub: 'クラスチェンジ', main: `${u.name}は ${CLASSES[to].name} になった`, note: gainText(r.gains), pics: [picOf(idForUnit(u), 'smile')] }, 2200);
     campMsg(`${u.name}は${CLASSES[to].name}になった！　${gainText(r.gains)}${r.gift ? `　${WEAPONS[r.gift].name}を手に入れた` : ''}`);
     renderCamp();
   }, 'primary'));
