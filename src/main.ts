@@ -17,7 +17,7 @@ import { ITEMS, chapterReward, shopName, takeLoot } from './shop';
 import { hideTutorial, mountHelp, openHelp, startTutorial, tutorialDone, tutorialStep } from './ui/help';
 import { BG_ART } from './art-manifest';
 import { RES, T } from './render/common';
-import { FLOAT_LIFE, drawCursor, drawEdgeMarks, drawFloat, drawTile, drawVignette, type Float } from './render/fx';
+import { FLOAT_LIFE, captureDying, drawCursor, drawDying, drawEdgeMarks, drawFloat, drawTile, drawVignette, type Dying, type Float } from './render/fx';
 import { drawTerrain } from './render/terrain';
 import { drawVisit, drawVisitBadge } from './render/visits';
 import { drawIcon, drawUnit } from './render/units';
@@ -84,6 +84,10 @@ const shownHp = new Map<number, number>();
 /** Units that retreated during the combat being shown: still drawn until its animation ends. */
 const leaving = new Set<number>();
 const floats: Float[] = [];
+/** Figures leaving the map after a defeat (uid → captured picture and timing), drawn until their time is up. */
+const dying = new Map<number, Dying>();
+/** A short screen shake (critical hits) and a white flash over the map (a boss's defeat). Real-time ms. */
+let shakeFx = { t0: 0, dur: 0, amp: 0 }, flashFx = { t0: 0, dur: 0, a: 0 };
 
 // ---------- camera ----------
 // The canvas shows 12×8 tiles; larger maps scroll. `cam` is the top-left of the view in map pixels.
@@ -233,7 +237,8 @@ function render(now = performance.now()) {
   if (S && !terrain) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#14121c'; ctx.fillRect(0, 0, cv.width, cv.height); }
   if (S && terrain) {
     const W = VW, H = VH, sec = now / 1000;
-    ctx.setTransform(RES, 0, 0, RES, 0, 0);
+    const sk = now - shakeFx.t0 < shakeFx.dur ? shakeFx.amp * (1 - (now - shakeFx.t0) / shakeFx.dur) : 0;
+    ctx.setTransform(RES, 0, 0, RES, sk ? Math.round(Math.sin(now / 17) * sk * RES) : 0, sk ? Math.round(Math.cos(now / 23) * sk * RES * 0.6) : 0);
     ctx.fillStyle = '#14121c'; ctx.fillRect(0, 0, W, H);
     // the terrain was drawn once at chapter start (RES pixels per map pixel, as the canvas): copy just the visible
     // part 1:1, plus the strip above the map
@@ -275,6 +280,11 @@ function render(now = performance.now()) {
       .map(u => { const o = offs.get(u.uid); return { u, px: u.x * T + (o?.dx ?? 0), py: u.y * T + (o?.dy ?? 0) }; })
       .sort((a, b) => a.py - b.py);
     for (const { u, px, py } of shown) drawUnit(ctx, u, px, py, u.done && S.phase === 'blue', (shownHp.get(u.uid) ?? u.hp) / u.st.hp);
+    for (const [uid, d] of dying) {
+      const u = S.units.find(v => v.uid === uid), p = (now - d.t0) / d.dur;
+      if (!u || p >= 1) { dying.delete(uid); continue; }
+      if (p >= 0) drawDying(ctx, d, u.x * T, u.y * T, p);
+    }
     // 未開封の宝箱・檻にユニットが立っていると絵が隠れるので、足もとに小さな印を重ねる
     for (const { v, open } of shownVisits(S)) if (!open && unitAt(S, v.x, v.y)) drawVisitBadge(ctx, v.kind, v.x, v.y, sec);
     const cur = picked ?? sel ?? inspect;
@@ -286,6 +296,7 @@ function render(now = performance.now()) {
     }
     ctx.restore();
     drawVignette(ctx, W, H);
+    if (now - flashFx.t0 < flashFx.dur) { ctx.fillStyle = `rgba(255, 255, 255, ${flashFx.a * (1 - (now - flashFx.t0) / flashFx.dur)})`; ctx.fillRect(0, 0, W, H); }
     if (scrolls()) edgeMarks();
   }
   requestAnimationFrame(render);
@@ -320,6 +331,47 @@ async function tween(u: Unit, x: number, y: number) {
 }
 async function banner(text: string, ms = 900, cls = '') { const b = $('banner'); b.textContent = text; b.className = cls; b.hidden = false; await new Promise<void>(r => setTimeout(r, ms * readPace())); b.hidden = true; b.className = ''; }
 
+// ---------- 見せ場（ボスの名乗り・章タイトル・勝敗・クラスチェンジ・結婚・支援ランク上昇） ----------
+type ShowKind = 'boss' | 'chapter' | 'win' | 'lose' | 'cc' | 'wed' | 'sup';
+interface ShowOpts { kind: ShowKind; main: string; sub?: string; note?: string; pics?: (string | null)[] }
+/** Opens the full-screen moment (portraits, rings, a titled band). Returns a function that fades it out. */
+function openShow(o: ShowOpts): () => Promise<void> {
+  const el = $('show'), pics = el.querySelector<HTMLElement>('.shPics')!;
+  el.className = o.kind;
+  el.querySelector('.shSub')!.textContent = o.sub ?? '';
+  el.querySelector('.shMain')!.textContent = o.main;
+  el.querySelector('.shNote')!.textContent = o.note ?? '';
+  const urls = (o.pics ?? []).filter((u): u is string => !!u);
+  pics.innerHTML = '';
+  for (const u of urls) { const img = document.createElement('img'); img.alt = ''; img.src = u; img.className = urls.length === 1 ? 'solo' : ''; img.onerror = () => img.remove(); pics.appendChild(img); }
+  el.hidden = false; void el.offsetWidth; el.classList.add('go');
+  const k = readPace();
+  if (k > 0 && k < 1) for (const a of el.getAnimations({ subtree: true })) a.playbackRate = 1 / k;
+  return async () => {
+    el.classList.add('out');
+    await new Promise<void>(r => setTimeout(r, fast() ? 0 : 220));
+    el.hidden = true; el.className = '';
+  };
+}
+/** Shows a moment for `ms` (× readPace: shorter with はやい / fast-forward, none with __fast). Tap, Enter or Space ends it early. */
+async function showcase(o: ShowOpts, ms: number) {
+  if (fast()) return;
+  const close = openShow(o), skip = new AbortController();
+  const advance = (e: Event) => {
+    if (e instanceof KeyboardEvent && (e.repeat || !['Enter', ' '].includes(e.key))) return;
+    e.preventDefault(); e.stopImmediatePropagation(); skip.abort();
+  };
+  window.addEventListener('pointerdown', advance, true); window.addEventListener('keydown', advance, true);
+  try {
+    await new Promise<void>(r => { const t = setTimeout(r, ms * readPace()); skip.signal.addEventListener('abort', () => { clearTimeout(t); r(); }); });
+  } finally {
+    window.removeEventListener('pointerdown', advance, true); window.removeEventListener('keydown', advance, true);
+    await close();
+  }
+}
+/** A portrait url for a cast member (or a boss), or null when there is none. */
+const picOf = (id: string | null, face: Parameters<typeof portraitUrl>[1] = 'normal') => portraitUrl(id, face) ?? portraitUrl(id);
+
 /** Outcome music finishes before dialogue; tapping or pressing Enter/Space fades it out. */
 async function outcomeBanner(win: boolean) {
   const b = $('banner'), skip = new AbortController();
@@ -327,7 +379,8 @@ async function outcomeBanner(win: boolean) {
     if (e instanceof KeyboardEvent && (e.repeat || !['Enter', ' '].includes(e.key))) return;
     e.preventDefault(); e.stopImmediatePropagation(); skip.abort();
   };
-  b.textContent = (win ? '勝利！' : '敗北……') + '　タップで次へ'; b.hidden = false;
+  const close = fast() ? null : openShow({ kind: win ? 'win' : 'lose', main: win ? '勝利' : '敗北', sub: chapterDef(S.chapter).title.replace(/\s+/g, '　') });
+  if (fast()) { b.textContent = (win ? '勝利！' : '敗北……') + '　タップで次へ'; b.hidden = false; }
   window.addEventListener('pointerdown', advance, true);
   window.addEventListener('keydown', advance, true);
   try {
@@ -338,6 +391,7 @@ async function outcomeBanner(win: boolean) {
     window.removeEventListener('pointerdown', advance, true);
     window.removeEventListener('keydown', advance, true);
     b.hidden = true;
+    if (close) await close();
   }
 }
 
@@ -682,11 +736,32 @@ async function cutin(att: Unit, def: Unit, crit = false) {
 function preloadChapterArt() {
   for (const u of S.units) { const id = idForUnit(u); if (id) { preloadPortrait(id); preloadPortrait(id, 'angry'); } }
 }
+/**
+ * How a defeated figure leaves the map: a white blink and a fade; a boss gets a white flash over the map, a moment of
+ * stillness, then crumbles. Shortened with はやい and the enemy-phase fast-forward (pace), none with __fast.
+ */
+/** A boss's first clash: the boss theme starts and its name (with portrait when there is one) is announced once per chapter. */
+async function bossIntro(u: Unit) {
+  S.flags[`intro:${u.uid}`] = true;
+  engaged.add(u.uid); mapMusic();
+  const id = idForUnit(u), cls = CLASSES[u.cls]?.name ?? '';
+  await showcase({ kind: 'boss', sub: `${cls}　Lv ${u.lv}`, main: u.name, pics: [picOf(id, 'angry')] }, 1500);
+}
+async function defeatFx(u: Unit) {
+  const k = pace();
+  if (k <= 0) return;
+  const boss = !!u.boss && u.team === 'red' && k >= 0.4, now = performance.now();
+  const dur = (boss ? 1700 : 520) * k;
+  dying.set(u.uid, captureDying(c => drawUnit(c, u, 0, 0), now, dur, boss));
+  if (boss) flashFx = { t0: now, dur: 520, a: 0.9 };
+  await sleep(boss ? 1900 : 560);
+}
 async function battle(att: Unit, wid: string, def: Unit) {
   // a member's first fight, then the first clash with a boss (a dedicated version for this member replaces the generic one)
   const skip: ReturnType<typeof dueTalks> = [];
   const evs = fightTalks(S, att, def, skip);
   for (const e of skip) { S.flags[talkKey(e.scene)] = true; persistFlag(talkKey(e.scene)); }
+  for (const u of [att, def]) if (u.team === 'red' && u.boss && !S.flags[`intro:${u.uid}`]) await bossIntro(u);
   await runTalks(evs);
   for (const u of [att, def]) if (u.team === 'red' && u.boss) engaged.add(u.uid);
   mapMusic(); // engaged boss theme in allied phases; enemy phases keep their own theme
@@ -703,8 +778,11 @@ async function battle(att: Unit, wid: string, def: Unit) {
     if (k.skill) skillPop(k.skill === SKILLS.shieldBlock.name ? k.to : k.from, k.skill);
     shownHp.set(k.to.uid, (shownHp.get(k.to.uid) ?? 0) - k.dmg);
     audio.sfx(k.hit ? (k.crit ? 'crit' : 'hit') : 'miss');
-    if (k.hit && (shownHp.get(k.to.uid) ?? 0) <= 0) audio.sfx('kill');
-    await sleep(420);
+    if (k.hit && k.crit && pace() > 0) shakeFx = { t0: performance.now(), dur: 260 * pace(), amp: 3 };
+    const killed = k.hit && (shownHp.get(k.to.uid) ?? 0) <= 0;
+    if (killed) audio.sfx('kill');
+    if (killed && !k.to.retreated && !(k.to.team === 'red' && k.to.defeat)) await defeatFx(k.to);
+    else await sleep(420);
   }
   shownHp.clear();
   for (const u of [att, def]) if (u.team === 'red' && u.hp <= 0 && u.defeat) { float(u, u.defeat === 'captured' ? '捕縛' : '撤退', '#e8c56a'); await sleep(500); }
@@ -1310,7 +1388,11 @@ async function start(state: State, intro: boolean) {
   if (lead) centerOn(lead.x, lead.y); else clampCam();
   $('title').hidden = true; hud(); info(''); menu([]);
   preloadChapterArt();
-  if (intro) await playScene(chapterDef(S.chapter).intro);
+  if (intro) {
+    const [no, ...rest] = chapterDef(S.chapter).title.split(/\s+/);
+    await showcase(rest.length ? { kind: 'chapter', sub: no, main: rest.join('　') } : { kind: 'chapter', main: no }, 2000);
+    await playScene(chapterDef(S.chapter).intro);
+  }
   save();
   mapMusic(); audio.sfx(S.phase === 'blue' ? 'phaseBlue' : 'phaseRed');
   await banner(S.phase === 'blue' ? '自軍フェイズ' : '敵軍フェイズ');

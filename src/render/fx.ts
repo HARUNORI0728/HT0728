@@ -1,6 +1,6 @@
 // Map overlays in the sample's style: rounded translucent range tiles, a glowing cursor, damage numbers,
 // vignette and edge arrows. Everything with gradients or glow is pre-rendered once and reused every frame.
-import { OUT, T, canvas, type C2D } from './common';
+import { OUT, RES, T, canvas, type C2D } from './common';
 
 /** goal = 制圧・離脱の目標マス（金）、guard = 敵に乗られてはいけない防衛マス（赤）。 */
 export type TileKind = 'move' | 'attack' | 'target' | 'heal' | 'goal' | 'guard';
@@ -99,5 +99,46 @@ export function drawEdgeMarks(c: C2D, W: number, H: number, l: boolean, r: boole
   if (r) tri([W - m, H / 2, W - m - a, H / 2 - a, W - m - a, H / 2 + a]);
   if (t) tri([W / 2, m, W / 2 - a, m + a, W / 2 + a, m + a]);
   if (b) tri([W / 2, H - m, W / 2 - a, H - m - a, W / 2 + a, H - m - a]);
+  c.restore();
+}
+
+// ---------- 撃破の消え方 ----------
+/** A defeated figure, captured once (2T × 2.5T map pixels; the tile's top-left sits at (T/2, 1.5T)), and its white silhouette. */
+export interface Dying { img: HTMLCanvasElement; white: HTMLCanvasElement; t0: number; dur: number; boss: boolean }
+const DW = T * 2, DH = T * 2.5, DOX = T / 2, DOY = T * 1.5;
+export function captureDying(draw: (c: C2D) => void, t0: number, dur: number, boss: boolean): Dying {
+  const img = canvas(DW * RES, DH * RES), c = img.getContext('2d')!;
+  c.setTransform(RES, 0, 0, RES, DOX * RES, DOY * RES); draw(c);
+  const white = canvas(img.width, img.height), w = white.getContext('2d')!;
+  w.drawImage(img, 0, 0); w.globalCompositeOperation = 'source-atop'; w.fillStyle = '#fff'; w.fillRect(0, 0, white.width, white.height);
+  return { img, white, t0, dur, boss };
+}
+/**
+ * Draws a figure leaving the map at progress p (0..1). Ordinary foes flash white and fade while sinking a little.
+ * Bosses stay lit white for a moment, then crumble from the top down in horizontal strips.
+ */
+export function drawDying(c: C2D, d: Dying, px: number, py: number, p: number) {
+  const x = px - DOX, y = py - DOY;
+  c.save();
+  if (!d.boss) {
+    c.globalAlpha = Math.max(0, 1 - p);
+    c.drawImage(d.img, x, y + p * T * 0.15, DW, DH);
+    c.globalAlpha = Math.max(0, 0.9 - p * 1.8);
+    c.drawImage(d.white, x, y + p * T * 0.15, DW, DH);
+  } else if (p < 0.3) {
+    c.drawImage(d.img, x, y, DW, DH);
+    c.globalAlpha = 0.85 - p; c.drawImage(d.white, x, y, DW, DH);
+  } else {
+    const q = (p - 0.3) / 0.7, N = 10, bh = DH / N, sh = d.img.height / N;
+    for (let i = 0; i < N; i++) {
+      const start = (i / N) * 0.5, k = Math.max(0, Math.min(1, (q - start) / 0.5)); // the top strips go first
+      if (k >= 1) continue;
+      c.globalAlpha = 1 - k;
+      const dx = (i % 2 ? 1 : -1) * k * T * 0.18, dy = k * k * T * 0.9;
+      c.drawImage(d.img, 0, i * sh, d.img.width, sh, x + dx, y + i * bh + dy, DW, bh);
+      c.globalAlpha = (1 - k) * 0.5;
+      c.drawImage(d.white, 0, i * sh, d.img.width, sh, x + dx, y + i * bh + dy, DW, bh);
+    }
+  }
   c.restore();
 }

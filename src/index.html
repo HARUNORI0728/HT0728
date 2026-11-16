@@ -61,6 +61,60 @@
   #cutin.crit[data-att="l"] .cicrit { padding-left: 38%; } #cutin.crit[data-att="r"] .cicrit { padding-right: 38%; }
   @keyframes ciCrit { 0%, 15% { opacity: 0; transform: translateY(-50%) scale(1.8); } 30% { opacity: 1; transform: translateY(-50%) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; } }
   @keyframes ciFlash { 0% { opacity: .85; } 25% { opacity: 0; } 100% { opacity: 0; } }
+  /* 山場の見せ場（ボスの名乗り・章タイトル・勝敗・クラスチェンジ・結婚・支援ランク上昇）。タップで飛ばせる。 */
+  #show { position: fixed; inset: 0; z-index: 40; overflow: hidden; line-height: 1.4; cursor: pointer; font-family: var(--pixel); --acc: var(--gold); --accRgb: 232, 197, 106; }
+  #show.boss, #show.lose { --acc: #ff8f80; --accRgb: 255, 120, 100; }
+  #show.wed, #show.sup { --acc: var(--rose); --accRgb: 255, 143, 168; }
+  #show .shVeil { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(20, 17, 32, .55), rgba(10, 9, 16, .82) 75%); opacity: 0; transition: opacity .25s; }
+  #show.chapter .shVeil { background: radial-gradient(ellipse at 50% 45%, rgba(24, 21, 36, .92), rgba(10, 9, 16, .98) 70%); }
+  #show.boss .shVeil { background: linear-gradient(90deg, rgba(40, 8, 8, .25), rgba(30, 8, 10, .7) 55%, rgba(60, 10, 10, .8)); }
+  #show.go .shVeil { opacity: 1; }
+  #show .shRing { position: absolute; left: 50%; top: 36%; width: min(58vh, 84vw); aspect-ratio: 1; margin-left: calc(min(58vh, 84vw) / -2); margin-top: calc(min(58vh, 84vw) / -2); border-radius: 50%;
+    border: 3px solid var(--acc); box-shadow: 0 0 28px 6px rgba(var(--accRgb), .55), inset 0 0 28px 4px rgba(var(--accRgb), .4); opacity: 0; pointer-events: none; }
+  #show.cc.go .shRing, #show.wed.go .shRing, #show.sup.go .shRing { animation: shRing 1.3s ease-out both; }
+  #show.cc.go .shRing.two, #show.wed.go .shRing.two { animation-delay: .28s; }
+  @keyframes shRing { 0% { opacity: 0; transform: scale(.15); } 20% { opacity: 1; } 100% { opacity: 0; transform: scale(1.25); } }
+  #show .shPics { position: absolute; left: 0; right: 0; top: 6%; height: 52%; display: flex; justify-content: center; align-items: flex-end; gap: 2%; padding: 0 4%; }
+  #show .shPics img { height: 100%; max-width: 46%; object-fit: contain; object-position: 50% 100%; filter: drop-shadow(0 0 3px rgba(0, 0, 0, .9)) drop-shadow(0 0 18px rgba(var(--accRgb), .45)); opacity: 0; }
+  #show .shPics img.solo { max-width: 92%; }
+  #show.go .shPics img { animation: shPicIn .5s cubic-bezier(.2, .8, .3, 1) .08s both; }
+  #show.boss .shPics { justify-content: flex-end; top: 0; height: 64%; padding-right: 3%; }
+  #show.boss.go .shPics img { animation: shPicR .55s cubic-bezier(.2, .8, .3, 1) both; filter: drop-shadow(0 0 3px rgba(0, 0, 0, .9)) drop-shadow(0 0 22px rgba(255, 90, 70, .5)); }
+  @keyframes shPicIn { from { opacity: 0; transform: translateY(6%) scale(.96); } to { opacity: 1; transform: none; } }
+  @keyframes shPicR { from { opacity: 0; transform: translateX(30%); } to { opacity: 1; transform: none; } }
+  #show .shBand { position: absolute; left: 0; right: 0; top: 60%; padding: 12px 16px 14px; text-align: center; color: var(--ink);
+    background: linear-gradient(90deg, rgba(24, 21, 36, 0), rgba(30, 26, 46, .94) 16%, rgba(24, 21, 36, .94) 84%, rgba(24, 21, 36, 0)); opacity: 0; }
+  #show .shBand::before, #show .shBand::after { content: ''; position: absolute; left: 6%; right: 6%; height: 1.5px; background: linear-gradient(90deg, transparent, var(--acc) 20%, var(--acc) 80%, transparent); transform: scaleX(0); }
+  #show .shBand::before { top: 0; } #show .shBand::after { bottom: 0; }
+  #show.go .shBand { animation: shBand .35s ease-out .12s both; }
+  #show.go .shBand::before, #show.go .shBand::after { animation: shLine .6s ease-out .12s both; }
+  @keyframes shBand { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes shLine { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  #show .shSub { display: block; font-size: clamp(12px, 3.4vw, 16px); color: var(--acc); letter-spacing: .16em; }
+  #show .shSub:empty, #show .shNote:empty { display: none; }
+  #show .shMain { display: block; font-weight: normal; font-size: clamp(19px, 5.6vw, 30px); letter-spacing: .1em; color: #fff7e2; text-shadow: 0 0 14px rgba(var(--accRgb), .55); text-wrap: balance; }
+  #show .shNote { display: block; margin-top: 4px; font-size: clamp(12px, 3.3vw, 15px); color: var(--heal); letter-spacing: .04em; }
+  #show.chapter .shBand, #show.win .shBand, #show.lose .shBand { top: 50%; transform: translateY(-50%); padding: 18px 16px 20px; }
+  #show.chapter.go .shBand, #show.win.go .shBand, #show.lose.go .shBand { animation: shFade .6s ease-out .1s both; }
+  @keyframes shFade { from { opacity: 0; letter-spacing: .4em; } to { opacity: 1; } }
+  #show.chapter .shMain { font-size: clamp(28px, 8.4vw, 48px); letter-spacing: .24em; padding-left: .24em; }
+  #show.win .shMain, #show.lose .shMain { font-size: clamp(30px, 9vw, 52px); letter-spacing: .3em; padding-left: .3em; }
+  #show.boss .shBand { top: 64%; text-align: right; padding-right: 8%; background: linear-gradient(90deg, rgba(40, 10, 12, 0), rgba(50, 14, 16, .9) 30%, rgba(30, 10, 12, .95)); }
+  #show.boss.go .shBand { animation: shBossBand .4s ease-out .15s both; }
+  @keyframes shBossBand { from { opacity: 0; transform: translateX(-12%); } to { opacity: 1; transform: none; } }
+  #show.out { opacity: 0; transition: opacity .22s; }
+  #show .shSkip { position: absolute; right: 12px; bottom: max(10px, env(safe-area-inset-bottom, 0px)); font-size: 12px; color: var(--dim); letter-spacing: .06em; }
+  @media (max-width: 560px) { #show .shPics { top: 10%; height: 46%; } #show.boss .shPics { height: 58%; top: 2%; } #show .shBand { top: 58%; } #show.boss .shBand { top: 60%; padding-right: 6%; } }
+  @media (prefers-reduced-motion: reduce) { #show.go * , #show.go *::before, #show.go *::after { animation-duration: .01s !important; animation-delay: 0s !important; } }
+  /* スキル・連携の発動帯（小さな帯＋顔アイコン） */
+  #skillBand { position: absolute; left: 50%; top: 12%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 4px 16px 4px 4px; line-height: 1.2; pointer-events: none;
+    background: linear-gradient(90deg, rgba(20, 30, 48, .95), rgba(20, 30, 48, .85) 80%, rgba(20, 30, 48, 0)); border: 1px solid #6fb8d8; border-radius: 26px; color: #c8f2ff; font-family: var(--pixel);
+    font-size: clamp(13px, 3.6vw, 17px); letter-spacing: .08em; white-space: nowrap; box-shadow: 0 0 12px rgba(111, 184, 216, .45); }
+  #skillBand.link { border-color: var(--rose); color: #ffd6e0; box-shadow: 0 0 12px rgba(255, 143, 168, .45); background: linear-gradient(90deg, rgba(48, 20, 32, .95), rgba(48, 20, 32, .85) 80%, rgba(48, 20, 32, 0)); }
+  #skillBand .uicon { width: 34px; height: 34px; border-radius: 50%; }
+  #skillBand small { color: var(--dim); font-size: .75em; margin-right: 2px; }
+  #skillBand.go { animation: skIn .9s ease-out both; }
+  @keyframes skIn { 0% { opacity: 0; transform: translate(-50%, -8px); } 15% { opacity: 1; transform: translate(-50%, 0); } 80% { opacity: 1; } 100% { opacity: 0; } }
   @media (prefers-reduced-motion: reduce) { #cutin.go .ci, #cutin.go .ciband, #cutin.go .cicrit { animation-duration: .01s; } #cutin.crit.go::after { display: none; } }
   #panel { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 10px; align-items: start; }
   #info { background: linear-gradient(#262238, #1b1828); border: 1.5px solid #4a4060; border-radius: 8px; box-shadow: 0 4px 14px #0006; padding: 10px 12px; min-height: 132px; min-width: 0; }
@@ -386,7 +440,7 @@
   <div id="stage"><canvas id="cv" width="1440" height="960"></canvas><div id="banner" hidden></div>
     <button id="rushBtn" type="button" hidden>早送り ▶▶</button>
     <div id="tut" hidden><p id="tutText"></p><div class="tutBtns"><button id="tutSkip" type="button">説明を飛ばす</button><button id="tutNext" type="button" class="primary">次へ</button></div></div>
-    <div id="cutin" hidden><div class="ciband"></div><div class="ci l"><img alt=""></div><div class="ci r"><img alt=""></div><div class="cicrit">必殺！</div></div></div>
+    <div id="cutin" hidden><div class="ciband"></div><div class="ci l"><img alt=""></div><div class="ci r"><img alt=""></div><div class="cicrit">必殺！</div></div><div id="skillBand" hidden></div></div>
   <section id="panel"><div id="info"></div><div id="menu"></div></section>
   <p id="goal"></p>
   <p id="bonusGoal" hidden></p>
@@ -428,6 +482,7 @@
   <button id="dlgSkip" type="button">スキップ ▶▶</button>
 </div>
 
+<div id="show" hidden><div class="shVeil"></div><div class="shRing"></div><div class="shRing two"></div><div class="shPics"></div><div class="shBand"><small class="shSub"></small><b class="shMain"></b><small class="shNote"></small></div><span class="shSkip">タップで次へ</span></div>
 <div id="credits" class="overlay" hidden><div id="creditsRoll"></div><p class="creditsSkip">タップで閉じる</p></div>
 
 <div id="title" class="overlay">
