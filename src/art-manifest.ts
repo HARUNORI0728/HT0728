@@ -113,5 +113,7 @@ export const MAP_ART: Record<string, string> = {
   ch01: 'assets/maps/ch01.webp?v=ba9c11db',
   ch02: 'assets/maps/ch02.webp?v=c65d8d9a',
   ch03: 'assets/maps/ch03.webp?v=4bf0acfd',
+  ch04: 'assets/maps/ch04.webp?v=4a933bb9',
+  ch05: 'assets/maps/ch05.webp?v=9c9c0b0c',
   ch08: 'assets/maps/ch08.webp?v=09a110a5',
 };
