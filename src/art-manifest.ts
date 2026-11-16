@@ -56,6 +56,7 @@ export const PORTRAIT_ART: Record<string, Partial<Record<Face, string>>> = {
   apostle: { normal: 'assets/portraits/apostle_normal.webp?v=4fa20cbd', angry: 'assets/portraits/apostle_angry.webp?v=d9b43b3e' },
   ariel: { normal: 'assets/portraits/ariel_normal.webp?v=2a115781', smile: 'assets/portraits/ariel_smile.webp?v=1c113e8c', angry: 'assets/portraits/ariel_angry.webp?v=3617a3fb', sad: 'assets/portraits/ariel_sad.webp?v=326e1fad', dere: 'assets/portraits/ariel_dere.webp?v=c6eaa610' },
   auber: { normal: 'assets/portraits/auber_normal.webp?v=9a973c4b', angry: 'assets/portraits/auber_angry.webp?v=6367b2b9' },
+  belt: { normal: 'assets/portraits/belt_normal.webp?v=22764e51' },
   cliff: { normal: 'assets/portraits/cliff_normal.webp?v=203458c8', smile: 'assets/portraits/cliff_smile.webp?v=2a10bea4', angry: 'assets/portraits/cliff_angry.webp?v=0a770d3a', sad: 'assets/portraits/cliff_sad.webp?v=c9288389' },
   darius: { normal: 'assets/portraits/darius_normal.webp?v=8a9eaa88', angry: 'assets/portraits/darius_angry.webp?v=24d46690' },
   dolgan: { normal: 'assets/portraits/dolgan_normal.webp?v=6c3c3352', angry: 'assets/portraits/dolgan_angry.webp?v=e9b5c2f3' },
@@ -67,7 +68,7 @@ export const PORTRAIT_ART: Record<string, Partial<Record<Face, string>>> = {
   hanna: { normal: 'assets/portraits/hanna_normal.webp?v=01dc3b9a', smile: 'assets/portraits/hanna_smile.webp?v=4eafa255', angry: 'assets/portraits/hanna_angry.webp?v=18ab34cd', sad: 'assets/portraits/hanna_sad.webp?v=e2864c9f' },
   isolde: { normal: 'assets/portraits/isolde_normal.webp?v=b8a22308', smile: 'assets/portraits/isolde_smile.webp?v=1872f781', angry: 'assets/portraits/isolde_angry.webp?v=b743c0c5', sad: 'assets/portraits/isolde_sad.webp?v=2627940f' },
   linia: { normal: 'assets/portraits/linia_normal.webp?v=2a6f6605', smile: 'assets/portraits/linia_smile.webp?v=7bd0fa03', angry: 'assets/portraits/linia_angry.webp?v=6ef9de03', sad: 'assets/portraits/linia_sad.webp?v=6cffa163', dere: 'assets/portraits/linia_dere.webp?v=aa29a8bf' },
-  lotta: { normal: 'assets/portraits/lotta_normal.webp?v=21a20437', angry: 'assets/portraits/lotta_angry.webp?v=537b14d6' },
+  lotta: { normal: 'assets/portraits/lotta_normal.webp?v=21a20437', smile: 'assets/portraits/lotta_smile.webp?v=81b6fe8a', angry: 'assets/portraits/lotta_angry.webp?v=537b14d6', sad: 'assets/portraits/lotta_sad.webp?v=f78a8fff' },
   luke: { normal: 'assets/portraits/luke_normal.webp?v=1ac18d62', smile: 'assets/portraits/luke_smile.webp?v=3d8b4b32', angry: 'assets/portraits/luke_angry.webp?v=70bc0c51', sad: 'assets/portraits/luke_sad.webp?v=55152b6e' },
   mercboss: { normal: 'assets/portraits/mercboss_normal.webp?v=54d67b4b', angry: 'assets/portraits/mercboss_angry.webp?v=267b03cf' },
   nanahoshi: { normal: 'assets/portraits/nanahoshi_normal.webp?v=97273bf0', smile: 'assets/portraits/nanahoshi_smile.webp?v=8fc12cff', angry: 'assets/portraits/nanahoshi_angry.webp?v=bf4bfbee', sad: 'assets/portraits/nanahoshi_sad.webp?v=5adc9d47' },
@@ -121,4 +122,5 @@ export const MAP_ART: Record<string, string> = {
   ch07: 'assets/maps/ch07.webp?v=b32cab43',
   ch08: 'assets/maps/ch08.webp?v=8308108f',
   ch09: 'assets/maps/ch09.webp?v=cb342596',
+  ch10: 'assets/maps/ch10.webp?v=9bcd102c',
 };
