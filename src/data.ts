@@ -318,7 +318,7 @@ const MT_ORDER: MoveType[] = ['foot', 'armor', 'horse', 'beast', 'fly'];
  * 支配域（systems.md「移動」）：移動の途中で、敵ユニットに隣接するマスから次のマスへ進むときは、地形のコストに +ZOC_COST。
  * 出発したマスは数えない（隣の敵から離れるのは自由）。敵味方・全移動タイプ共通。
  */
-export const ZOC_COST = 2;
+export const ZOC_COST = 1;
 
 export function moveCost(t: string, m: MoveType): number {
   return MOVE_COST[t]?.[MT_INDEX[m]] ?? 1;
