@@ -227,7 +227,7 @@ function render(now = performance.now()) {
     ctx.save(); ctx.translate(-cam.x, -cam.y);
     if (gridOn()) drawGrid(ctx, Math.max(0, Math.floor(cam.x / T)), Math.max(0, Math.floor(cam.y / T)), Math.min(cols(), Math.ceil((cam.x + W) / T)) - 1, Math.min(rows(), Math.ceil((cam.y + H) / T)) - 1);
     const tile = (k: string, kind: Parameters<typeof drawTile>[1], a = 1) => { const [x, y] = k.split(',').map(Number); drawTile(ctx, kind, x, y, a); };
-    if (dangerOn && inBattle && S.phase === 'blue') for (const k of dangerNow()) tile(k, 'attack', 0.38);
+    if (dangerOn && inBattle && S.phase === 'blue') for (const k of dangerNow()) tile(k, 'attack', 0.6);
     if (mode === 'move' || (mode === 'idle' && inspect)) {
       for (const k of threat) if (!stops.has(k)) tile(k, 'attack');
       for (const k of stops) tile(k, 'move');
