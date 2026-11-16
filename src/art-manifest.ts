@@ -65,7 +65,7 @@ export const PORTRAIT_ART: Record<string, Partial<Record<Face, string>>> = {
   gaz: { normal: 'assets/portraits/gaz_normal.webp?v=415d8a58', angry: 'assets/portraits/gaz_angry.webp?v=3e775cec' },
   ghislaine: { normal: 'assets/portraits/ghislaine_normal.webp?v=ac05d147', smile: 'assets/portraits/ghislaine_smile.webp?v=02868f04', angry: 'assets/portraits/ghislaine_angry.webp?v=494d7a7a', sad: 'assets/portraits/ghislaine_sad.webp?v=ba82eace' },
   isolde: { normal: 'assets/portraits/isolde_normal.webp?v=b8a22308', smile: 'assets/portraits/isolde_smile.webp?v=1872f781', angry: 'assets/portraits/isolde_angry.webp?v=b743c0c5', sad: 'assets/portraits/isolde_sad.webp?v=2627940f' },
-  linia: { normal: 'assets/portraits/linia_normal.webp?v=2a6f6605', smile: 'assets/portraits/linia_smile.webp?v=7bd0fa03', angry: 'assets/portraits/linia_angry.webp?v=6ef9de03', sad: 'assets/portraits/linia_sad.webp?v=6cffa163' },
+  linia: { normal: 'assets/portraits/linia_normal.webp?v=2a6f6605', smile: 'assets/portraits/linia_smile.webp?v=7bd0fa03', angry: 'assets/portraits/linia_angry.webp?v=6ef9de03', sad: 'assets/portraits/linia_sad.webp?v=6cffa163', dere: 'assets/portraits/linia_dere.webp?v=aa29a8bf' },
   lotta: { normal: 'assets/portraits/lotta_normal.webp?v=21a20437', angry: 'assets/portraits/lotta_angry.webp?v=537b14d6' },
   luke: { normal: 'assets/portraits/luke_normal.webp?v=1ac18d62', smile: 'assets/portraits/luke_smile.webp?v=3d8b4b32', angry: 'assets/portraits/luke_angry.webp?v=70bc0c51', sad: 'assets/portraits/luke_sad.webp?v=55152b6e' },
   mercboss: { normal: 'assets/portraits/mercboss_normal.webp?v=54d67b4b', angry: 'assets/portraits/mercboss_angry.webp?v=267b03cf' },
@@ -73,7 +73,7 @@ export const PORTRAIT_ART: Record<string, Partial<Record<Face, string>>> = {
   orsted: { normal: 'assets/portraits/orsted_normal.webp?v=5816b322', smile: 'assets/portraits/orsted_smile.webp?v=2a13ba80', angry: 'assets/portraits/orsted_angry.webp?v=ba25f573', sad: 'assets/portraits/orsted_sad.webp?v=c5c4a305' },
   paul: { normal: 'assets/portraits/paul_normal.webp?v=414c8ce1', smile: 'assets/portraits/paul_smile.webp?v=58b6a131', angry: 'assets/portraits/paul_angry.webp?v=bce20505', sad: 'assets/portraits/paul_sad.webp?v=79731ed2' },
   perugius: { normal: 'assets/portraits/perugius_normal.webp?v=7b1632dc', smile: 'assets/portraits/perugius_smile.webp?v=44a17278', angry: 'assets/portraits/perugius_angry.webp?v=0e602df7', sad: 'assets/portraits/perugius_sad.webp?v=b9fbf877' },
-  pursena: { normal: 'assets/portraits/pursena_normal.webp?v=1706710e', smile: 'assets/portraits/pursena_smile.webp?v=db0508b0', angry: 'assets/portraits/pursena_angry.webp?v=a39649bd', sad: 'assets/portraits/pursena_sad.webp?v=e408ac4e' },
+  pursena: { normal: 'assets/portraits/pursena_normal.webp?v=1706710e', smile: 'assets/portraits/pursena_smile.webp?v=db0508b0', angry: 'assets/portraits/pursena_angry.webp?v=a39649bd', sad: 'assets/portraits/pursena_sad.webp?v=e408ac4e', dere: 'assets/portraits/pursena_dere.webp?v=22ef6ccd' },
   roxy: { normal: 'assets/portraits/roxy_normal.webp?v=65f235b0', smile: 'assets/portraits/roxy_smile.webp?v=8fe891ef', angry: 'assets/portraits/roxy_angry.webp?v=2b6b1128', sad: 'assets/portraits/roxy_sad.webp?v=d3740636', dere: 'assets/portraits/roxy_dere.webp?v=ffd40b40' },
   rudeus: { normal: 'assets/portraits/rudeus_normal.webp?v=717a45e2', smile: 'assets/portraits/rudeus_smile.webp?v=4df873fa', angry: 'assets/portraits/rudeus_angry.webp?v=15e5c916', sad: 'assets/portraits/rudeus_sad.webp?v=b0b00f20' },
   ruijerd: { normal: 'assets/portraits/ruijerd_normal.webp?v=842eabc6', smile: 'assets/portraits/ruijerd_smile.webp?v=665cc7e1', angry: 'assets/portraits/ruijerd_angry.webp?v=16b5ce4d', sad: 'assets/portraits/ruijerd_sad.webp?v=c87d17e5' },
@@ -112,5 +112,6 @@ export const EVENT_ART: Record<string, string> = {
 export const MAP_ART: Record<string, string> = {
   ch01: 'assets/maps/ch01.webp?v=ba9c11db',
   ch02: 'assets/maps/ch02.webp?v=c65d8d9a',
+  ch03: 'assets/maps/ch03.webp?v=4bf0acfd',
   ch08: 'assets/maps/ch08.webp?v=09a110a5',
 };
