@@ -327,11 +327,65 @@
   #snd.muted .sndRow { opacity: .45; }
   #sndMute[aria-pressed="true"] { border-color: var(--foe); color: var(--foe); }
   .sndCard .hint { font-size: 12.5px; }
+  /* HUD: on narrow screens the buttons wrap under the chapter title. */
+  #hud .hudR { flex-wrap: wrap; justify-content: flex-end; row-gap: 6px; }
+  .hudBreak { display: none; }
+  @media (max-width: 560px) {
+    /* title and turn on the first line, the four buttons on the second (right-aligned) */
+    #hud { row-gap: 6px; column-gap: 8px; align-items: center; }
+    #hud .hudR { display: contents; }
+    #hud .hudBreak { display: block; flex-basis: 100%; height: 0; }
+    #hud #gridBtn { margin-left: auto; }
+  }
+  #speedBtn { min-width: 5.6em; justify-content: center; }
+  .helpBtn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; min-width: 40px; padding: 4px 10px; font-size: 14px; color: var(--dim); flex: none; }
+  .helpBtn:hover { color: var(--ink); }
+  .campHead .hudR { gap: 8px; flex: none; }
+  @media (max-width: 560px) { .helpBtn .lbl { display: none; } }
+  #campTitle small { display: inline-block; font-size: 14px; color: var(--dim); letter-spacing: .04em; }
+  /* Enemy phase: fast-forward button over the map's lower right corner. */
+  #rushBtn { position: absolute; right: 8px; bottom: 8px; z-index: 2; min-height: 38px; padding: 4px 12px; font-size: 14px; line-height: 1.2;
+    background: rgba(29, 26, 42, .9); border-color: var(--gold); color: var(--gold); box-shadow: 0 2px 10px rgba(0, 0, 0, .5); }
+  /* Tutorial: a band across the top of the map (the map stays usable under it). */
+  #tut { position: absolute; left: 8px; right: 8px; top: 8px; z-index: 3; line-height: 1.55; display: flex; flex-direction: column; gap: 8px;
+    background: linear-gradient(rgba(38, 33, 58, .97), rgba(22, 19, 34, .97)); border: 2px solid var(--gold); border-radius: 8px; padding: 10px 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .6); font-size: 14.5px; }
+  #tut.low { top: auto; bottom: 8px; }
+  #tut p { margin: 0; }
+  #tut p b { color: var(--gold); font-weight: normal; font-family: var(--pixel); }
+  #tut .tutBtns { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+  #tut .tutBtns button { min-height: 38px; padding: 4px 14px; font-size: 14px; }
+  #tut .tutStep { margin-right: auto; color: var(--dim); font-size: 12px; font-family: var(--pixel); }
+  @media (max-width: 560px) { #tut { font-size: 13.5px; padding: 8px 10px; } }
+  /* How to play: a scrolling card over everything (except the sound panel). */
+  #help { z-index: 35; display: flex; align-items: flex-start; justify-content: center; background: rgba(var(--shade), .78); padding: 16px; overflow-y: auto; }
+  .helpCard { width: min(640px, 100%); background: linear-gradient(#262238, #1b1828); border: 2px solid var(--gold); border-radius: 8px; padding: 14px 16px 18px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, .6); display: flex; flex-direction: column; gap: 10px; }
+  .helpHead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .helpHead h2 { margin: 0; font-family: var(--pixel); font-weight: normal; color: var(--gold); font-size: 19px; letter-spacing: .08em; }
+  #helpNav { display: flex; flex-wrap: wrap; gap: 6px; }
+  #helpNav button { min-height: 36px; padding: 2px 10px; font-size: 13px; flex: 1 1 auto; }
+  #helpNav button[aria-pressed="true"] { color: var(--gold); border-color: var(--gold); }
+  #helpBody h3 { margin: 4px 0 6px; font-family: var(--pixel); font-weight: normal; color: var(--gold); font-size: 16px; }
+  #helpBody ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 5px; font-size: 14px; line-height: 1.6; }
+  #helpBody li::marker { color: var(--gold); }
+  #helpBody b { color: var(--gold); font-weight: normal; }
+  #helpBody .tri { font-family: var(--pixel); color: var(--ink); }
+  /* Camp merchant: buy / sell / storage tabs and item rows. */
+  .shopModes { display: flex; gap: 6px; }
+  .shopModes button { flex: 1 1 0; min-height: 40px; padding: 4px 8px; font-size: 14px; }
+  .shopModes button[aria-pressed="true"] { color: var(--gold); border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+  .sellRow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 40px; border-top: 1px solid var(--line); padding-top: 6px; font-size: 13px; }
+  .sellRow .invName { font-family: var(--pixel); font-size: 14px; flex: 1 1 8em; min-width: 0; }
+  .sellRow .invName small { color: var(--dim); font-size: 12px; }
+  .sellRow button { min-height: 36px; padding: 2px 10px; font-size: 13px; }
 </style>
 
 <main id="app">
-  <header id="hud"><span id="chTitle"></span><span class="hudR"><span id="turn"></span><button id="gridBtn" class="gridBtn" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM9.33 4v16M14.67 4v16M4 9.33h16M4 14.67h16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>格子</span></button><button class="sndBtn" type="button"></button></span></header>
+  <header id="hud"><span id="chTitle"></span><span class="hudR"><span id="turn"></span><span class="hudBreak"></span><button id="gridBtn" class="gridBtn" type="button" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM9.33 4v16M14.67 4v16M4 9.33h16M4 14.67h16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg><span>格子</span></button><button id="speedBtn" class="gridBtn" type="button" aria-pressed="false"></button><button class="sndBtn" type="button"></button><button class="helpBtn" type="button" aria-label="あそびかた">？</button></span></header>
   <div id="stage"><canvas id="cv" width="1440" height="960"></canvas><div id="banner" hidden></div>
+    <button id="rushBtn" type="button" hidden>早送り ▶▶</button>
+    <div id="tut" hidden><p id="tutText"></p><div class="tutBtns"><button id="tutSkip" type="button">説明を飛ばす</button><button id="tutNext" type="button" class="primary">次へ</button></div></div>
     <div id="cutin" hidden><div class="ciband"></div><div class="ci l"><img alt=""></div><div class="ci r"><img alt=""></div><div class="cicrit">必殺！</div></div></div>
   <section id="panel"><div id="info"></div><div id="menu"></div></section>
   <p id="goal"></p>
@@ -340,7 +394,7 @@
 
 <div id="camp" class="overlay" hidden>
   <div class="campIn">
-    <div class="campHead"><h2 id="campTitle">章間</h2><button class="sndBtn" type="button"></button></div>
+    <div class="campHead"><h2 id="campTitle">章間</h2><span class="hudR"><button class="helpBtn" type="button" aria-label="あそびかた">？<span class="lbl">&nbsp;あそびかた</span></button><button class="sndBtn" type="button"></button></span></div>
     <p id="campMsg" role="status"></p>
     <p id="campWed" hidden></p>
     <p id="campGold" hidden></p>
@@ -407,6 +461,13 @@
     <button id="sndMute" type="button" aria-pressed="false">消音する</button>
     <p class="hint">設定はこの端末に保存される。曲がまだ届いていない場面は、仮の曲で流れる。</p>
     <button id="sndClose" type="button" class="primary">閉じる</button>
+  </div>
+</div>
+<div id="help" class="overlay" hidden>
+  <div class="helpCard" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="helpHead"><h2 id="helpTitle">あそびかた</h2><button id="helpClose" type="button">閉じる</button></div>
+    <nav id="helpNav"></nav>
+    <div id="helpBody"></div>
   </div>
 </div>
 <!--SCRIPT-->

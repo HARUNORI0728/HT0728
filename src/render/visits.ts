@@ -80,6 +80,30 @@ function cage(c: C2D, cx: number, by: number, open: boolean) {
   }
 }
 
+/**
+ * ユニットが未開封の宝箱・檻のマスに立っているとき、ユニットの上（足もとの右下）に重ねる小さな印。
+ * 絵がユニットに隠れても、ここで「開ける／訪問」ができると分かるように。ユニットを描いた後に呼ぶ。
+ */
+export function drawVisitBadge(c: C2D, kind: 'chest' | 'village', tx: number, ty: number, sec: number) {
+  const r = T * 0.17, cx = (tx + 1) * T - r - T * 0.03, cy = (ty + 1) * T - r - T * 0.03, a = 0.75 + 0.25 * Math.sin(sec * 3);
+  c.save();
+  c.fillStyle = 'rgba(20,16,28,.88)'; c.strokeStyle = `rgba(255,226,140,${a})`; c.lineWidth = T * 0.03;
+  c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill(); c.stroke();
+  const s = r * 0.62;
+  c.fillStyle = '#e8c56a'; c.strokeStyle = OUT; c.lineWidth = T * 0.012;
+  if (kind === 'chest') {
+    // 小さな宝箱：箱と丸い蓋、錠
+    c.fillRect(cx - s, cy - s * 0.15, s * 2, s * 0.95); c.strokeRect(cx - s, cy - s * 0.15, s * 2, s * 0.95);
+    c.beginPath(); c.moveTo(cx - s, cy - s * 0.15); c.quadraticCurveTo(cx, cy - s * 1.25, cx + s, cy - s * 0.15); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = OUT; c.fillRect(cx - s * 0.14, cy - s * 0.3, s * 0.28, s * 0.45);
+  } else {
+    // 小さな檻：屋根と格子
+    c.fillRect(cx - s, cy - s, s * 2, s * 0.3); c.fillRect(cx - s, cy + s * 0.7, s * 2, s * 0.3);
+    for (let i = 0; i <= 3; i++) { const bx = cx - s + (s * 2 * i) / 3; c.fillRect(bx - s * 0.09, cy - s, s * 0.18, s * 2); }
+  }
+  c.restore();
+}
+
 /** 宝箱・檻（村）のマーカーを (tx, ty) のマスに描く。sec = 経過秒（未開封の光の明滅）。 */
 export function drawVisit(c: C2D, kind: 'chest' | 'village', tx: number, ty: number, open: boolean, sec: number) {
   const cx = (tx + 0.5) * T, by = (ty + 0.86) * T;

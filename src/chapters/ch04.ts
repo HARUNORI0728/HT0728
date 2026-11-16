@@ -4,9 +4,11 @@ const P = '私兵の';
 const sw = (lv: number, x: number, y: number, ai: EnemyDef['ai'], wp = 'ironSword'): EnemyDef => ({ cls: 'myrmidon', lv, x, y, wps: [wp], ai, prefix: P });
 
 export const ch04: Chapter = {
-  // 4章（plot.md §2・systems.md §6）：制圧。アリエル隊（礼拝堂）と本隊（西端）が分かれて始まる。出撃7（強制4＋選択3）、最初の敵17＋増援7（3・5・7ターン目）。
+  // 4章（plot.md §2・systems.md §6）：アリエル隊（礼拝堂）と本隊（西端）が分かれて始まる。出撃7（強制4＋選択3）。
+  // 2段構成。前半（1〜5T）：オーベールの襲撃（2Tから突撃、3Tに礼拝堂の裏の抜け道から奇襲）から王女を守り抜く。本隊は町を抜けて合流する。
+  // 後半（6T〜）：刺客の拠点の関所跡を制圧する（騎馬の増援と、礼拝堂の抜け道からの二度目の奇襲）。オーベールは HP が半分を切ると撤退。
   title: '第4章　白い髪の護衛',
-  win: { type: 'seize', tiles: [[10, 1]] }, lose: { units: ['rudeus', 'ariel'] },
+  win: { type: 'survive', turns: 5 }, lose: { units: ['rudeus', 'ariel'] },
   // 20×14。東西に旧街道が通る宿場町（家屋・廃墟・柵）。北は山あいの関所跡（城壁と崖で囲まれた砦。南の門と西の崩れた壁から入る）。
   // 東寄りに崩れた礼拝堂（石壁で囲んだ一角。西の扉と東の裏口。アリエルの立つ祭壇＝家屋は南からしか近づけない）にアリエル隊。北東は丘と林（弓兵の高所）、南は柵で区切った畑の跡。
   map: [
@@ -63,11 +65,26 @@ export const ch04: Chapter = {
       { cls: 'horseKnight', lv: 6, x: 15, y: 1, wps: ['ironLance'], ai: 'charge', prefix: P },
       { cls: 'horseKnight', lv: 6, x: 19, y: 2, wps: ['ironSword'], ai: 'charge', prefix: P },
     ] },
-    { turn: 7, units: [ // 西の旧街道から、本隊の背後を突く騎馬
-      { cls: 'horseKnight', lv: 6, x: 0, y: 7, wps: ['ironLance'], ai: 'charge', prefix: P },
-      { cls: 'cavalier', lv: 6, x: 0, y: 6, wps: ['ironLance'], ai: 'charge', prefix: P },
-    ] },
   ],
+  stages: [{
+    // 後半：関所跡の制圧。王女が倒れると敗北（lose は前半を引き継ぐ）。
+    win: { type: 'seize', tiles: [[10, 1]] },
+    enemies: [ // 襲撃をしのがれた私兵が関所跡へ退き、門を固める
+      { cls: 'soldier', lv: 6, x: 9, y: 5, wps: ['ironLance'], ai: 'hold', prefix: P },
+      { cls: 'soldier', lv: 6, x: 11, y: 5, wps: ['ironLance'], ai: 'hold', prefix: P },
+      { cls: 'knight', lv: 7, x: 10, y: 3, wps: ['ironLance'], ai: 'guard', prefix: P }, // 南の門をふさぐ（西の崩れた壁から回り込む手もある）
+    ],
+    reinforce: [
+      { turn: 7, units: [ // 西の旧街道から、本隊の背後を突く騎馬
+        { cls: 'horseKnight', lv: 6, x: 0, y: 7, wps: ['ironLance'], ai: 'charge', prefix: P },
+        { cls: 'cavalier', lv: 6, x: 0, y: 6, wps: ['ironLance'], ai: 'charge', prefix: P },
+      ] },
+      { turn: 9, units: [ // 礼拝堂の裏の抜け道から、ふたたび（王女を狙う）
+        sw(6, 17, 13, 'charge'), sw(6, 19, 13, 'charge'),
+        { cls: 'archer', lv: 6, x: 18, y: 13, wps: ['ironBow'], ai: 'charge', prefix: '刺客の' },
+      ] },
+    ],
+  }],
   // 寄り道の宝箱（M13）：南の畑の農家。
   visits: [{ x: 2, y: 13, kind: 'chest', item: 'rapier' }],
   // 副目標（Chapter.bonus。ふつうの通しプレイの手数を見て、少し頑張れば届く線）
@@ -78,6 +95,9 @@ export const ch04: Chapter = {
     { scene: 'ch4.battle2', when: { type: 'firstFight', unit: 'sylphiette' } },
     { scene: 'ch4.battle3', when: { type: 'reinforce', wave: 0 } },
     { scene: 'ch4.battle4', when: { type: 'turn', turn: 4, phase: 'blue' } },
+    { scene: 'ch4.battle8', when: { type: 'reinforce', wave: 1 } },
+    { scene: 'ch4.battle9', when: { type: 'stageStart', stage: 1 } },
+    { scene: 'ch4.battle10', when: { type: 'reinforce', wave: 1, stage: 1 } },
     { scene: 'ch4.battle5', when: { type: 'bossFight', boss: 'auber' } },
     { scene: 'ch4.battle6', when: { type: 'bossDefeat', boss: 'auber' } },
     { scene: 'ch4.battle7', when: { type: 'firstFight', unit: 'ariel' } },

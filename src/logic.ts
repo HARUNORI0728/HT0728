@@ -97,13 +97,14 @@ export function makeUnit(id: string): Unit | null {
  * むずかしい：敵の能力への上乗せ（Lv+2 相当）。`index` = 章（0 = 第1章）。力/魔力は攻撃に使うほう（大きいほう）だけ、
  * もともと 0 の能力は上げない。
  * 一般の敵：HP+4・力/魔力+2・技・速さ・守備・魔防 +1。6章から HP・速さ +1、7章から技 +1 をさらに足す。
+ * ただし8章（迷宮。崩落で道が狭まり、連戦で逃げ場が無い）は 6章からの HP・速さ +1 を足さない（むずかしいで突出して重かったため）。
  * ボス：HP+4・力/魔力・速さ・守備 +1。9・10章のボス（ガル・ファリオン、ダリウス、オルステッド、使徒）は HP+2・力/魔力 +1 だけ。
  * 武器を持たない置物（10章の結晶）は上げない。
  */
 export function hardBonus(e: EnemyDef, index: number): Partial<Stats> {
   if (!e.wps.length) return {};
   if (e.boss) return index >= 8 ? { hp: 2, str: 1, mag: 1 } : { hp: 4, str: 1, mag: 1, spd: 1, def: 1 };
-  const late = index >= 5 ? 1 : 0, later = index >= 6 ? 1 : 0;
+  const late = index >= 5 && index !== 7 ? 1 : 0, later = index >= 6 ? 1 : 0;
   return { hp: 4 + late, str: 2, mag: 2, skl: 1 + later, spd: 1 + late, def: 1, res: 1 };
 }
 

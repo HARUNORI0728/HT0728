@@ -77,6 +77,9 @@ function planOf(s) {
   const n = s.chapter + 1;
   if (n === 1 && st === 0) { p.anchor = [3, 6]; p.r = 4; p.leash = 10; } // 前半は食料の天幕のまわりで迎え撃つ（目標が「守り切る」なので、砦までは出ていかない）
   if (n === 2) { p.anchor = [5, 7]; p.r = 4; }               // 廃村の中で迎え撃つ
+  if (n === 3 && st === 0) { p.anchor = [11, 7]; p.r = 4; }  // 前半は川を渡って丘の見張り台（ロキシーたち）と合流する
+  if (n === 4 && st === 0) { p.anchor = [15, 9]; p.r = 4; }  // 前半は礼拝堂の王女のまわりで刺客を迎え撃つ（本隊は町を抜けて合流）
+  if (n === 5 && s.turn <= 7) { p.anchorOf = { sara: [9, 3] }; } // 前半は野営地の天幕で迎え撃つ。サラは本隊が森へ入るまで岩山（登り口は南だけ）に残る
   if (n === 6) { p.r = 4; }                                  // 食糧庫のまわり
   if (n === 7) { p.plugFrom = 1; }                           // 船着き場を早めに塞ぐ
   if (n === 10 && st === 0) { p.anchor = [5, 12]; p.r = 3; } // 廃宿の砦と林で凌ぐ
@@ -188,7 +191,8 @@ function Sim(rnd, log) {
     const fld = goalTiles ? field(s, goalTiles, mt) : null;
     const isPlug = plan.plug && plan.plugUnit === u.id && s.turn >= (plan.plugFrom ?? 1);
     const plugF = isPlug ? field(s, [plan.plug], mt) : null;
-    const anchorF = plan.mode === 'hold' && plan.anchor ? field(s, [plan.anchor], mt) : null;
+    const myAnchor = plan.anchorOf?.[u.id] ?? plan.anchor; // 持ち場を別にする仲間（5章前半のサラ＝岩山）
+    const anchorF = (plan.mode === 'hold' && myAnchor) || plan.anchorOf?.[u.id] ? field(s, [myAnchor], mt) : null;
     const allies = L.alive(s, 'blue').filter(a => a !== u);
     // 育てたい仲間（平均より低いLv）に止めを譲る：人がふつうにやる「経験値の配分」
     const team = L.alive(s, 'blue').filter(a => !a.guest && a.gr);

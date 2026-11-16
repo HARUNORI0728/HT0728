@@ -10,7 +10,8 @@ const mage = foe('mage', 'fire'), healer = foe('healer', 'healStaff');
 const hound = foe('wolf', 'wolfFang', '密猟団の');
 
 export const ch07: Chapter = {
-  // 7章（plot.md §2・systems.md §6）：ボス撃破（バラク）。ルーデウスが倒れるか、バラクが東の船着き場に着くと敗北。
+  // 7章（plot.md §2・systems.md §6）：2段構成。前半：ボス撃破（バラク）。ルーデウスが倒れるか、バラクが東の船着き場に着くと敗北。
+  // 後半（バラク捕縛のあと）：迎えの船で戻った密猟団の残りが上陸。野営地の残党ごと全滅させる。
   // 出撃8（ルーデウス・リニア・プルセナ＋5）。最初の敵19＋増援6（4ターン目に南の森から猟犬3、6ターン目に北の獣道から密猟者3）＝25。
   title: '第7章　獣の牙',
   win: { type: 'boss' }, lose: { units: ['rudeus'], tile: DOCK, tileBy: 'barak' },
@@ -59,6 +60,22 @@ export const ch07: Chapter = {
     { turn: 4, units: [hound(11, 8, 14, 'charge'), hound(11, 9, 14, 'charge'), hound(11, 10, 14, 'charge')] },
     { turn: 6, units: [lance(10, 13, 0, 'charge'), axe(10, 12, 1, 'charge'), archer(10, 13, 1, 'charge')] },
   ],
+  stages: [{
+    // 後半（バラクを捕らえたあと）：迎えの船で戻ってきた密猟団の残りが、船着き場から上陸して頭目と「荷」（檻の子ども）を取り返しに来る。
+    // 野営地に残る密猟者ごと一掃する（全滅）。檻へ向かう者（target）は、檻が塞がっているとその場で待つので、数ターン後に charge へ。
+    win: { type: 'rout' }, lose: { units: ['rudeus'] },
+    enemies: [
+      { ...axe(11, 18, 11, 'target'), goal: [13, 5], aiFrom: { turn: 12, ai: 'charge' } },
+      lance(11, 17, 12, 'charge'), archer(11, 17, 10, 'hold'),
+      foe('mercenary', 'steelSword')(12, 19, 11, 'charge'), // 船の用心棒
+      healer(10, 18, 12, 'hold'), axe(11, 16, 11, 'charge'),
+    ],
+    reinforce: [
+      // 南の森から、檻の匂いを追う猟犬（後半の最初の敵軍フェイズに出る）
+      { turn: 1, units: [hound(11, 8, 14, 'charge'), hound(11, 10, 14, 'charge')] },
+      { turn: 11, units: [lance(11, 13, 0, 'charge'), mage(11, 12, 1, 'hold')] },    // 北の獣道から、遅れてきた見張り
+    ],
+  }],
   // 檻3つ（M13の訪問マス。地形は家屋のまま、檻の絵を重ねる）。訪問すると子どもを助ける短い会話と、奪われた荷（銀・傷薬）。
   visits: [
     { x: 9, y: 5, kind: 'village', gold: 200, talk: 'ch7.battle8' },
@@ -66,7 +83,7 @@ export const ch07: Chapter = {
     { x: 9, y: 9, kind: 'village', gold: 250, talk: 'ch7.battle10' },
   ],
   // 副目標（Chapter.bonus。ふつうの通しプレイの手数を見て、少し頑張れば届く線）
-  bonus: [{ type: 'visits', kind: 'village', gold: 200, label: '檻の子どもを全員助ける{n}' }, { type: 'turns', max: 6, gold: 200 }],
+  bonus: [{ type: 'visits', kind: 'village', gold: 200, label: '檻の子どもを全員助ける{n}' }, { type: 'turns', max: 11, gold: 200 }],
   intro: 'ch7.intro', outro: 'ch7.outro', interlude: 'ch7.interlude',
   talks: [
     { scene: 'ch7.battle1', when: { type: 'firstFight', unit: 'linia' } },
@@ -76,5 +93,7 @@ export const ch07: Chapter = {
     { scene: 'ch7.battle5', when: { type: 'bossFight', boss: 'barak' } },
     { scene: 'ch7.battle6', when: { type: 'turn', turn: 7, phase: 'red' }, needs: ['barak'] },
     { scene: 'ch7.battle7', when: { type: 'bossDefeat', boss: 'barak' } },
+    { scene: 'ch7.battle11', when: { type: 'stageStart', stage: 1 } },
+    { scene: 'ch7.battle12', when: { type: 'reinforce', wave: 1, stage: 1 } },
   ],
 };

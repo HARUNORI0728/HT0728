@@ -13,12 +13,13 @@ import { adjacentBark, dateTalksAvailable, fallBark, wedChapters, wedKey } from 
 import { DATE_TALKS, WIFE_TALKS, type DateTalk } from './script/scenes';
 import { artLog, cueBgm, play, setOnCg } from './ui/dialogue';
 import { invBlock, renderShop } from './ui/shop-ui';
-import { chapterReward, shopName, takeLoot } from './shop';
+import { ITEMS, chapterReward, shopName, takeLoot } from './shop';
+import { hideTutorial, mountHelp, openHelp, startTutorial, tutorialDone, tutorialStep } from './ui/help';
 import { BG_ART } from './art-manifest';
 import { RES, T } from './render/common';
 import { FLOAT_LIFE, drawCursor, drawEdgeMarks, drawFloat, drawTile, drawVignette, type Float } from './render/fx';
 import { drawTerrain } from './render/terrain';
-import { drawVisit } from './render/visits';
+import { drawVisit, drawVisitBadge } from './render/visits';
 import { drawIcon, drawUnit } from './render/units';
 import { SCENES, SCENE_ORDER, type SceneId } from './script/scenes';
 import { faceHtml, idForName, idForUnit, loadMapArt, loadUnitArt, mapArtUrl, portraitUrl, preloadPortrait, spriteUrl } from './render/art';
@@ -30,7 +31,17 @@ import { mountAudioUi } from './audio/ui';
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const cv = $<HTMLCanvasElement>('cv'), ctx = cv.getContext('2d')!;
 const fast = () => !!(window as any).__fast;
-const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, fast() ? 0 : ms));
+// 演出の速さ：ふつう／はやい（HUD の切り替え、端末に保存）。敵軍フェイズは長押しか「早送り」でさらに速く（rush）。
+// __fast（自動テスト）は待ち時間なし。
+const SPEED_KEY = 'fittoa-speed';
+let speedFast = false;
+try { speedFast = localStorage.getItem(SPEED_KEY) === 'fast'; } catch { /* storage unavailable */ }
+let rush = false, rushHeld = false;
+/** 動きの待ち時間の倍率（移動・打ち合い・カットイン・カメラ）。 */
+const pace = () => (fast() ? 0 : rush || rushHeld ? 0.12 : speedFast ? 0.4 : 1);
+/** 読む文字のある帯（レベルアップ・増援など）は縮めすぎない。 */
+const readPace = () => (fast() ? 0 : rush || rushHeld ? 0.3 : speedFast ? 0.6 : 1);
+const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms * pace()));
 
 let S: State;
 /** The terrain, drawn once per chapter at the final resolution (RES backing pixels per map pixel). Null while drawing. */
@@ -135,6 +146,8 @@ interface Camp {
   school?: string;
   /** むずかしい（敵の能力が上がる）。v6 の任意項目。無ければふつう。 */
   hard?: boolean;
+  /** 倉庫（商人タブで預けた品・宝箱で誰も持てなかった品の id。数の上限なし）。v6 の任意項目。無ければ空。 */
+  stash?: string[];
 }
 /**
  * seen = conversations watched (for the camp's 記録): scene ids (序章・開幕・終幕・幕間) and support talks
@@ -181,6 +194,10 @@ function seenFrom(battle: State | null, cp: Camp | null): string[] {
 }
 const validUnit = (u: any): u is Unit => !!u && typeof u.id === 'string' && !!CLASSES[u.cls] && !!u.st && Array.isArray(u.wps) && u.wps.every((w: string) => !!WEAPONS[w]);
 const validDiff = (d: unknown): Difficulty => (d === 'classic' ? 'classic' : 'casual');
+const validStash = (id: unknown): id is string => typeof id === 'string' && (!!WEAPONS[id] || !!ITEMS[id]);
+/** 章の途中で倉庫へ送った品（State.flags の `stash:<id>` = 個数。章クリアで Camp.stash へ移す）。 */
+const STASH_FLAG = 'stash:';
+const battleStash = (st: State) => Object.entries(st.flags).flatMap(([k, v]) => (k.startsWith(STASH_FLAG) && validStash(k.slice(STASH_FLAG.length)) ? Array(Math.max(0, Number(v) || 0)).fill(k.slice(STASH_FLAG.length)) as string[] : []));
 /** Accepts v4, and v3/v2/v1 shapes (missing fields are filled in). Anything malformed is dropped rather than thrown. */
 function normalize(d: any): SaveData | null {
   const b = d?.battle;
@@ -188,7 +205,7 @@ function normalize(d: any): SaveData | null {
   const c = d?.camp;
   let cp: Camp | null = null;
   if (c && Array.isArray(c.roster) && typeof c.next === 'number' && typeof c.cleared === 'number' && c.cleared >= 1) {
-    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), gold: Number.isFinite(c.gold) && c.gold > 0 ? Math.floor(c.gold) : 0, ...(c.ended === true ? { ended: true } : {}), ...(SCHOOLS.includes(c.school) ? { school: c.school } : {}), ...(c.hard === true ? { hard: true } : {}), ...(Array.isArray(c.bench) ? { bench: c.bench.filter((g: any) => g && typeof g.id === 'string' && typeof g.exp === 'number') } : {}) };
+    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), gold: Number.isFinite(c.gold) && c.gold > 0 ? Math.floor(c.gold) : 0, ...(c.ended === true ? { ended: true } : {}), ...(SCHOOLS.includes(c.school) ? { school: c.school } : {}), ...(c.hard === true ? { hard: true } : {}), ...(Array.isArray(c.bench) ? { bench: c.bench.filter((g: any) => g && typeof g.id === 'string' && typeof g.exp === 'number') } : {}), ...(Array.isArray(c.stash) ? { stash: c.stash.filter(validStash) } : {}) };
   }
   const married = Array.isArray(d?.married) ? d.married.filter((k: unknown) => typeof k === 'string' && CANDIDATES.includes(k as string)) : [];
   if (cp) ensureMarried(cp.bonds, married);
@@ -258,6 +275,8 @@ function render(now = performance.now()) {
       .map(u => { const o = offs.get(u.uid); return { u, px: u.x * T + (o?.dx ?? 0), py: u.y * T + (o?.dy ?? 0) }; })
       .sort((a, b) => a.py - b.py);
     for (const { u, px, py } of shown) drawUnit(ctx, u, px, py, u.done && S.phase === 'blue', (shownHp.get(u.uid) ?? u.hp) / u.st.hp);
+    // 未開封の宝箱・檻にユニットが立っていると絵が隠れるので、足もとに小さな印を重ねる
+    for (const { v, open } of shownVisits(S)) if (!open && unitAt(S, v.x, v.y)) drawVisitBadge(ctx, v.kind, v.x, v.y, sec);
     const cur = picked ?? sel ?? inspect;
     if (cur && cur.hp > 0) drawCursor(ctx, cur.x, cur.y, sec);
     else if (probe && mode === 'idle') drawCursor(ctx, probe.x, probe.y, sec);
@@ -299,7 +318,7 @@ async function tween(u: Unit, x: number, y: number) {
   for (let i = 1; i <= 8; i++) { o.dx = sx * (1 - i / 8); o.dy = sy * (1 - i / 8); await sleep(18); }
   offs.delete(u.uid);
 }
-async function banner(text: string, ms = 900, cls = '') { const b = $('banner'); b.textContent = text; b.className = cls; b.hidden = false; await sleep(ms); b.hidden = true; b.className = ''; }
+async function banner(text: string, ms = 900, cls = '') { const b = $('banner'); b.textContent = text; b.className = cls; b.hidden = false; await new Promise<void>(r => setTimeout(r, ms * readPace())); b.hidden = true; b.className = ''; }
 
 /** Outcome music finishes before dialogue; tapping or pressing Enter/Space fades it out. */
 async function outcomeBanner(win: boolean) {
@@ -437,7 +456,23 @@ function idle() {
   if (!inspect) { stops = new Set(); threat = new Set(); }
   hud();
   info(inspect ? unitHtml(inspect) : `<p class="hint">青いユニットをタップして移動先を選ぼう。敵をタップすると移動・攻撃範囲が見られる。「危険範囲」で敵全員の届くマスを赤く重ねられる。${scrolls() ? '地図はドラッグで動かせる。' : ''}</p>`);
-  menu([[dangerOn ? '危険範囲：表示中' : '危険範囲を表示', toggleDanger, dangerOn ? 'toggle on' : 'toggle'], ['ターン終了', endTurn]]);
+  const left = alive(S, 'blue').filter(u => !u.done);
+  menu([[dangerOn ? '危険範囲：表示中' : '危険範囲を表示', toggleDanger, dangerOn ? 'toggle on' : 'toggle'], ...(left.length ? [[`次のユニット（残り${left.length}）`, nextUnit] as [string, () => void]] : []), ['ターン終了', askEndTurn]]);
+}
+/** 未行動の自軍ユニットを順に選ぶ（地図もそこへ動く）。 */
+let nextIdx = -1;
+function nextUnit() {
+  const left = alive(S, 'blue').filter(u => !u.done);
+  if (!left.length) return;
+  nextIdx = (nextIdx + 1) % left.length;
+  selectUnit(left[nextIdx]);
+}
+/** 「ターン終了」：まだ動いていない仲間がいれば確かめる。 */
+function askEndTurn() {
+  const left = alive(S, 'blue').filter(u => !u.done);
+  if (!left.length) { endTurn(); return; }
+  info(`<p>まだ行動していない仲間が<b class="gold">${left.length}人</b>いる（${left.map(u => esc(u.name)).join('、')}）。ターンを終了する？</p>`);
+  menu([['ターンを終了する', endTurn, 'primary'], ['もどる', idle]]);
 }
 function selectUnit(u: Unit) {
   audio.sfx('select');
@@ -473,14 +508,15 @@ async function doVisit(u: Unit, v: NonNullable<ReturnType<typeof chapterDef>['vi
   audio.sfx('decide');
   if (v.talk) { await playScene(v.talk, true); mapMusic(); }
   const others = [...S.units.filter(o => o.team === 'blue' && !o.guest && onMap(o)), ...S.bench.filter(o => !o.out && !o.guest)];
-  const got = takeLoot(u, v.item, v.gold, others);
+  const got = takeLoot(u, v.item, v.gold, others, true);
   if (got.silver) S.flags.loot = (Number(S.flags.loot) || 0) + got.silver;
+  if (got.item && got.stashed) S.flags[STASH_FLAG + got.item] = (Number(S.flags[STASH_FLAG + got.item]) || 0) + 1; // 章クリアで倉庫へ
   const parts: string[] = [];
-  if (got.item) parts.push(got.to ? `${shopName(got.item)}（${got.to.name}へ）` : `${shopName(got.item)}は持てる者がいないので銀に換えた`);
+  if (got.item) parts.push(got.to ? `${shopName(got.item)}（${got.to.name}へ）` : got.stashed ? `${shopName(got.item)}（持てる者がいないので倉庫へ）` : `${shopName(got.item)}は持てる者がいないので銀に換えた`);
   if (got.silver) parts.push(`${got.silver}銀`);
-  float(u, got.item && got.to ? shopName(got.item) : got.silver ? `+${got.silver}銀` : v.kind === 'chest' ? '開けた' : '訪問', '#e8c56a');
+  float(u, got.item && (got.to || got.stashed) ? shopName(got.item) : got.silver ? `+${got.silver}銀` : v.kind === 'chest' ? '開けた' : '訪問', '#e8c56a');
   info(`<p>${esc(parts.join('、') || '何もなかった')}を手に入れた。</p>`);
-  await banner(got.item && got.to ? `${shopName(got.item)}を手に入れた` : got.silver ? `${got.silver}銀を手に入れた` : '空っぽだった', 1100);
+  await banner(got.item && (got.to || got.stashed) ? `${shopName(got.item)}を手に入れた${got.stashed ? '（倉庫へ）' : ''}` : got.silver ? `${got.silver}銀を手に入れた` : '空っぽだった', 1100);
   finish(u);
 }
 function chooseTarget(wid: string, ts: Unit[]) {
@@ -623,7 +659,7 @@ function cutinArt(u: Unit, striking: boolean) {
  * the attacker lit. `crit` = a critical strike: only the striker, larger, with a flash. Skipped with __fast.
  */
 async function cutin(att: Unit, def: Unit, crit = false) {
-  if (fast()) return;
+  if (fast() || rush || rushHeld) return;
   const el = $('cutin');
   const sides = { l: att.team === 'blue' ? att : def, r: att.team === 'blue' ? def : att };
   let any = false;
@@ -637,6 +673,8 @@ async function cutin(att: Unit, def: Unit, crit = false) {
   if (!any) return;
   el.classList.toggle('crit', crit); el.dataset.att = sides.l === att ? 'l' : 'r';
   el.classList.remove('go'); el.hidden = false; void el.offsetWidth; el.classList.add('go');
+  const k = pace();
+  if (k > 0 && k < 1) for (const a of el.getAnimations({ subtree: true })) a.playbackRate = 1 / k; // はやい：同じ動きを速回しで
   await sleep(crit ? 720 : 560);
   el.hidden = true; el.classList.remove('go');
 }
@@ -693,6 +731,7 @@ async function battle(att: Unit, wid: string, def: Unit) {
 async function checkEnd(): Promise<boolean> {
   const o = outcome(S);
   if (!o) return false;
+  stopRush();
   mode = 'busy'; hud();
   if (o === 'stage') { await stageChange(); return outcome(S) ? checkEnd() : false; }
   if (o === 'win') {
@@ -703,7 +742,8 @@ async function checkEnd(): Promise<boolean> {
     const objs = objectives(S), extra = objs.reduce((a, o) => a + (o.ok ? o.o.gold : 0), 0);
     if (objs.length) await banner('副目標\n' + objs.map(o => `${o.ok ? '◎' : '×'} ${o.text}${o.ok && o.o.gold ? `　+${o.o.gold}銀` : ''}`).join('\n'), 2600, 'small');
     const roster = rosterOf(S), benchUp = benchExp(S, roster), reward = chapterReward(S.chapter + 1) + (Number(S.flags.loot) || 0) + extra; // loot = 抜け目なし
-    camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster, bonds: S.bonds, difficulty: S.difficulty, gold: (camp?.gold ?? 0) + reward, ...(camp?.school ? { school: camp.school } : {}), ...(S.hard ? { hard: true } : {}), bench: benchUp.map(g => ({ id: g.id, exp: g.exp, fromLv: g.fromLv, lv: g.lv })), ...(camp?.ended ? { ended: true } : {}) };
+    const stash = [...(camp?.stash ?? []), ...battleStash(S)];
+    camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster, bonds: S.bonds, difficulty: S.difficulty, gold: (camp?.gold ?? 0) + reward, ...(camp?.school ? { school: camp.school } : {}), ...(stash.length ? { stash } : {}), ...(S.hard ? { hard: true } : {}), bench: benchUp.map(g => ({ id: g.id, exp: g.exp, fromLv: g.fromLv, lv: g.lv })), ...(camp?.ended ? { ended: true } : {}) };
     markSeen(ch.outro); if (ch.interlude) markSeen(ch.interlude);
     inBattle = false; save();
     await playScene(ch.outro);
@@ -755,6 +795,20 @@ async function stageChange() {
 }
 
 // ---------- phases ----------
+/** 敵軍フェイズの早送りを終える（フェイズの終わり・章の決着）。 */
+function stopRush() { rush = false; rushHeld = false; clearTimeout(holdTimer); $('rushBtn').hidden = true; }
+let holdTimer = 0;
+const enemyTurn = () => inBattle && !!S && S.phase === 'red';
+// 敵軍フェイズ：地図を長押ししているあいだは早送り。
+$('stage').addEventListener('pointerdown', () => {
+  if (!enemyTurn()) return;
+  clearTimeout(holdTimer);
+  holdTimer = window.setTimeout(() => { if (enemyTurn()) rushHeld = true; }, 280);
+});
+const release = () => { clearTimeout(holdTimer); rushHeld = false; };
+for (const ev of ['pointerup', 'pointercancel'] as const) window.addEventListener(ev, release, true);
+$('stage').addEventListener('pointerleave', release);
+$('rushBtn').onclick = e => { e.stopPropagation(); if (enemyTurn()) { rush = true; $('rushBtn').hidden = true; } };
 function fortHeal(team: 'blue' | 'red') {
   for (const u of alive(S, team)) if (terrainAt(S, u.x, u.y).heal && u.hp < u.st.hp) { const h = Math.min(u.st.hp - u.hp, Math.ceil(u.st.hp * 0.2)); u.hp += h; float(u, `+${h}`, '#8fe0a0'); }
   // 使い魔の加護（ペルギウス）：砦の回復のあとに。演出は名前を出さない（使い魔の設定は要確認）。
@@ -766,7 +820,8 @@ async function endTurn() {
   if (mode === 'busy') return;
   mode = 'busy'; sel = picked = inspect = null; stops = new Set(); threat = new Set(); menu([]);
   const camBefore = { ...cam };
-  S.phase = 'red'; hud(); info('<p class="hint">敵軍が行動中……</p>');
+  S.phase = 'red'; hud(); info('<p class="hint">敵軍が行動中……（画面の長押しか「早送り」で一気に進む）</p>');
+  $('rushBtn').hidden = false;
   mapMusic(); audio.sfx('phaseRed');
   await banner('敵軍フェイズ');
   fortHeal('red');
@@ -796,6 +851,7 @@ async function endTurn() {
     else if (p.target && p.wid) { await battle(e, p.wid, p.target); if (await checkEnd()) return; }
     await sleep(140);
   }
+  stopRush();
   S.phase = 'blue'; S.turn++;
   clearSlow(S); // 泥沼は敵軍フェイズのあいだだけ
   for (const u of S.units) u.done = false;
@@ -905,9 +961,10 @@ function campMsg(t: string) { $('campMsg').textContent = t; }
 const pendingFinale = () => !!camp && !camp.ended && !!chapterDef(camp.cleared - 1)?.ending;
 function showCamp(msg = '') {
   if (!camp) return;
+  hideTutorial();
   mode = 'busy'; campTab = 'units';
   prep = null; $('campTabs').hidden = false; $('campBtns').hidden = false;
-  $('campTitle').textContent = `章間　難民キャンプ（${DIFFICULTY_NAMES[camp.difficulty]}・${levelName(camp.hard)}）`;
+  $('campTitle').innerHTML = `章間　難民キャンプ<small>（${DIFFICULTY_NAMES[camp.difficulty]}・${levelName(camp.hard)}）</small>`; // 狭い画面では括弧ごと次の行へ
   campMsg(msg);
   const has = hasChapter(camp.next);
   const nb = $<HTMLButtonElement>('btnNext');
@@ -1182,6 +1239,7 @@ function renderPrep() {
 // ---------- boot ----------
 /** Title screen. `panel` picks the button group: main (はじめから/つづきから), difficulty choice, or defeat. */
 function showTitle(msg = '', panel: 'main' | 'diff' | 'defeat' = 'main') {
+  hideTutorial();
   $('titleMsg').textContent = msg;
   $('btnLoad').hidden = !load();
   $('titleMain').hidden = panel !== 'main'; $('diffPick').hidden = panel !== 'diff'; $('defeat').hidden = panel !== 'defeat';
@@ -1258,6 +1316,8 @@ async function start(state: State, intro: boolean) {
   await banner(S.phase === 'blue' ? '自軍フェイズ' : '敵軍フェイズ');
   await turnTalks();
   idle();
+  // 新しく始めた第1章の最初だけ、操作の説明（会話と自軍フェイズの帯が済んでから。一度見たら出さない）。
+  if (intro && S.chapter === 0 && S.turn === 1 && !camp && !fast() && !tutorialDone()) startTutorial();
 }
 setOnCg(name => markSeen(`cg:${name}`));
 // タイトル画面の背景（届いていなければ従来の夜空のグラデーション）。
@@ -1278,6 +1338,7 @@ function devStart(index: number, difficulty: Difficulty = 'casual', hard = !!cam
 // Sound: starts on the first tap (autoplay rules); every button gives a short click.
 audio.attach();
 mountAudioUi();
+mountHelp();
 document.addEventListener('click', e => {
   const b = (e.target as HTMLElement | null)?.closest?.('button');
   if (!b || b.disabled || b.closest('#menu') && mode === 'busy') return;
@@ -1322,6 +1383,19 @@ $('gridBtn').onclick = () => {
   syncGridBtn();
 };
 syncGridBtn();
+/** 速度の切り替え（ふつう／はやい）。押すたびに入れ替わり、端末に保存する。 */
+function syncSpeedBtn() {
+  const b = $('speedBtn');
+  b.textContent = speedFast ? '▶▶ はやい' : '▶ ふつう';
+  b.setAttribute('aria-pressed', String(speedFast));
+  b.setAttribute('aria-label', `演出の速さ：${speedFast ? 'はやい' : 'ふつう'}（押すと切り替え）`);
+}
+$('speedBtn').onclick = () => {
+  speedFast = !speedFast;
+  try { localStorage.setItem(SPEED_KEY, speedFast ? 'fast' : 'normal'); } catch { /* lasts for this visit */ }
+  syncSpeedBtn();
+};
+syncSpeedBtn();
 showTitle();
 loadUnitArt();
 requestAnimationFrame(render);
@@ -1387,4 +1461,6 @@ requestAnimationFrame(render);
   /** Development: what a support pair's next conversation is (scene title, or null for data.ts / placeholder). */
   supportScene: (a: string, b: string, rank: string) => { const p = SUPPORTS.find(q => pairKey(q.a, q.b) === pairKey(a, b)); return p ? supportScene(p, rank as 'C') : null; },
   sceneById,
+  /** Test helpers: show the first-chapter tutorial now / its current step (-1 = hidden); open the help. */
+  tutorial: () => startTutorial(), get tutorialStep() { return tutorialStep(); }, help: (id?: string) => openHelp(id),
 };
