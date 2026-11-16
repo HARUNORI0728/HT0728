@@ -1,0 +1,80 @@
+[
+  {
+    "file": "assets\\portraits\\sylphiette_dere.png",
+    "size": [
+      1086,
+      1448
+    ],
+    "mode": "RGBA",
+    "alpha": [
+      0,
+      255
+    ],
+    "sha256": "c22c582c2999e7642ddc19daa718eee2e0c3fba7dbed67664de0b65f8f5fa240"
+  },
+  {
+    "file": "assets\\portraits\\roxy_dere.png",
+    "size": [
+      1086,
+      1448
+    ],
+    "mode": "RGBA",
+    "alpha": [
+      0,
+      255
+    ],
+    "sha256": "baacfc10bb0f7f67a15adae41a3c08d5fe192bcca28000c0dbeabfcec4aebf1d"
+  },
+  {
+    "file": "assets\\portraits\\eris_dere.png",
+    "size": [
+      1086,
+      1448
+    ],
+    "mode": "RGBA",
+    "alpha": [
+      0,
+      255
+    ],
+    "sha256": "7940fd575e472ba52c58b4695b9a8c5d149dc87e2ef2e7d4c6b862a75170caa3"
+  },
+  {
+    "file": "assets\\portraits\\sara_dere.png",
+    "size": [
+      1086,
+      1448
+    ],
+    "mode": "RGBA",
+    "alpha": [
+      0,
+      255
+    ],
+    "sha256": "e76254a2371aa2262264edb9edda80086d538fd83f302eab103a767aa4681f72"
+  },
+  {
+    "file": "assets\\portraits\\linia_dere.png",
+    "size": [
+      1086,
+      1448
+    ],
+    "mode": "RGBA",
+    "alpha": [
+      0,
+      255
+    ],
+    "sha256": "f389e25789d44dec0cb6acd614658343a6a0d28a409afbd16d8290a0c06c2be2"
+  },
+  {
+    "file": "assets\\portraits\\pursena_dere.png",
+    "size": [
+      1086,
+      1448
+    ],
+    "mode": "RGBA",
+    "alpha": [
+      0,
+      255
+    ],
+    "sha256": "b65a7dccc0e0c0e5daf5da4cf5d9978352be73574789f6227457d15e1c0cd5c4"
+  }
+]
