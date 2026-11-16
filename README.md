@@ -1,6 +1,6 @@
-# 中小企業診断士事務所 ホームページ
+# HAL経営相談室 ホームページ
 
 AI導入支援と補助金活用に強みを持つ中小企業診断士事務所のサイト（1ページ構成）。
 
 - `index.html` … サイト本体（HTML・CSS・JavaScriptを1ファイルに収録）
-- 「事務所名が入ります」「氏名が入ります」などの仮の文言、`IMAGE` / `PORTRAIT` の画像枠、連絡先（`info@example.com`）は差し替え前提です
+- `IMAGE` / `PORTRAIT` の画像枠と連絡先（`info@example.com`）は差し替え前提です
