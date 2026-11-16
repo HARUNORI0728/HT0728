@@ -5565,6 +5565,6 @@ export const BATTLE_BARKS: Record<string, Line[]> = {
   ],
   "ariel:fall": [
     {"who":"アリエル","text":"……ここで退くのは、王女の務め。ですが、妻としては……悔しいわ。","face":"sad"},
-    {"who":"ルーデウス","text":"アリエル！ ……あとは任せてください。必ず勝って戻ります。","face":"angry"},
+    {"who":"ルーデウス","text":"下がってください！ ……あとは任せてください。必ず勝って戻ります。","face":"angry"},
   ],
 };
