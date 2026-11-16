@@ -10,12 +10,14 @@ import {
 } from './logic';
 import { confessionScene, endingSequence, placeholderTalk, sceneById, supportScene, wifeLines, wifeTalksAvailable } from './story';
 import { adjacentBark, dateTalksAvailable, fallBark, wedChapters, wedKey } from './story';
-import { DATE_TALKS, WIFE_TALKS, type DateTalk } from './script/scenes';
-import { artLog, cueBgm, play, setOnCg } from './ui/dialogue';
+import { DATE_TALKS, WIFE_TALKS, type DateTalk, type WifeTalk } from './script/scenes';
+import { artLog, cueBgm, play, setOnBg, setOnCg } from './ui/dialogue';
+import { BGM_FILES } from './audio-manifest';
+import { JINGLES, SONG_NAMES } from './audio/songs';
 import { invBlock, renderShop } from './ui/shop-ui';
 import { ITEMS, chapterReward, shopName, takeLoot } from './shop';
 import { hideTutorial, mountHelp, openHelp, startTutorial, tutorialDone, tutorialStep } from './ui/help';
-import { BG_ART } from './art-manifest';
+import { BG_ART, EVENT_ART } from './art-manifest';
 import { RES, T } from './render/common';
 import { FLOAT_LIFE, captureDying, drawCursor, drawDying, drawEdgeMarks, drawFloat, drawTile, drawVignette, type Dying, type Float } from './render/fx';
 import { drawTerrain } from './render/terrain';
@@ -152,6 +154,8 @@ interface Camp {
   hard?: boolean;
   /** 倉庫（商人タブで預けた品・宝箱で誰も持てなかった品の id。数の上限なし）。v6 の任意項目。無ければ空。 */
   stash?: string[];
+  /** 成績（クリア記録用）：クリアした章の合計ターン、倒れた仲間の延べ人数、何周目か（2以上のとき）。v6 の任意項目。 */
+  turns?: number; falls?: number; round?: number;
 }
 /**
  * seen = conversations watched (for the camp's 記録): scene ids (序章・開幕・終幕・幕間) and support talks
@@ -209,7 +213,7 @@ function normalize(d: any): SaveData | null {
   const c = d?.camp;
   let cp: Camp | null = null;
   if (c && Array.isArray(c.roster) && typeof c.next === 'number' && typeof c.cleared === 'number' && c.cleared >= 1) {
-    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), gold: Number.isFinite(c.gold) && c.gold > 0 ? Math.floor(c.gold) : 0, ...(c.ended === true ? { ended: true } : {}), ...(SCHOOLS.includes(c.school) ? { school: c.school } : {}), ...(c.hard === true ? { hard: true } : {}), ...(Array.isArray(c.bench) ? { bench: c.bench.filter((g: any) => g && typeof g.id === 'string' && typeof g.exp === 'number') } : {}), ...(Array.isArray(c.stash) ? { stash: c.stash.filter(validStash) } : {}) };
+    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), gold: Number.isFinite(c.gold) && c.gold > 0 ? Math.floor(c.gold) : 0, ...(c.ended === true ? { ended: true } : {}), ...(SCHOOLS.includes(c.school) ? { school: c.school } : {}), ...(c.hard === true ? { hard: true } : {}), ...(Array.isArray(c.bench) ? { bench: c.bench.filter((g: any) => g && typeof g.id === 'string' && typeof g.exp === 'number') } : {}), ...(Array.isArray(c.stash) ? { stash: c.stash.filter(validStash) } : {}), ...runStats(c) };
   }
   const married = Array.isArray(d?.married) ? d.married.filter((k: unknown) => typeof k === 'string' && CANDIDATES.includes(k as string)) : [];
   if (cp) ensureMarried(cp.bonds, married);
@@ -231,6 +235,53 @@ function load(): SaveData | null {
   }
   return null;
 }
+
+// ---------- クリア記録・引き継ぎ（別のキー。セーブ v6 は Camp の任意項目 turns / falls / round だけ） ----------
+/** One finished story: who Rudeus married, the settings, and a few totals. */
+interface ClearRun { date: string; married: string[]; difficulty: Difficulty; hard: boolean; turns: number; falls: number; round: number }
+/** runs = every clear (newest last, at most 20); seen = everything watched in any run (鑑賞); gold / stash = the last run's, for 引き継ぎ. */
+interface ClearData { v: 1; runs: ClearRun[]; seen: string[]; gold: number; stash: string[] }
+const CLEAR_KEY = 'fittoa-clear';
+const fin = (n: unknown) => (typeof n === 'number' && Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0);
+/** Camp.turns / falls / round from a stored camp (v6 optional items; missing in older saves). */
+const runStats = (c: any) => ({ ...(fin(c?.turns) ? { turns: fin(c.turns) } : {}), ...(fin(c?.falls) ? { falls: fin(c.falls) } : {}), ...(fin(c?.round) > 1 ? { round: fin(c.round) } : {}) });
+function loadClear(): ClearData | null {
+  try {
+    const d = JSON.parse(localStorage.getItem(CLEAR_KEY) ?? 'null');
+    if (!d || !Array.isArray(d.runs) || !d.runs.length) return null;
+    const runs: ClearRun[] = d.runs.filter((r: any) => r && typeof r.date === 'string').map((r: any) => ({
+      date: r.date, married: Array.isArray(r.married) ? r.married.filter((k: unknown) => typeof k === 'string' && CANDIDATES.includes(k as string)) : [],
+      difficulty: validDiff(r.difficulty), hard: r.hard === true, turns: fin(r.turns), falls: fin(r.falls), round: Math.max(1, fin(r.round)),
+    }));
+    if (!runs.length) return null;
+    return { v: 1, runs, seen: Array.isArray(d.seen) ? d.seen.filter((k: unknown) => typeof k === 'string') : [], gold: fin(d.gold), stash: Array.isArray(d.stash) ? d.stash.filter(validStash) : [] };
+  } catch { return null; }
+}
+/** Right after the ending first plays: adds this run to the clear record. */
+function recordClear(c: Camp) {
+  const prev = loadClear();
+  const run: ClearRun = { date: new Date().toISOString().slice(0, 10), married: marriedTo(c.bonds), difficulty: c.difficulty, hard: !!c.hard, turns: c.turns ?? 0, falls: c.falls ?? 0, round: c.round ?? 1 };
+  const d: ClearData = { v: 1, runs: [...(prev?.runs ?? []), run].slice(-20), seen: [...new Set([...(prev?.seen ?? []), ...seen])], gold: c.gold, stash: [...(c.stash ?? [])] };
+  try { localStorage.setItem(CLEAR_KEY, JSON.stringify(d)); } catch { /* storage unavailable */ }
+}
+/** 引き継ぎ: State.flags `carry:gold` (silver), `carry:round` (this run's number), `carry:item:<id>` (count); moved into the camp after chapter 1. */
+const CARRY = 'carry:';
+function applyCarry(st: State, cd: ClearData) {
+  st.flags[`${CARRY}gold`] = Math.floor(cd.gold / 2);
+  st.flags[`${CARRY}round`] = (cd.runs[cd.runs.length - 1]?.round ?? 1) + 1;
+  for (const id of cd.stash) st.flags[`${CARRY}item:${id}`] = (Number(st.flags[`${CARRY}item:${id}`]) || 0) + 1;
+  return st;
+}
+const carriedStash = (st: State) => Object.entries(st.flags).flatMap(([k, v]) => (k.startsWith(`${CARRY}item:`) && validStash(k.slice(CARRY.length + 5)) ? Array(Math.max(0, Number(v) || 0)).fill(k.slice(CARRY.length + 5)) as string[] : []));
+/** Title: whether 「はじめから」 carries over (shown only after a clear). */
+let pickCarry = true;
+function setCarry(on: boolean, cd: ClearData) {
+  pickCarry = on;
+  for (const b of document.querySelectorAll<HTMLButtonElement>('#carryPick button')) b.setAttribute('aria-pressed', String((b.dataset.carry === '1') === on));
+  $('carryNote').textContent = on ? `所持金の半分（${Math.floor(cd.gold / 2)}銀）と倉庫の品（${cd.stash.length}個）を、第1章のクリア後に受け取る。見た会話は記録に残る。レベルと支援ランクは引き継がない。` : '何も引き継がずに始める（クリア記録と鑑賞は残る）。';
+}
+/** Keeps the carry-over flags when chapter 1 is restarted. */
+const keepCarry = (from: State | undefined, st: State) => { if (from) for (const [k, v] of Object.entries(from.flags)) if (k.startsWith(CARRY)) st.flags[k] = v; return st; };
 
 // ---------- rendering ----------
 function render(now = performance.now()) {
@@ -782,6 +833,7 @@ async function battle(att: Unit, wid: string, def: Unit) {
     const killed = k.hit && (shownHp.get(k.to.uid) ?? 0) <= 0;
     if (killed) audio.sfx('kill');
     if (killed && !k.to.retreated && !(k.to.team === 'red' && k.to.defeat)) await defeatFx(k.to);
+    else if (killed && k.to.boss && k.to.team === 'red' && pace() >= 0.4) { flashFx = { t0: performance.now(), dur: 520, a: 0.8 }; await sleep(900); } // 退く・捕まるボス：白い閃光と静止だけ
     else await sleep(420);
   }
   shownHp.clear();
@@ -792,6 +844,7 @@ async function battle(att: Unit, wid: string, def: Unit) {
   for (const g of gainBonds(S, [att, def])) float(g.partner, g.ready ? '支援会話あり' : `絆+${g.added}`, '#ff8fa8');
   const fallen = [att, def].find(u => u.team === 'blue' && u.hp <= 0);
   if (fallen && !fallen.guest && !loseCond(chapterDef(S.chapter)).units.includes(fallen.id)) {
+    S.flags.falls = (Number(S.flags.falls) || 0) + 1; // クリア記録の「倒れた仲間」
     const words = fallBark(S, fallen); // 結ばれた相手が倒れたときのひとこと（design/script-romance.md）
     if (words?.length) await play(words);
     await banner(S.difficulty === 'classic' ? `${fallen.name}は重傷を負い、戦線離脱した` : `${fallen.name}は重傷を負い、撤退した（次の章で復帰）`, 1500);
@@ -820,8 +873,9 @@ async function checkEnd(): Promise<boolean> {
     const objs = objectives(S), extra = objs.reduce((a, o) => a + (o.ok ? o.o.gold : 0), 0);
     if (objs.length) await banner('副目標\n' + objs.map(o => `${o.ok ? '◎' : '×'} ${o.text}${o.ok && o.o.gold ? `　+${o.o.gold}銀` : ''}`).join('\n'), 2600, 'small');
     const roster = rosterOf(S), benchUp = benchExp(S, roster), reward = chapterReward(S.chapter + 1) + (Number(S.flags.loot) || 0) + extra; // loot = 抜け目なし
-    const stash = [...(camp?.stash ?? []), ...battleStash(S)];
-    camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster, bonds: S.bonds, difficulty: S.difficulty, gold: (camp?.gold ?? 0) + reward, ...(camp?.school ? { school: camp.school } : {}), ...(stash.length ? { stash } : {}), ...(S.hard ? { hard: true } : {}), bench: benchUp.map(g => ({ id: g.id, exp: g.exp, fromLv: g.fromLv, lv: g.lv })), ...(camp?.ended ? { ended: true } : {}) };
+    const stash = [...(camp?.stash ?? carriedStash(S)), ...battleStash(S)];
+    const stats = { turns: (camp?.turns ?? 0) + S.turn, falls: (camp?.falls ?? 0) + (Number(S.flags.falls) || 0), ...((camp?.round ?? Number(S.flags[`${CARRY}round`])) > 1 ? { round: camp?.round ?? Number(S.flags[`${CARRY}round`]) } : {}) };
+    camp = { next: S.chapter + 1, cleared: S.chapter + 1, roster, bonds: S.bonds, difficulty: S.difficulty, gold: (camp?.gold ?? (Number(S.flags[`${CARRY}gold`]) || 0)) + reward, ...stats, ...(camp?.school ? { school: camp.school } : {}), ...(stash.length ? { stash } : {}), ...(S.hard ? { hard: true } : {}), bench: benchUp.map(g => ({ id: g.id, exp: g.exp, fromLv: g.fromLv, lv: g.lv })), ...(camp?.ended ? { ended: true } : {}) };
     markSeen(ch.outro); if (ch.interlude) markSeen(ch.interlude);
     inBattle = false; save();
     await playScene(ch.outro);
@@ -838,7 +892,7 @@ async function checkEnd(): Promise<boolean> {
   return true;
 }
 /** The state at the start of the current chapter (from the camp, or a new game for chapter 1), with the same members picked on the sortie screen. */
-const chapterStart = () => withSchool(newChapter(S.chapter, camp?.next === S.chapter ? camp.roster : undefined, camp?.next === S.chapter ? camp.bonds : undefined, S.difficulty, camp?.next === S.chapter ? chapterPicks(S) : undefined, !!S.hard));
+const chapterStart = () => keepCarry(camp ? undefined : S, withSchool(newChapter(S.chapter, camp?.next === S.chapter ? camp.roster : undefined, camp?.next === S.chapter ? camp.bonds : undefined, S.difficulty, camp?.next === S.chapter ? chapterPicks(S) : undefined, !!S.hard)));
 /** 三流派の心得：出撃準備で選んだ流派を、出撃するパウロに付ける。 */
 function withSchool(st: State): State {
   if (camp?.school) for (const u of st.units) if (u.team === 'blue' && hasSkill(u, 'threeSchools')) u.school = camp.school;
@@ -975,7 +1029,7 @@ async function supportTalks(c: Camp) {
     if (r) {
       audio.jingle('support');
       if (fast()) await banner(`${castName(p.a)}と${castName(p.b)}の支援ランクが ${r} になった！`, 1300);
-      else await showcase({ kind: 'sup', sub: `支援ランク ${r}`, main: `${castName(p.a)}と${castName(p.b)}の支援ランクが ${r} になった`, pics: [picOf(p.a, 'smile'), picOf(p.b, 'smile')] }, 1700);
+      else await showcase({ kind: 'sup', sub: `支援ランクが ${r} になった`, main: `${castName(p.a)}と${castName(p.b)}`, pics: [picOf(p.a, 'smile'), picOf(p.b, 'smile')] }, 1700);
     }
   }
 }
@@ -1017,10 +1071,11 @@ const endingLog: string[] = [];
  * Epilogue → the 7 afterwords (married or companion version) → closing → staff roll → title.
  * first = right after clearing the last chapter (marks the story as finished); otherwise a replay from the 記録.
  */
-async function playEnding(first: boolean) {
-  if (!camp) return;
-  const ctx = { married: marriedTo(camp.bonds), bonds: camp.bonds, out: camp.roster.filter(u => u.out && CANDIDATES.includes(u.id)).map(u => u.id) };
-  if (first) { camp.ended = true; save(); }
+async function playEnding(first: boolean, married?: string[]) {
+  if (!camp && !married) return;
+  // married = a replay from the title's 鑑賞 (no camp): the last clear's marriages
+  const ctx = camp && !married ? { married: marriedTo(camp.bonds), bonds: camp.bonds, out: camp.roster.filter(u => u.out && CANDIDATES.includes(u.id)).map(u => u.id) } : { married: married ?? [], bonds: {} as Bonds, out: [] };
+  if (first && camp) { camp.ended = true; save(); }
   for (const part of endingSequence(ctx)) {
     endingLog.push(part.id);
     if (part.id.startsWith('after.')) await banner(`後日談　${part.title.replace(/^後日談　/, '').replace(/（.*$/, '')}`, 900);
@@ -1029,7 +1084,7 @@ async function playEnding(first: boolean) {
     if (first) markSeen(part.id);
   }
   await credits();
-  if (first) { save(); showTitle('クリアおめでとう！　「つづきから」で章間に戻り、記録から結末を見返せる。'); }
+  if (first && camp) { save(); recordClear(camp); showTitle('クリアおめでとう！　「つづきから」で章間に戻り、記録から結末を見返せる。「はじめから」で引き継いで始められる。'); }
 }
 /** スタッフロール風の締め：名前が下から流れる。タップで飛ばせる。 */
 function credits(): Promise<void> {
@@ -1220,41 +1275,99 @@ function renderTent() {
 }
 /** 記録: every story scene and support talk watched so far, in story order; tap one to watch it again. */
 function renderLog() {
-  const body = $('campBody');
-  body.appendChild(el('p', 'hint', 'これまでに見た会話を、もう一度見られる。'));
-  // 後日談・エピローグは結婚の組み合わせで変わるので、まとめて「結末」から見る。
-  const scenes = SCENE_ORDER.filter(id => !/\.battle\d+$/.test(id) && !/^(after\.|epilogue\.|frag:)/.test(id) && seen.includes(id));
+  const body = $('campBody'), clear = loadClear(), all = !!clear;
+  // 見たもの：この周回の seen と、クリア記録に残った過去の周回の分。クリア後はすべて解放。
+  const known = new Set([...seen, ...(clear?.seen ?? [])]), has = (k: string) => all || known.has(k);
+  body.appendChild(el('p', 'hint', all ? 'クリアしたので、すべての会話・背景・曲を見られる。' : 'これまでに見た会話・背景・曲を、もう一度見られる。まだ見ていないものは「？？？」。'));
+  const lock = () => { const b = btn('？？？', () => {}, 'logItem locked'); b.disabled = true; return b; };
+  const section = (title: string, n: number, total: number, open = false) => {
+    const d = document.createElement('details'); d.className = 'galSec'; d.open = open;
+    d.innerHTML = `<summary>${esc(title)}<small>${n} / ${total}</small></summary>`;
+    body.appendChild(d); return d;
+  };
+  // 本編（後日談・エピローグは結婚の組み合わせで変わるので、まとめて「結末」から見る）
+  const story = SCENE_ORDER.filter(id => !/\.battle\d+$/.test(id) && !/^(after\.|epilogue\.|frag:)/.test(id));
+  const sec1 = section('本編の会話', story.filter(has).length, story.length, !galleryMode), list = el('div', 'logList');
   let part = -1;
-  const list = el('div', 'logList');
-  for (const id of scenes) {
+  for (const id of story) {
     const sc = SCENES[id];
     if (sc.chapter !== part) { part = sc.chapter; list.appendChild(el('h3', 'prepHead', esc(sc.chapter === 0 ? '序章' : sc.chapter === 11 ? '告白' : CHAPTERS[sc.chapter - 1]?.title.replace(/\s+/g, '　') ?? `第${sc.chapter}章`))); }
-    list.appendChild(btn(sc.title.replace(/^第\d+章　/, ''), () => replay(async () => { await playScene(id); }), 'logItem'));
+    list.appendChild(has(id) ? btn(sc.title.replace(/^第\d+章　/, ''), () => replay(async () => { await playScene(id); }), 'logItem') : lock());
   }
-  if (camp?.ended) {
+  const lastWed = clear?.runs[clear.runs.length - 1]?.married ?? [];
+  if (camp?.ended || all) {
     list.appendChild(el('h3', 'prepHead', '結末'));
-    list.appendChild(btn('エピローグと後日談、スタッフロール', () => replay(() => playEnding(false)), 'logItem'));
+    list.appendChild(btn('エピローグと後日談、スタッフロール', () => replay(() => (camp?.ended ? playEnding(false) : playEnding(false, lastWed))), 'logItem'));
   }
-  const sups = seen.filter(k => k.startsWith('sup:'));
-  if (sups.length) list.appendChild(el('h3', 'prepHead', '支援会話'));
-  for (const k of sups) {
-    const [, pk, rank] = k.split(':'), p = SUPPORTS.find(q => pairKey(q.a, q.b) === pk);
-    if (!p) continue;
-    list.appendChild(btn(`${castName(p.a)} × ${castName(p.b)}　${rank}`, () => replay(() => playSupport(p, rank)), 'logItem'));
+  sec1.appendChild(list);
+  // 支援会話（組ごと・ランクごと）
+  const supKeys = SUPPORTS.flatMap(p => (['C', 'B', 'A', ...(p.max === 'S' ? ['S'] : [])] as string[]).map(r => ({ p, r, k: supKey(p.a, p.b, r) })));
+  const sec2 = section('支援会話', supKeys.filter(s => has(s.k)).length, supKeys.length), l2 = el('div', 'logList');
+  for (const { p, r, k } of supKeys) l2.appendChild(has(k) ? btn(`${castName(p.a)} × ${castName(p.b)}　${r}`, () => replay(() => playSupport(p, r)), 'logItem') : lock());
+  sec2.appendChild(l2);
+  // ふたりの時間・嫁どうしの会話
+  const sec3 = section('ふたりの時間', DATE_TALKS.filter(d => has(d.id)).length, DATE_TALKS.length), l3 = el('div', 'logList');
+  for (const d of DATE_TALKS) l3.appendChild(has(d.id) ? btn(`${castName(d.who)}　${d.no}「${d.scene.title}」`, () => replay(() => playDate(d)), 'logItem') : lock());
+  sec3.appendChild(l3);
+  const sec4 = section('嫁どうしの会話', WIFE_TALKS.filter(w => has(w.id)).length, WIFE_TALKS.length), l4 = el('div', 'logList');
+  const wedNow = (w: WifeTalk) => [...new Set([...(camp ? marriedTo(camp.bonds) : lastWed), ...w.members])];
+  for (const w of WIFE_TALKS) l4.appendChild(has(w.id) ? btn(w.scene.title, () => replay(async () => { audio.bgm('daily'); if (w.scene.bgm) cueBgm(w.scene.bgm); await play(wifeLines(w, wedNow(w)), { bg: w.scene.bg }); }), 'logItem') : lock());
+  sec4.appendChild(l4);
+  // 一枚絵と背景
+  const pics = [...Object.keys(EVENT_ART).map(n => ({ k: `cg:${n}`, n, cg: true })), ...Object.keys(BG_ART).filter(n => n !== 'title').map(n => ({ k: `bg:${n}`, n, cg: false }))];
+  const sec5 = section('一枚絵と背景', pics.filter(p => has(p.k)).length, pics.length), grid = el('div', 'bgGrid');
+  for (const p of pics) {
+    const url = p.cg ? EVENT_ART[p.n] : BG_ART[p.n], label = p.cg ? '一枚絵' : bgLabel(p.n);
+    const b = document.createElement('button'); b.type = 'button';
+    if (has(p.k)) {
+      b.innerHTML = `<img loading="lazy" src="${esc(url)}" alt=""><small>${esc(label)}</small>`;
+      b.onclick = () => replay(async () => { await play(p.cg ? [{ who: '', text: '', cg: p.n }, { who: '', text: '（思い出の一場面）' }] : [{ who: '', text: `（${label}）` }], p.cg ? {} : { bg: p.n }); });
+    } else { b.innerHTML = '<span class="lockBox">？？？</span><small>　</small>'; b.disabled = true; }
+    grid.appendChild(b);
   }
-  const wives = WIFE_TALKS.filter(w => seen.includes(w.id));
-  if (wives.length) list.appendChild(el('h3', 'prepHead', '嫁どうしの会話'));
-  for (const w of wives) list.appendChild(btn(w.scene.title, () => replay(async () => { audio.bgm('daily'); if (w.scene.bgm) cueBgm(w.scene.bgm); await play(wifeLines(w, marriedTo(camp!.bonds)), { bg: w.scene.bg }); }), 'logItem'));
-  const dates = DATE_TALKS.filter(d => seen.includes(d.id));
-  if (dates.length) list.appendChild(el('h3', 'prepHead', 'ふたりの時間'));
-  for (const d of dates) list.appendChild(btn(`${castName(d.who)}　${d.no}「${d.scene.title}」`, () => replay(() => playDate(d)), 'logItem'));
-  const cgs = seen.filter(k => k.startsWith('cg:'));
-  if (cgs.length) list.appendChild(el('h3', 'prepHead', '思い出（一枚絵）'));
-  cgs.forEach((k, i) => list.appendChild(btn(`一枚絵 ${i + 1}`, () => replay(async () => { await play([{ who: '', text: '', cg: k.slice(3) }, { who: '', text: '（思い出の一場面）' }]); }), 'logItem')));
-  if (!scenes.length && !sups.length) list.appendChild(el('p', 'hint', 'まだ記録はない。'));
-  body.appendChild(list);
+  sec5.appendChild(grid);
+  // 曲（タップで流す）
+  const tracks = [...new Set([...SONG_NAMES, ...Object.keys(BGM_FILES)])].filter(n => !JINGLES.includes(n));
+  const sec6 = section('曲', tracks.filter(n => has(`bgm:${n}`)).length, tracks.length), l6 = el('div', 'logList');
+  const back = galleryMode ? 'title' : 'camp';
+  const mark = () => { for (const b of l6.querySelectorAll<HTMLButtonElement>('button[data-track]')) b.classList.toggle('playing', b.dataset.track === audio.current); };
+  for (const n of tracks) {
+    if (!has(`bgm:${n}`)) { l6.appendChild(lock()); continue; }
+    const b = btn(`♪ ${TRACK_NAMES[n] ?? n}`, () => { audio.bgm(audio.current === n ? back : n); mark(); }, 'logItem');
+    b.dataset.track = n; l6.appendChild(b);
+  }
+  l6.appendChild(btn('もとの曲にもどす', () => { audio.bgm(back); mark(); }));
+  mark();
+  sec6.appendChild(l6);
 }
-async function replay(go: () => Promise<unknown>) { const y = $('camp').scrollTop; await go(); $('camp').scrollTop = y; audio.bgm('camp'); }
+/** 曲名（鑑賞の「曲」）。 */
+const TRACK_NAMES: Record<string, string> = {
+  title: 'フィットアの空', prologue: '転移事件', map_dawn: '夜明けの進軍', map_resolve: '決意の行軍', map_final: '最後の戦場', map_enemy: '敵軍の影',
+  boss: '強敵', final_boss: '使徒', orsted: '龍神', crisis: '迫る危機', camp: '難民キャンプ', daily: 'いつもの日々', comedy: 'にぎやかなひととき',
+  sad: '喪失', resolve: '決意', mystery: '謎', family: '家族', romance: 'ふたりの時間', ending: '本気で生きる',
+};
+/** A background's name for 鑑賞: the title of the first scene that uses it. */
+function bgLabel(name: string) {
+  for (const id of SCENE_ORDER) {
+    const sc = SCENES[id];
+    if (sc?.bg === name) return (sc.chapter >= 1 && sc.chapter <= 10 && !/^第\d+章/.test(sc.title) ? `第${sc.chapter}章　` : '') + sc.title;
+  }
+  const t = [...DATE_TALKS, ...WIFE_TALKS].find(w => w.scene.bg === name);
+  return t ? t.scene.title : name;
+}
+let galleryMode = false;
+/** 鑑賞 from the title: the 記録 page on its own (no camp tabs), with a way back. */
+function showGallery() {
+  galleryMode = true; hideTutorial();
+  $('title').hidden = true; $('camp').hidden = false;
+  $('campTabs').hidden = true; $('campBtns').hidden = true; $('campGold').hidden = true; $('campWed').hidden = true;
+  $('campTitle').textContent = '鑑賞'; campMsg('');
+  const body = $('campBody'); body.innerHTML = '';
+  body.appendChild(btn('タイトルへもどる', () => { galleryMode = false; $('campTabs').hidden = false; $('campBtns').hidden = false; showTitle(); }));
+  renderLog();
+  $('camp').scrollTop = 0;
+}
+async function replay(go: () => Promise<unknown>) { const y = $('camp').scrollTop; await go(); $('camp').scrollTop = y; audio.bgm(galleryMode ? 'title' : 'camp'); }
 
 // ---------- sortie preparation ----------
 /** The sortie screen's state: which chapter, its plan, and the ids picked for the free slots. */
@@ -1339,7 +1452,15 @@ function renderPrep() {
 function showTitle(msg = '', panel: 'main' | 'diff' | 'defeat' = 'main') {
   hideTutorial();
   $('titleMsg').textContent = msg;
-  $('btnLoad').hidden = !load();
+  const saved = load(), clear = loadClear();
+  $('btnLoad').hidden = !saved;
+  // クリア記録（最新の周回）と鑑賞
+  const ci = $('clearInfo'), last = clear?.runs[clear.runs.length - 1];
+  ci.hidden = !last || panel === 'defeat';
+  if (last) ci.innerHTML = `<b>クリア記録</b>　${clear!.runs.length}回<br>${esc(last.married.length ? `${last.married.map(castName).join('・')}と結ばれた` : 'ひとりで歩んだ')}<br><span>${esc(`${DIFFICULTY_NAMES[last.difficulty]}・${levelName(last.hard)}　${last.turns}ターン　倒れた仲間 ${last.falls}${last.round > 1 ? `　${last.round}周目` : ''}`)}</span>`;
+  $('btnGallery').hidden = !clear && !(saved?.seen.length);
+  $('carryPick').hidden = $('carryNote').hidden = !clear;
+  if (clear) setCarry(pickCarry, clear);
   $('titleMain').hidden = panel !== 'main'; $('diffPick').hidden = panel !== 'diff'; $('defeat').hidden = panel !== 'defeat';
   $('camp').hidden = true;
   $('title').hidden = false;
@@ -1422,6 +1543,8 @@ async function start(state: State, intro: boolean) {
   if (intro && S.chapter === 0 && S.turn === 1 && !camp && !fast() && !tutorialDone()) startTutorial();
 }
 setOnCg(name => markSeen(`cg:${name}`));
+setOnBg(name => { if (BG_ART[name]) markSeen(`bg:${name}`); }); // 鑑賞の背景（絵のあるものだけ）
+audio.onPlay = name => { if (!JINGLES.includes(name)) markSeen(`bgm:${name}`); }; // 鑑賞の曲
 // タイトル画面の背景（届いていなければ従来の夜空のグラデーション）。
 if (BG_ART.title) $('title').style.backgroundImage = `linear-gradient(to bottom, rgba(10, 9, 16, .35), rgba(10, 9, 16, .55) 55%, rgba(10, 9, 16, .9)), url("${BG_ART.title}")`;
 /** Development: a party of every cast member with stats (at their joining level), for test chapters and chapters written out of order. */
@@ -1458,14 +1581,19 @@ function setLevel(hard: boolean) {
 for (const b of document.querySelectorAll<HTMLButtonElement>('#levelPick button')) b.onclick = () => setLevel(b.dataset.level === 'hard');
 for (const b of document.querySelectorAll<HTMLButtonElement>('#diffPick button[data-diff]')) {
   b.onclick = async () => {
-    camp = null; seen = [];
+    // 引き継ぎ：見た会話は記録に残し、所持金の半分と倉庫の品は第1章のクリアで章間へ（レベル・支援ランクは引き継がない）
+    const clear = pickCarry ? loadClear() : null;
+    camp = null; seen = clear ? [...clear.seen] : [];
     $('title').hidden = true;
     const ch = chapterDef(0);
     if (ch.prologue) await playScene(ch.prologue); // 序章：戦闘のない会話パート
-    start(newChapter(0, undefined, undefined, b.dataset.diff as Difficulty, undefined, pickHard), true);
+    const st = newChapter(0, undefined, undefined, b.dataset.diff as Difficulty, undefined, pickHard);
+    start(clear ? applyCarry(st, clear) : st, true);
   };
 }
 $('btnDiffBack').onclick = () => showTitle();
+for (const b of document.querySelectorAll<HTMLButtonElement>('#carryPick button')) b.onclick = () => { const cd = loadClear(); if (cd) setCarry(b.dataset.carry === '1', cd); };
+$('btnGallery').onclick = () => showGallery();
 $('btnLoad').onclick = () => {
   const d = load();
   if (!d) return;
@@ -1557,6 +1685,8 @@ requestAnimationFrame(render);
   /** Development: the ending's parts (ids and lines) for the camp's current marriages. */
   endingParts: () => (camp ? endingSequence({ married: marriedTo(camp.bonds), bonds: camp.bonds, out: camp.roster.filter(u => u.out && CANDIDATES.includes(u.id)).map(u => u.id) }) : []),
   checkEnd: () => checkEnd(), endTurn: () => endTurn(), finish: (u: Unit) => finish(u), idle: () => idle(),
+  /** Test helpers: a full-screen moment, and one battle between two units on the map (for screenshots of the effects). */
+  showcase: (o: ShowOpts, ms = 1500) => showcase(o, ms), portrait: (id: string, face?: Parameters<typeof portraitUrl>[1]) => picOf(id, face), battle: (att: Unit, wid: string, def: Unit) => battle(att, wid, def), skillBand: (u: Unit, n: string) => skillBand(u, n),
   /** Logs: stages, ending parts, backgrounds / event pictures shown. */
   stageLog, endingLog, artLog,
   get married() { return camp ? marriedTo(camp.bonds) : []; },

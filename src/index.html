@@ -273,6 +273,22 @@
   .levelPick button { padding: 6px 12px; }
   .levelPick button[aria-pressed="true"] { color: var(--gold); border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
   .levelNote { text-align: left; font-family: var(--text); font-size: 12.5px; color: var(--dim); line-height: 1.5; margin-top: -4px; }
+  /* クリア記録（タイトル）と鑑賞 */
+  #clearInfo { width: min(400px, 100%); padding: 8px 14px; border-block: 1px solid rgba(232, 197, 106, .55); background: linear-gradient(90deg, transparent, rgba(24, 21, 36, .82) 14%, rgba(24, 21, 36, .82) 86%, transparent); font-size: 13px; line-height: 1.6; color: var(--ink); }
+  #clearInfo b { font-family: var(--pixel); font-weight: normal; color: var(--gold); letter-spacing: .1em; }
+  #clearInfo span { color: var(--dim); }
+  .galSec { border: 1px solid var(--line); border-radius: 4px; background: var(--panel); }
+  .galSec > summary { cursor: pointer; padding: 8px 12px; font-family: var(--pixel); color: var(--gold); list-style-position: inside; }
+  .galSec > summary small { color: var(--dim); font-family: var(--text); margin-left: 6px; }
+  .galSec > .logList { padding: 0 10px 10px; }
+  button.logItem.locked { color: var(--dim); opacity: .6; cursor: default; }
+  .bgGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; padding: 0 10px 10px; }
+  .bgGrid button { padding: 0; overflow: hidden; display: flex; flex-direction: column; min-height: 0; line-height: 1.3; }
+  .bgGrid img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; display: block; }
+  .bgGrid .lockBox { width: 100%; aspect-ratio: 16 / 9; display: grid; place-items: center; color: var(--dim); background: #15131f; font-family: var(--pixel); }
+  .bgGrid small { padding: 4px 6px; font-size: 11.5px; color: var(--dim); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  button.logItem.playing { border-color: var(--gold); color: var(--gold); }
+  @media (max-width: 560px) { .bgGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   button.diff { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 8px 12px; }
   button.diff b { font-weight: normal; color: var(--gold); font-size: 16px; }
   button.diff small { font-family: var(--text); font-size: 12.5px; color: var(--dim); line-height: 1.5; }
@@ -491,13 +507,17 @@
   <h1>フィットア奪還戦記</h1>
   <p>『無職転生』の非公式ファンゲーム（個人で遊ぶ用）。消えた故郷を、仲間と取り戻す。</p>
   <p id="titleMsg"></p>
+  <div id="clearInfo" hidden></div>
   <div id="titleMain" class="btns">
     <button id="btnNew" class="primary">はじめから</button>
     <button id="btnLoad" hidden>つづきから</button>
+    <button id="btnGallery" hidden>鑑賞（会話・背景・曲）</button>
   </div>
   <div id="diffPick" class="btns wide" hidden>
     <div id="levelPick" class="levelPick" role="group" aria-label="敵の強さ"><span>敵の強さ</span><button type="button" data-level="normal" aria-pressed="true">ふつう</button><button type="button" data-level="hard" aria-pressed="false">むずかしい</button></div>
     <small id="levelNote" class="levelNote"></small>
+    <div id="carryPick" class="levelPick" role="group" aria-label="引き継ぎ" hidden><span>引き継ぎ</span><button type="button" data-carry="1" aria-pressed="true">引き継いで始める</button><button type="button" data-carry="0" aria-pressed="false">しない</button></div>
+    <small id="carryNote" class="levelNote" hidden></small>
     <button data-diff="casual" class="diff"><b>カジュアル</b><small>倒れた仲間は撤退し、次の章で復帰する。敗北したら直前の自軍フェイズからやり直せる。</small></button>
     <button data-diff="classic" class="diff"><b>クラシック</b><small>倒れた仲間は戦線離脱し、以後は出撃できない。敗北すると章の最初から。</small></button>
     <button id="btnDiffBack">もどる</button>

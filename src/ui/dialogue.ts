@@ -31,6 +31,9 @@ export const artLog: { kind: 'bg' | 'cg'; name: string; file: boolean }[] = [];
 /** Called with each event picture shown (the game records it for the 記録). */
 export let onCg: (name: string) => void = () => {};
 export const setOnCg = (f: (name: string) => void) => { onCg = f; };
+/** Called with each background shown (the game records it for 鑑賞). */
+let onBg: (name: string) => void = () => {};
+export const setOnBg = (f: (name: string) => void) => { onBg = f; };
 
 /** Shows a background (or none). A missing picture shows a gradient in its place. */
 function setBg(name: string | undefined) {
@@ -41,6 +44,7 @@ function setBg(name: string | undefined) {
   if (!on) { img.removeAttribute('src'); return; }
   const url = bgUrl(name);
   artLog.push({ kind: 'bg', name: name!, file: !!url });
+  onBg(name!);
   el.style.background = fallbackGradient(name!);
   el.dataset.name = name!;
   img.hidden = !url;

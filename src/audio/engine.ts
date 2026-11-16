@@ -117,6 +117,8 @@ export class Engine {
   settings: AudioSettings = { ...DEFAULT_SETTINGS };
   /** The track the game wants now (null = silence), whether or not it is audible yet. */
   current: string | null = null;
+  /** Called whenever a track starts (the game marks it heard for 鑑賞). */
+  onPlay: (name: string) => void = () => {};
   /** Every change of `current` and every jingle, in order (for tests). */
   readonly log: { kind: 'bgm' | 'jingle'; name: string | null; t: number }[] = [];
   private stack: (string | null)[] = [];
@@ -200,6 +202,7 @@ export class Engine {
     if (name === this.current) return;
     this.current = name;
     this.log.push({ kind: 'bgm', name, t: Math.round(performance.now()) });
+    if (name) this.onPlay(name);
     this.restart(fade);
   }
   /** Plays a track for a while; pop() returns to the one before. */
