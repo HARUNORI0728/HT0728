@@ -64,6 +64,7 @@ export const PORTRAIT_ART: Record<string, Partial<Record<Face, string>>> = {
   gall: { normal: 'assets/portraits/gall_normal.webp?v=b718f3d8', angry: 'assets/portraits/gall_angry.webp?v=84beef93' },
   gaz: { normal: 'assets/portraits/gaz_normal.webp?v=415d8a58', angry: 'assets/portraits/gaz_angry.webp?v=3e775cec' },
   ghislaine: { normal: 'assets/portraits/ghislaine_normal.webp?v=ac05d147', smile: 'assets/portraits/ghislaine_smile.webp?v=02868f04', angry: 'assets/portraits/ghislaine_angry.webp?v=494d7a7a', sad: 'assets/portraits/ghislaine_sad.webp?v=ba82eace' },
+  hanna: { normal: 'assets/portraits/hanna_normal.webp?v=01dc3b9a', smile: 'assets/portraits/hanna_smile.webp?v=4eafa255', angry: 'assets/portraits/hanna_angry.webp?v=18ab34cd', sad: 'assets/portraits/hanna_sad.webp?v=e2864c9f' },
   isolde: { normal: 'assets/portraits/isolde_normal.webp?v=b8a22308', smile: 'assets/portraits/isolde_smile.webp?v=1872f781', angry: 'assets/portraits/isolde_angry.webp?v=b743c0c5', sad: 'assets/portraits/isolde_sad.webp?v=2627940f' },
   linia: { normal: 'assets/portraits/linia_normal.webp?v=2a6f6605', smile: 'assets/portraits/linia_smile.webp?v=7bd0fa03', angry: 'assets/portraits/linia_angry.webp?v=6ef9de03', sad: 'assets/portraits/linia_sad.webp?v=6cffa163', dere: 'assets/portraits/linia_dere.webp?v=aa29a8bf' },
   lotta: { normal: 'assets/portraits/lotta_normal.webp?v=21a20437', angry: 'assets/portraits/lotta_angry.webp?v=537b14d6' },
@@ -79,6 +80,7 @@ export const PORTRAIT_ART: Record<string, Partial<Record<Face, string>>> = {
   ruijerd: { normal: 'assets/portraits/ruijerd_normal.webp?v=842eabc6', smile: 'assets/portraits/ruijerd_smile.webp?v=665cc7e1', angry: 'assets/portraits/ruijerd_angry.webp?v=16b5ce4d', sad: 'assets/portraits/ruijerd_sad.webp?v=c87d17e5' },
   sara: { normal: 'assets/portraits/sara_normal.webp?v=45711161', smile: 'assets/portraits/sara_smile.webp?v=3fe355ba', angry: 'assets/portraits/sara_angry.webp?v=e2d466cf', sad: 'assets/portraits/sara_sad.webp?v=6a31c149', dere: 'assets/portraits/sara_dere.webp?v=454ab86f' },
   sylphiette: { normal: 'assets/portraits/sylphiette_normal.webp?v=1db0e298', smile: 'assets/portraits/sylphiette_smile.webp?v=4f364a9c', angry: 'assets/portraits/sylphiette_angry.webp?v=5e2bed36', sad: 'assets/portraits/sylphiette_sad.webp?v=352dee7b', dere: 'assets/portraits/sylphiette_dere.webp?v=20b83a7b' },
+  toto: { normal: 'assets/portraits/toto_normal.webp?v=ee6a9e07', smile: 'assets/portraits/toto_smile.webp?v=be3751c1', angry: 'assets/portraits/toto_angry.webp?v=f9055432', sad: 'assets/portraits/toto_sad.webp?v=696eeac6' },
   zanoba: { normal: 'assets/portraits/zanoba_normal.webp?v=f4ce24fc', smile: 'assets/portraits/zanoba_smile.webp?v=043f2313', angry: 'assets/portraits/zanoba_angry.webp?v=6d68f7cc', sad: 'assets/portraits/zanoba_sad.webp?v=f5d4e2f7' },
 };
 /** Conversation backgrounds by name (screenplay 背景：<名前>). 16:9, width 1280. */
