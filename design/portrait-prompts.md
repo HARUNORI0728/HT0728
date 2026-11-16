@@ -184,3 +184,20 @@ Wide cinematic anime illustration for a Japanese tactical fantasy RPG event scen
 | 素材 | プロンプトの要点 |
 |---|---|
 | 嫁同士の集合 | `Cozy gathering in the refugee camp common tent in the evening, wide shot, several women (use up to three of the heroines' appearance prompts) sitting around a table sharing tea and sweets, laughing and chatting, warm lantern light, comedic and friendly atmosphere.` （16:9） |
+
+### イベント絵（シルフィエット・エリス専用。2026-11-16 追加）
+
+打合せ（`design/hearing-notes.md`）で追加が決まった7枚。置き場所は `assets/events/<ID>.png`、16:9、全年齢向け。場面は本作用の書き下ろし。
+プロンプトは「イベント絵の共通スタイル」→ そのキャラの外見文（sylphiette／eris。**武器や杖は場面の指定にあるときだけ持たせる。サングラスは付けない**）→ 下の場面文、の順に並べる。ルーデウスは後ろ姿か画面端。
+優先順：ev_sylphie_sapling → ev_sylphie_sapling2 → ev_sylphie_wedding → ev_eris_sheathe → ev_eris_wedding → ev_sylphie_rearguard → ev_sylphie_companion。
+
+| ID | 場面（台本の場所） | 場面文 |
+|---|---|---|
+| ev_sylphie_reveal | 第4章の終幕。フードを外す（指定済み） | `Dusk at a ruined chapel gate, medium shot, she lowers her cloak hood to reveal short white hair, looking at the viewer with a frightened, hopeful, trembling smile, wind stirring her hair.` |
+| ev_sylphie_sapling | 第4章の幕間「丘の木の下で」。苗木を植える | `Sunset on a bare hill with the ruined village far below, wide shot, she kneels in the soil and gently pats earth around a tiny sapling, a young man seen from behind kneeling beside her at the edge of the frame, she looks up with a soft, relieved smile.` |
+| ev_sylphie_rearguard | 第8章・戦闘中④。殿を引き受ける | `Collapsing underground labyrinth with falling rubble and glowing crystal light, dynamic wide shot, she stands alone between the viewer and the crumbling tunnel, wand raised, wind magic swirling around her white hair and cloak, glancing back over her shoulder with a determined, gentle smile.` |
+| ev_sylphie_sapling2 | ふたりの時間・シルフィエット・3。育った苗木 | `Quiet dusk on the same hill, medium shot, a knee-high sapling in the foreground, she crouches beside it with fingertips on its leaves while the burnt village lies below, turning to the viewer with a calm, hopeful expression, a young man at the edge of the frame.` |
+| ev_sylphie_wedding | 後日談・シルフィエット（結婚）。家と若木 | `Golden evening on the hill beside a small new house with a lit window, medium shot, she carries a water pail toward a young tree, her white hair uncovered and shining in the wind, looking at the viewer with a shy, deeply happy smile.` |
+| ev_sylphie_companion | 後日談・シルフィエット（仲間）。若木の背を測る | `Harvest-season afternoon on the hill, medium shot, she stands alone beside a young tree and measures its height against her palm, looking at the viewer with a gentle smile that carries a hint of wistfulness, golden light and drifting leaves.` |
+| ev_eris_sheathe | 第9章の終幕。縛られたダリウスの前で剣を収める | `Night inside a noble's mansion hall lit by torches, medium shot, she stands before a bound kneeling man seen at the edge of the frame, slowly sliding her sword back into the scabbard, looking down with a hard, restrained, sorrowful expression, red ponytail swaying.` |
+| ev_eris_wedding | 後日談・エリス（結婚）。道場と慰霊の石 | `Clear morning in front of a small village sword dojo with a wooden training yard, wide shot, she grins with her wooden sword on her shoulder and holds out a hand toward the viewer, a small stone memorial visible on the hill behind, warm sunlight, confident and tender smile.` |
