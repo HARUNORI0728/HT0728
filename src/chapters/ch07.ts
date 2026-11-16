@@ -83,7 +83,7 @@ export const ch07: Chapter = {
     { x: 9, y: 9, kind: 'village', gold: 250, talk: 'ch7.battle10' },
   ],
   // 副目標（Chapter.bonus。ふつうの通しプレイの手数を見て、少し頑張れば届く線）
-  bonus: [{ type: 'visits', kind: 'village', gold: 200, label: '檻の子どもを全員助ける{n}' }, { type: 'turns', max: 11, gold: 200 }],
+  bonus: [{ type: 'visits', kind: 'village', gold: 200, label: '檻の子どもを全員助ける{n}' }, { type: 'turns', max: 12, gold: 200 }],
   intro: 'ch7.intro', outro: 'ch7.outro', interlude: 'ch7.interlude',
   talks: [
     { scene: 'ch7.battle1', when: { type: 'firstFight', unit: 'linia' } },

@@ -4,7 +4,7 @@ import type { SceneId } from './script/scenes';
 export interface Stats { hp: number; str: number; mag: number; skl: number; spd: number; lck: number; def: number; res: number }
 /** fang = 獣族の固有攻撃（武器欄なし）。staff = 回復の杖（攻撃・反撃には使わない）。 */
 export type WType = 'sword' | 'lance' | 'axe' | 'bow' | 'anima' | 'light' | 'dark' | 'fang' | 'staff';
-export type MoveType = 'foot' | 'armor' | 'horse' | 'fly';
+export type MoveType = 'foot' | 'armor' | 'horse' | 'fly' | 'beast';
 export type Team = 'blue' | 'red';
 
 /**
@@ -165,34 +165,34 @@ const B = (hp: number, str: number, mag: number, skl: number, spd: number, lck: 
 export const CLASSES: Record<string, ClassDef> = {
   // ---- base classes (tier 1) ----
   spellblade: { name: '魔法剣士', mov: 5, mtype: 'foot', sprite: 'sword', tier: 1, wtypes: ['sword', 'anima'] },
-  sorcerer: { name: '魔術師', mov: 5, mtype: 'foot', sprite: 'mage', tier: 1, wtypes: ['anima'], skills: ['magicBasics'] },
+  sorcerer: { name: '魔術師', mov: 4, mtype: 'foot', sprite: 'mage', tier: 1, wtypes: ['anima'], skills: ['magicBasics'] },
   swordKing: { name: '剣王', mov: 6, mtype: 'foot', sprite: 'sword', tier: 1, wtypes: ['sword'], skills: ['swordGod'] },
-  superd: { name: 'スペルドの戦士', mov: 6, mtype: 'foot', sprite: 'lancer', tier: 1, wtypes: ['lance'], skills: ['spearEdge'] },
+  superd: { name: 'スペルドの戦士', mov: 5, mtype: 'foot', sprite: 'lancer', tier: 1, wtypes: ['lance'], skills: ['spearEdge'] },
   myrmidon: { name: '剣士', mov: 5, mtype: 'foot', sprite: 'sword', tier: 1, wtypes: ['sword'], skills: ['school'] },
   cavalier: { name: '槍騎士', mov: 7, mtype: 'horse', sprite: 'lancer', tier: 1, wtypes: ['lance'] },
-  mage: { name: '魔道士', mov: 5, mtype: 'foot', sprite: 'mage', tier: 1, wtypes: ['anima'] },
+  mage: { name: '魔道士', mov: 4, mtype: 'foot', sprite: 'mage', tier: 1, wtypes: ['anima'] },
   soldier: { name: '槍兵', mov: 5, mtype: 'foot', sprite: 'lancer', tier: 1, wtypes: ['lance'] },
   fighter: { name: '戦士', mov: 5, mtype: 'foot', sprite: 'axe', tier: 1, wtypes: ['axe'] },
   archer: { name: '弓兵', mov: 5, mtype: 'foot', sprite: 'archer', tier: 1, wtypes: ['bow'], skills: ['aim'] },
   knight: { name: '重騎士', mov: 4, mtype: 'armor', sprite: 'armor', tier: 1, wtypes: ['lance'] },
   mercenary: { name: '傭兵', mov: 5, mtype: 'foot', sprite: 'merc', tier: 1, wtypes: ['sword'], skills: ['school'] },
-  waterMage: { name: '水王級魔術師', mov: 5, mtype: 'foot', sprite: 'mage', tier: 1, wtypes: ['anima'], skills: ['highMagic'] },
+  waterMage: { name: '水王級魔術師', mov: 4, mtype: 'foot', sprite: 'mage', tier: 1, wtypes: ['anima'], skills: ['highMagic'] },
   shieldFencer: { name: '盾剣士', mov: 5, mtype: 'foot', sprite: 'shield', tier: 1, wtypes: ['sword'], skills: ['shieldStance'] },
-  healer: { name: '治癒術師', mov: 5, mtype: 'foot', sprite: 'healer', tier: 1, wtypes: ['anima', 'light', 'staff'], skills: ['healArts'] }, // 敵用（シルフィエットは魔導護衛へ）
+  healer: { name: '治癒術師', mov: 4, mtype: 'foot', sprite: 'healer', tier: 1, wtypes: ['anima', 'light', 'staff'], skills: ['healArts'] }, // 敵用（シルフィエットは魔導護衛へ）
   horseKnight: { name: '騎士', mov: 7, mtype: 'horse', sprite: 'lancer', tier: 1, wtypes: ['sword', 'lance'], skills: ['charge'] },
   strongman: { name: '重装', mov: 4, mtype: 'armor', sprite: 'brute', tier: 1, wtypes: ['axe'], skills: ['sturdy'] },
-  priest: { name: '神撃術師', mov: 5, mtype: 'foot', sprite: 'priest', tier: 1, wtypes: ['light', 'staff'], skills: ['divineArts'] },
+  priest: { name: '神撃術師', mov: 4, mtype: 'foot', sprite: 'priest', tier: 1, wtypes: ['light', 'staff'], skills: ['divineArts'] },
   thief: { name: '盗賊', mov: 6, mtype: 'foot', sprite: 'thief', tier: 1, wtypes: ['fang'], skills: ['lockpick'] },
   // 打合せ後の新職（world.md §3.1）。名前はすべて仮名。移動力は既存の歩兵に合わせた仮置き。
-  magicGuard: { name: '魔導護衛', mov: 5, mtype: 'foot', sprite: 'healer', tier: 1, wtypes: ['anima', 'light', 'staff'], skills: ['healArts'] },
+  magicGuard: { name: '魔導護衛', mov: 4, mtype: 'foot', sprite: 'healer', tier: 1, wtypes: ['anima', 'light', 'staff'], skills: ['healArts'] },
   princess: { name: '王女', mov: 5, mtype: 'foot', sprite: 'princess', tier: 1, wtypes: ['sword'], skills: ['protectMe'] },
   beastWarrior: { name: '獣戦士', mov: 6, mtype: 'foot', sprite: 'beast', tier: 1, wtypes: ['fang'], skills: ['beastInstinct'] },
   // ---- promoted classes (tier 2) ----
-  archmage: { name: '大魔術師', mov: 6, mtype: 'foot', sprite: 'mage', tier: 2, wtypes: ['anima', 'light'], bonus: B(3, 0, 3, 1, 1, 0, 1, 3), gift: 'lightning', desc: '魔力と魔防が伸びる。光魔術も扱える。', skills: ['magicBasics', 'arcaneFocus'] },
-  magicArmor: { name: '魔導鎧', mov: 5, mtype: 'armor', sprite: 'armor', tier: 2, wtypes: ['anima', 'axe'], bonus: B(6, 4, 1, 0, 0, 0, 5, 1), gift: 'ironAxe', desc: '魔力で動く鎧をまとう。重く硬い。斧も振るえる。', skills: ['magicBasics', 'manaBarrier'] },
+  archmage: { name: '大魔術師', mov: 5, mtype: 'foot', sprite: 'mage', tier: 2, wtypes: ['anima', 'light'], bonus: B(3, 0, 3, 1, 1, 0, 1, 3), gift: 'lightning', desc: '魔力と魔防が伸びる。光魔術も扱える。', skills: ['magicBasics', 'arcaneFocus'] },
+  magicArmor: { name: '魔導鎧', mov: 4, mtype: 'armor', sprite: 'armor', tier: 2, wtypes: ['anima', 'axe'], bonus: B(6, 4, 1, 0, 0, 0, 5, 1), gift: 'ironAxe', desc: '魔力で動く鎧をまとう。重く硬い。斧も振るえる。', skills: ['magicBasics', 'manaBarrier'] },
   swordSaint: { name: '剣聖', mov: 6, mtype: 'foot', sprite: 'sword', tier: 2, wtypes: ['sword'], bonus: B(4, 2, 0, 3, 3, 0, 1, 1), crit: 10, desc: '速さと技を極める剣。必殺+10。', skills: ['school', 'foresight'] },
   gladiator: { name: '闘剣士', mov: 6, mtype: 'foot', sprite: 'axe', tier: 2, wtypes: ['sword', 'axe'], bonus: B(6, 3, 0, 1, 1, 0, 2, 0), gift: 'ironAxe', desc: '力で押し切る前衛。斧も扱える。', skills: ['school', 'fightSpirit'] },
-  superdWarlord: { name: 'スペルドの戦鬼', mov: 7, mtype: 'foot', sprite: 'lancer', tier: 2, wtypes: ['lance', 'sword'], bonus: B(4, 2, 0, 2, 2, 0, 2, 2), gift: 'ironSword', desc: '戦場を駆ける歴戦の戦士。剣も使う。', skills: ['spearEdge', 'warDemon'] },
+  superdWarlord: { name: 'スペルドの戦鬼', mov: 6, mtype: 'foot', sprite: 'lancer', tier: 2, wtypes: ['lance', 'sword'], bonus: B(4, 2, 0, 2, 2, 0, 2, 2), gift: 'ironSword', desc: '戦場を駆ける歴戦の戦士。剣も使う。', skills: ['spearEdge', 'warDemon'] },
   swordEmperor: { name: '剣帝', mov: 7, mtype: 'foot', sprite: 'sword', tier: 2, wtypes: ['sword'], bonus: B(4, 2, 0, 2, 2, 0, 2, 1), crit: 10, desc: '剣王のさらに上。必殺+10。', skills: ['swordGod', 'counterBlade'] },
   swordMaster: { name: '剣豪', mov: 6, mtype: 'foot', sprite: 'merc', tier: 2, wtypes: ['sword', 'axe'], bonus: B(5, 2, 0, 2, 2, 0, 2, 1), gift: 'ironAxe', desc: '三流派をこなす万能の剣士。', skills: ['school', 'veteran'] },
   waterEmperor: { name: '水帝級魔術師', mov: 5, mtype: 'foot', sprite: 'mage', tier: 2, wtypes: ['anima'], bonus: B(3, 0, 4, 2, 1, 0, 1, 3), desc: '水魔術を極める。魔力が大きく伸びる。', skills: ['highMagic', 'torrent'] },
@@ -203,7 +203,7 @@ export const CLASSES: Record<string, ClassDef> = {
   sniper: { name: '狙撃手', mov: 6, mtype: 'foot', sprite: 'archer', tier: 2, wtypes: ['bow'], bonus: B(4, 2, 0, 3, 1, 0, 2, 1), crit: 10, desc: '弓を極める。必殺+10。', skills: ['aim', 'trueShot'] },
   bowRider: { name: '弓騎兵', mov: 8, mtype: 'horse', sprite: 'archer', tier: 2, wtypes: ['bow', 'sword'], bonus: B(4, 1, 0, 2, 2, 0, 1, 1), gift: 'ironSword', desc: '馬上から弓を射る。剣も使う。', skills: ['aim', 'horseArchery'] },
   colossus: { name: '剛力将', mov: 5, mtype: 'armor', sprite: 'brute', tier: 2, wtypes: ['axe', 'lance'], bonus: B(6, 3, 0, 1, 0, 0, 3, 2), gift: 'ironLance', desc: '怪力と装甲。槍も扱える。', skills: ['sturdy', 'mightyArm'] },
-  highPriest: { name: '大司祭', mov: 6, mtype: 'foot', sprite: 'priest', tier: 2, wtypes: ['light', 'anima', 'staff'], bonus: B(4, 0, 2, 1, 1, 0, 1, 4), gift: 'wind', desc: '神撃の上級職。理魔術も使う。', skills: ['divineArts', 'holyLight'] },
+  highPriest: { name: '大司祭', mov: 5, mtype: 'foot', sprite: 'priest', tier: 2, wtypes: ['light', 'anima', 'staff'], bonus: B(4, 0, 2, 1, 1, 0, 1, 4), gift: 'wind', desc: '神撃の上級職。理魔術も使う。', skills: ['divineArts', 'holyLight'] },
   assassin: { name: '暗殺者', mov: 7, mtype: 'foot', sprite: 'sword', tier: 2, wtypes: ['sword'], bonus: B(3, 1, 0, 3, 2, 0, 1, 1), crit: 10, desc: '急所を突く。必殺+10。' },
   rogue: { name: '義賊', mov: 7, mtype: 'foot', sprite: 'archer', tier: 2, wtypes: ['sword', 'bow'], bonus: B(4, 1, 0, 2, 2, 2, 1, 1), gift: 'ironBow', desc: '身軽な万能職。弓も使う。' },
   halberdier: { name: '重槍兵', mov: 6, mtype: 'foot', sprite: 'lancer', tier: 2, wtypes: ['lance'], bonus: B(5, 2, 0, 1, 1, 0, 3, 1), desc: '槍兵の上級職。' },
@@ -211,7 +211,7 @@ export const CLASSES: Record<string, ClassDef> = {
   warrior: { name: '戦士長', mov: 6, mtype: 'foot', sprite: 'axe', tier: 2, wtypes: ['axe', 'bow'], bonus: B(6, 2, 0, 1, 1, 0, 2, 1), gift: 'ironBow', desc: '斧と弓を使う。' },
   // ---- 打合せ後の新上級職（仮。候補・名前・数値はクラスチェンジ担当と要調整） ----
   // 魔導護衛の前衛寄りの上級職（もう一方の候補は賢者）。
-  guardMage: { name: '守護魔導士', mov: 6, mtype: 'foot', sprite: 'healer', tier: 2, wtypes: ['anima', 'light', 'staff'], bonus: B(5, 1, 2, 1, 1, 0, 3, 2), gift: 'lightning', desc: '仲間の前に立つ魔導護衛の上級職。HPと守備が伸びる。', skills: ['healArts', 'guardVow'] },
+  guardMage: { name: '守護魔導士', mov: 5, mtype: 'foot', sprite: 'healer', tier: 2, wtypes: ['anima', 'light', 'staff'], bonus: B(5, 1, 2, 1, 1, 0, 3, 2), gift: 'lightning', desc: '仲間の前に立つ魔導護衛の上級職。HPと守備が伸びる。', skills: ['healArts', 'guardVow'] },
   // 牙爪系の上級職。gift は持たない（牙爪は武器欄を使わない）。
   shadowFang: { name: '影牙', mov: 7, mtype: 'foot', sprite: 'thief', tier: 2, wtypes: ['fang'], bonus: B(3, 1, 0, 3, 3, 1, 1, 1), crit: 10, desc: '身軽さを極めた牙爪の使い手。必殺+10。', skills: ['lockpick', 'shadowStep'] },
   fierceFang: { name: '猛牙', mov: 7, mtype: 'foot', sprite: 'fang', tier: 2, wtypes: ['fang'], bonus: B(5, 3, 0, 1, 2, 0, 2, 0), desc: '攻めに徹する牙爪の使い手。力とHPが伸びる。', skills: ['beastInstinct', 'ferocity'] },
@@ -221,11 +221,11 @@ export const CLASSES: Record<string, ClassDef> = {
   // ペルギウス専用。最初から上級職でクラスチェンジなし（PROMOS に載せない）。
   summoner: { name: '召喚術師', mov: 5, mtype: 'foot', sprite: 'summoner', tier: 2, wtypes: ['anima'], desc: '使い魔を呼ぶ甲龍王の術。上級職固定。', skills: ['kingAura'] },
   // ---- 魔物・残滓（M4。敵用。移動力・能力値は仮） ----
-  wolf: { name: '狼', mov: 6, mtype: 'foot', sprite: 'beast', wtypes: ['fang'], monster: true },
-  golem: { name: '岩人形', mov: 4, mtype: 'armor', sprite: 'brute', wtypes: ['fang'], monster: true },
+  wolf: { name: '狼', mov: 6, mtype: 'beast', sprite: 'beast', wtypes: ['fang'], monster: true },
+  golem: { name: '岩人形', mov: 3, mtype: 'armor', sprite: 'brute', wtypes: ['fang'], monster: true },
   bird: { name: '怪鳥', mov: 7, mtype: 'fly', sprite: 'beast', wtypes: ['fang'], monster: true },
-  bear: { name: '大熊', mov: 5, mtype: 'foot', sprite: 'brute', wtypes: ['fang'], monster: true },
-  shade: { name: '残滓の影', mov: 5, mtype: 'foot', sprite: 'mage', wtypes: ['anima'], monster: true },
+  bear: { name: '大熊', mov: 5, mtype: 'beast', sprite: 'brute', wtypes: ['fang'], monster: true },
+  shade: { name: '残滓の影', mov: 4, mtype: 'foot', sprite: 'mage', wtypes: ['anima'], monster: true },
   crystal: { name: '残滓の結晶', mov: 0, mtype: 'armor', sprite: 'armor', wtypes: [], monster: true },
   // オルステッド専用（10章）。
   dragonGod: { name: '龍神', mov: 6, mtype: 'foot', sprite: 'sword', tier: 2, wtypes: ['fang', 'anima'], desc: '龍神。仮の職。' },
@@ -269,44 +269,69 @@ export const PROMOS: Record<string, Promo[]> = {
 
 /**
  * 地形。記号は各章の map: の1文字。V（村の訪問）と T（宝箱）は systems.md §6 で予約済みなので使わない。
- * 移動コストは moveCost()。効果は控えめに：遮蔽は守備+1・回避+10〜20、通れない地形は飛行のみ。
+ * 移動コストは移動タイプごとの表 MOVE_COST（systems.md「移動」）。note（情報欄・ヘルプの説明）は表から作る。
+ * 効果は控えめに：遮蔽は守備+1・回避+10〜20、通れない地形は飛行のみ。
  */
 export const TERRAIN: Record<string, Terrain> = {
   G: { name: '平地', def: 0, avo: 0 },
   R: { name: '道', def: 0, avo: 0 },
   B: { name: '橋', def: 0, avo: 0 },
-  F: { name: '森', def: 1, avo: 20, note: '移動コスト2（騎馬3）' },
-  M: { name: '山', def: 2, avo: 30, note: '歩兵のみ・移動コスト4' },
-  W: { name: '川', def: 0, avo: 0, note: '通行不可' },
+  F: { name: '森', def: 1, avo: 20 },
+  M: { name: '山', def: 2, avo: 30 },
+  W: { name: '川', def: 0, avo: 0 },
   C: { name: '砦', def: 2, avo: 20, heal: true },
-  H: { name: '丘', def: 1, avo: 10, note: '移動コスト2' },
-  X: { name: '崖', def: 0, avo: 0, note: '通行不可' },
-  A: { name: '畑', def: 0, avo: 5, note: '騎馬・重装は移動コスト2' },
+  H: { name: '丘', def: 1, avo: 10 },
+  X: { name: '崖', def: 0, avo: 0 },
+  A: { name: '畑', def: 0, avo: 5 },
   D: { name: '家屋', def: 1, avo: 20 },
   N: { name: '天幕', def: 0, avo: 10 },
-  Y: { name: '茂み', def: 0, avo: 10, note: '騎馬は移動コスト2' },
-  U: { name: '廃墟', def: 1, avo: 15, note: '移動コスト2（騎馬3）' },
-  Z: { name: '城壁', def: 0, avo: 0, note: '通行不可' },
-  L: { name: '柵', def: 0, avo: 0, note: '通行不可' },
-  P: { name: '浅瀬', def: 0, avo: 0, note: '移動コスト3（重装4）' },
+  Y: { name: '茂み', def: 0, avo: 10 },
+  U: { name: '廃墟', def: 1, avo: 15 },
+  Z: { name: '城壁', def: 0, avo: 0 },
+  L: { name: '柵', def: 0, avo: 0 },
+  P: { name: '浅瀬', def: 0, avo: 0 },
   // 8章の迷宮用（M9）。見た目は今のところ道と崖で代用（main.ts paintTerrain）。
   K: { name: '石床', def: 0, avo: 0 },
-  Q: { name: '岩壁', def: 0, avo: 0, note: '通行不可' },
+  Q: { name: '岩壁', def: 0, avo: 0 },
 };
 
+/** 移動タイプの表示名。beast = 獣（狼・大熊。森と茂みを苦にしない）。 */
+export const MOVE_TYPE_NAMES: Record<MoveType, string> = { foot: '歩兵', armor: '重装', horse: '騎馬', beast: '獣', fly: '飛行' };
+const X_ = Infinity;
+/**
+ * 地形ごとの移動コスト [歩兵, 重装, 騎馬, 獣, 飛行]。書いていない地形（平地・道・橋・砦・家屋・天幕・石床）はすべて1。
+ * 飛行はどこでも1（川・崖・城壁・柵・岩壁も越える）。獣の脚（スキル）を持つ者は森が1。
+ */
+export const MOVE_COST: Record<string, [number, number, number, number, number]> = {
+  F: [2, 3, 3, 1, 1], // 森
+  H: [2, 3, 3, 2, 1], // 丘
+  U: [2, 3, 3, 2, 1], // 廃墟
+  M: [4, X_, X_, 3, 1], // 山
+  P: [3, 4, 4, 3, 1], // 浅瀬
+  A: [1, 2, 2, 1, 1], // 畑
+  Y: [1, 2, 2, 1, 1], // 茂み
+  W: [X_, X_, X_, X_, 1], X: [X_, X_, X_, X_, 1], Z: [X_, X_, X_, X_, 1], L: [X_, X_, X_, X_, 1], Q: [X_, X_, X_, X_, 1],
+};
+const MT_INDEX: Record<MoveType, number> = { foot: 0, armor: 1, horse: 2, beast: 3, fly: 4 };
+const MT_ORDER: MoveType[] = ['foot', 'armor', 'horse', 'beast', 'fly'];
+/**
+ * 支配域（systems.md「移動」）：移動の途中で、敵ユニットに隣接するマスから次のマスへ進むときは、地形のコストに +ZOC_COST。
+ * 出発したマスは数えない（隣の敵から離れるのは自由）。敵味方・全移動タイプ共通。
+ */
+export const ZOC_COST = 2;
+
 export function moveCost(t: string, m: MoveType): number {
-  if (m === 'fly') return 1;
-  switch (t) {
-    case 'W': case 'X': case 'Z': case 'L': case 'Q': return Infinity;
-    case 'M': return m === 'foot' ? 4 : Infinity;
-    case 'F': case 'U': return m === 'horse' ? 3 : 2;
-    case 'H': return 2;
-    case 'A': return m === 'foot' ? 1 : 2;
-    case 'Y': return m === 'horse' ? 2 : 1;
-    case 'P': return m === 'armor' ? 4 : 3;
-    default: return 1;
-  }
+  return MOVE_COST[t]?.[MT_INDEX[m]] ?? 1;
 }
+/** 地形の移動コストの説明（情報欄・ヘルプ）。例「移動コスト 歩兵2・重装3・騎馬3・獣1・飛行1」。 */
+export function moveCostText(t: string): string {
+  const row = MOVE_COST[t];
+  if (!row) return '移動コスト1';
+  if (row.slice(0, 4).every(c => c === Infinity)) return '通行不可';
+  const ok = MT_ORDER.filter(m => isFinite(row[MT_INDEX[m]])), no = MT_ORDER.filter(m => !isFinite(row[MT_INDEX[m]]));
+  return `移動コスト ${ok.map(m => MOVE_TYPE_NAMES[m] + row[MT_INDEX[m]]).join('・')}${no.length ? `（${no.map(m => MOVE_TYPE_NAMES[m]).join('・')}は通れない）` : ''}`;
+}
+for (const [k, t] of Object.entries(TERRAIN)) if (MOVE_COST[k]) t.note = moveCostText(k);
 
 /** skills = 素質スキル＋固有スキル（SKILLS の id）。school = 剣の流派（流派スキルの id。剣士・傭兵の職業スキル枠に入る）。 */
 export interface CharDef { id: string; name: string; cls: string; lv: number; st: Stats; gr: Stats; wps: string[]; hair: string; skills?: string[]; school?: string }

@@ -1,7 +1,7 @@
 // Pure game rules: movement, combat math, level-ups, enemy AI. No DOM access here.
 import {
   CAST, CHARS, chapterDef, CLASSES, ENEMY_BASE, FANG_BASE, FANG_MAX, MAGIC, PROMOS, RANKS, RANK_PTS, STAT_KEYS, SUPPORTS, SUPPORT_BONUS, SUPPORT_CAP, SUPPORT_GAIN, SUPPORT_RANGE,
-  SKILLS, SKILL_LIMIT, S_LIMIT, S_LIMIT_DEFAULT, TERRAIN, TRIANGLE, WEAPONS, moveCost,
+  SKILLS, SKILL_LIMIT, S_LIMIT, S_LIMIT_DEFAULT, TERRAIN, TRIANGLE, WEAPONS, ZOC_COST, moveCost,
   type AllyDef, type ArtId, type Chapter, type EnemyAI, type EnemyDef, type LoseCond, type Objective, type Reinforce, type Tile, type WinCond, type PromoReq, type Stats, type SupportBonus, type SupportPair, type SupportRank, type TalkEvent, type TalkWhen, type Team, type TerrainChange, type VisitDef, type Weapon,
 } from './data';
 import { idForName } from './render/who';
@@ -266,22 +266,34 @@ export function familiarHeal(s: State, team: Team): { unit: Unit; hp: number }[]
   return out;
 }
 
-/** Dijkstra over the map. Returns reachable tiles (cost) and the predecessor of each. */
+/**
+ * Dijkstra over the map. Returns reachable tiles (cost) and the predecessor of each.
+ * 地形コストは moveCostFor（移動タイプ×地形、獣の脚）。ignoreUnits でないときは、相手のユニットのマスは通れず、
+ * 支配域（相手に隣接するマスから先へ進むと +ZOC_COST。出発マスは除く）を数える。移動範囲・危険範囲・敵AI・ボットが共通で使う。
+ */
 export function reachable(s: State, u: Unit, mov = moveOf(u), ignoreUnits = false) {
   const cost = new Map<string, number>([[key(u.x, u.y), 0]]);
   const prev = new Map<string, string>();
   const open: [number, number, number][] = [[u.x, u.y, 0]];
-  const mt = CLASSES[u.cls].mtype, legs = mt !== 'fly' && hasSkill(u, 'beastLegs');
+  const H = s.map.length, W = s.map[0].length;
+  // 支配域：相手ユニットに隣接するマス
+  const zoc = new Set<string>();
+  if (!ignoreUnits) for (const o of s.units) {
+    if (!onMap(o) || o.team === u.team) continue;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) zoc.add(key(o.x + dx, o.y + dy));
+  }
+  const start = key(u.x, u.y);
   while (open.length) {
     open.sort((a, b) => a[2] - b[2]);
     const [x, y, c] = open.shift()!;
     if (c > (cost.get(key(x, y)) ?? Infinity)) continue;
+    const extra = key(x, y) !== start && zoc.has(key(x, y)) ? ZOC_COST : 0;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = x + dx, ny = y + dy;
-      if (ny < 0 || ny >= s.map.length || nx < 0 || nx >= s.map[0].length) continue;
+      if (ny < 0 || ny >= H || nx < 0 || nx >= W) continue;
       const other = unitAt(s, nx, ny);
       if (!ignoreUnits && other && other.team !== u.team) continue;
-      const tt = s.map[ny][nx], nc = c + (legs && tt === 'F' ? 1 : moveCost(tt, mt));
+      const nc = c + moveCostFor(u, s.map[ny][nx]) + extra;
       if (nc > mov || nc >= (cost.get(key(nx, ny)) ?? Infinity)) continue;
       cost.set(key(nx, ny), nc); prev.set(key(nx, ny), key(x, y)); open.push([nx, ny, nc]);
     }

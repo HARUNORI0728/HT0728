@@ -74,7 +74,7 @@ export const ch10: Chapter = {
     bgm: { blue: 'map_final', boss: 'final_boss' },
   }],
   // 副目標（Chapter.bonus。ふつうの通しプレイの手数を見て、少し頑張れば届く線）
-  bonus: [{ type: 'turns', max: 10, gold: 0 }, { type: 'noLoss', gold: 0 }],
+  bonus: [{ type: 'turns', max: 11, gold: 0 }, { type: 'noLoss', gold: 0 }],
   intro: 'ch10.intro', outro: 'ch10.outro',
   bgm: { blue: 'orsted', red: 'map_enemy', boss: 'orsted' },
   talks: [

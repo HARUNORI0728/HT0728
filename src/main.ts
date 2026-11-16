@@ -324,6 +324,7 @@ function render(now = performance.now()) {
       }
       for (const { v, open } of shownVisits(S)) drawVisit(ctx, v.kind, v.x, v.y, open, sec); // 宝箱・檻（M13）
     }
+    if (auto && (mode === 'target' || mode === 'heal')) for (const c of auto.cands) if (c !== auto.cands[auto.idx]) tile(key(c.x, c.y), 'move', 0.5);
     if (mode === 'target') for (const t of targets) tile(key(t.x, t.y), 'target', t === picked ? 1 : pulse);
     if (mode === 'heal') for (const t of targets) tile(key(t.x, t.y), 'heal', t === picked ? 1 : pulse);
     // units, back to front
@@ -469,7 +470,7 @@ function unitHtml(u: Unit) {
   const face = faceHtml(u, 'big');
   return `<div class="ucard${face ? '' : ' noface'}">${face}<div class="ubody"><div class="uhead"><b class="${u.team}">${u.name}</b><span>${CLASSES[u.cls].name}　Lv ${u.lv}${u.gr ? `　EXP ${u.exp}` : ''}</span></div>
     <div class="hp">HP ${u.hp} / ${u.st.hp}<div class="bar"><i style="width:${100 * u.hp / u.st.hp}%;background:${u.team === 'blue' ? '#5aa7ff' : '#ff6f61'}"></i></div></div></div></div>
-    <div class="stats">${st}</div><div class="wps">${wps}　／　${t.name}（守備+${t.def} 回避+${t.avo}）</div>${skillLine(u)}${u.team === 'blue' ? bondLine(u) : ''}`;
+    <div class="stats">${st}</div><div class="wps">${wps}　／　${t.name}（守備+${t.def} 回避+${t.avo}）　／　移動 ${Math.max(1, CLASSES[u.cls].mov - (u.slow ?? 0))}（${MTYPE_NAMES[CLASSES[u.cls].mtype]}）</div>${skillLine(u)}${u.team === 'blue' ? bondLine(u) : ''}`;
 }
 /** スキル名と説明（systems.md §4。戦闘中に有効な最大3つ）。 */
 function skillLine(u: Unit) {
@@ -557,10 +558,10 @@ const turnTalks = () => runTalks(dueTalks(S, w => w.type === 'turn' && w.turn ==
 
 // ---------- player flow ----------
 function idle() {
-  mode = 'idle'; sel = picked = null; targets = []; probe = null;
+  mode = 'idle'; sel = picked = null; targets = []; probe = null; auto = null;
   if (!inspect) { stops = new Set(); threat = new Set(); }
   hud();
-  info(inspect ? unitHtml(inspect) : `<p class="hint">青いユニットをタップして移動先を選ぼう。敵をタップすると移動・攻撃範囲が見られる。「危険範囲」で敵全員の届くマスを赤く重ねられる。${scrolls() ? '地図はドラッグで動かせる。' : ''}</p>`);
+  info(inspect ? unitHtml(inspect) : `<p class="hint">青いユニットをタップして移動先を選ぼう（もう一度タップで解除）。届く敵をタップすると、自動で近づいて攻撃の予測が出る。敵だけをタップすると移動・攻撃範囲が見られる。「危険範囲」で敵全員の届くマスを赤く重ねられる。${scrolls() ? '地図はドラッグで動かせる。' : ''}</p>`);
   const left = alive(S, 'blue').filter(u => !u.done);
   menu([[dangerOn ? '危険範囲：表示中' : '危険範囲を表示', toggleDanger, dangerOn ? 'toggle on' : 'toggle'], ...(left.length ? [[`次のユニット（残り${left.length}）`, nextUnit] as [string, () => void]] : []), ['ターン終了', askEndTurn]]);
 }
@@ -583,11 +584,73 @@ function selectUnit(u: Unit) {
   audio.sfx('select');
   sel = u; inspect = picked = null; origin = { x: u.x, y: u.y };
   void follow([u], 0);
-  stops = stopTiles(S, u); threat = threatTiles(S, u, stops); mode = 'move';
-  info(unitHtml(u)); menu([['キャンセル', idle]]);
+  stops = stopTiles(S, u); threat = threatTiles(S, u, stops); mode = 'move'; auto = null;
+  info(`<p class="hint selHint">光ったマスで移動。赤い範囲の敵をタップすると自動で近づいて攻撃の予測。同じユニットか範囲の外をタップで解除。</p>${unitHtml(u)}`);
+  menu([['選択解除', idle, 'back'], ['その場で行動', () => { u.mv = 0; openMenu(); }]]);
+}
+/**
+ * 1段戻る（「もどる／選択解除」ボタン、地図の別の場所のタップ、Esc、右クリック）。
+ * 移動先を選ぶ段階 → 選択解除／行動メニュー → 移動の取り消し／攻撃・杖の相手選びと予測 → 行動メニュー（自動移動からなら移動前へ）。
+ */
+function goBack(): boolean {
+  if (!S || !inBattle) return false;
+  if (mode === 'move') { idle(); return true; }
+  if (mode === 'menu') { undoMove(); return true; }
+  if (mode === 'target' || mode === 'heal') { if (auto) undoMove(); else openMenu(); return true; }
+  if (mode === 'idle' && (inspect || probe)) { inspect = null; idle(); return true; }
+  return false;
+}
+/** 移動を取り消して、移動先を選ぶ段階に戻る。 */
+function undoMove() { const u = sel!; auto = null; u.x = origin.x; u.y = origin.y; u.mv = 0; selectUnit(u); }
+
+// ---- 敵（杖なら傷ついた味方）をタップ → 届くマスへ自動で移動した状態の予測 ----
+interface AutoCand { x: number; y: number; wid: string }
+/** 自動移動の候補（よい順）と、いま立っている候補。kind: 'atk' = 攻撃、'heal' = 杖。 */
+let auto: { kind: 'atk' | 'heal'; t: Unit; cands: AutoCand[]; idx: number } | null = null;
+/**
+ * 選択中のユニット（移動前のマスにいる）が t を攻撃（回復）できるマスを、よい順に並べる：
+ * 攻撃は反撃を受けない → 地形の守備・回避がよい → 移動が短い。マスごとの武器は反撃を受けない → 期待ダメージが大きいもの。
+ */
+function autoCands(u: Unit, t: Unit, kind: 'atk' | 'heal'): AutoCand[] {
+  const scored: { c: AutoCand; sc: number }[] = [];
+  for (const k of stops) {
+    const [x, y] = k.split(',').map(Number), at = { x, y }, tr = terrainAt(S, x, y);
+    const near = 100 - dist(origin, at), land = Math.min(99, tr.def * 3 + tr.avo / 5);
+    if (kind === 'atk') {
+      let best: { wid: string; v: number } | null = null;
+      for (const wid of usable(u)) {
+        if (!inRange(WEAPONS[wid], dist(at, t))) continue;
+        const f = forecast(S, u, wid, t, at), v = (f.d ? 0 : 1e4) + f.a.dmg * (f.a.double ? 2 : 1) * f.a.hit / 100;
+        if (!best || v > best.v) best = { wid, v };
+      }
+      if (best) scored.push({ c: { x, y, wid: best.wid }, sc: (best.v >= 1e4 ? 1e6 : 0) + land * 1e3 + near });
+    } else {
+      const sid = staves(u).find(w => healTargets(S, u, w, at).includes(t));
+      if (sid) scored.push({ c: { x, y, wid: sid }, sc: land * 1e3 + near });
+    }
+  }
+  return scored.sort((a, b) => b.sc - a.sc).map(s => s.c);
+}
+function autoStart(t: Unit, kind: 'atk' | 'heal', cands: AutoCand[]) {
+  auto = { kind, t, cands, idx: 0 };
+  return autoPlace(0);
+}
+/** 候補 i のマスへ移動して予測を出す（まだ確定しない）。 */
+async function autoPlace(i: number) {
+  const a = auto!, u = sel!, c = a.cands[i];
+  a.idx = i; mode = 'busy';
+  if (c.x !== u.x || c.y !== u.y) audio.sfx('move');
+  await tween(u, c.x, c.y);
+  u.mv = dist(origin, c); curW = c.wid; targets = [a.t]; picked = null;
+  if (a.kind === 'atk') { mode = 'target'; pickTarget(a.t); } else { mode = 'heal'; pickHeal(a.t); }
+}
+/** 予測の下に足すボタン：自動移動なら「位置を変える」。 */
+function autoItems(): [string, () => void, string?][] {
+  const a = auto;
+  return a && a.cands.length > 1 ? [[`位置を変える（${a.idx + 1}/${a.cands.length}）`, () => void autoPlace((a.idx + 1) % a.cands.length)]] : [];
 }
 function openMenu() {
-  const u = sel!; mode = 'menu'; picked = null; targets = [];
+  const u = sel!; mode = 'menu'; picked = null; targets = []; auto = null;
   const items: [string, () => void, string?][] = [];
   for (const wid of usable(u)) {
     const ts = alive(S, 'red').filter(t => inRange(WEAPONS[wid], dist(u, t)));
@@ -603,7 +666,7 @@ function openMenu() {
   for (const v of vs) items.push([(v.kind === 'chest' ? '開ける' : '訪問') + (vs.length > 1 ? `（${v.x},${v.y}）` : ''), () => void doVisit(u, v), 'primary']);
   if (u.potions > 0 && u.hp < u.st.hp) items.push([`傷薬（残り${u.potions}）`, () => { u.potions--; u.hp = Math.min(u.st.hp, u.hp + POTION_HEAL); float(u, `+${POTION_HEAL}`, '#8fe0a0'); audio.sfx('heal'); finish(u); }]);
   items.push(['待機', () => finish(u)]);
-  items.push(['もどる', () => { u.x = origin.x; u.y = origin.y; u.mv = 0; selectUnit(u); }]);
+  items.push(['もどる', undoMove, 'back']);
   info(unitHtml(u)); menu(items);
 }
 /** 宝箱を開ける・訪問する（M13）：会話（あれば）→中身を受け取る→行動終了。銀は flags.loot にためて章クリア時に所持金へ。 */
@@ -626,7 +689,7 @@ async function doVisit(u: Unit, v: NonNullable<ReturnType<typeof chapterDef>['vi
 }
 function chooseTarget(wid: string, ts: Unit[]) {
   mode = 'target'; curW = wid; targets = ts; picked = null;
-  info('<p class="hint">攻撃する相手をタップ。</p>'); menu([['もどる', openMenu]]);
+  info('<p class="hint">攻撃する相手をタップ。</p>'); menu([['もどる', openMenu, 'back']]);
   if (ts.length === 1) pickTarget(ts[0]);
 }
 function pickTarget(t: Unit) {
@@ -640,11 +703,13 @@ function pickTarget(t: Unit) {
     ${row('命中', f.a.hit + '%', f.d ? f.d.hit + '%' : '—')}${row('必殺', f.a.crit + '%', f.d ? f.d.crit + '%' : '—')}
     ${f.d?.block || f.a.block ? row('', f.d?.block ? `${SKILLS.shieldBlock.name} ${f.d.block}%` : '', f.a.block ? `${SKILLS.shieldBlock.name} ${f.a.block}%` : '') : ''}
     ${row('武器', weaponLabel(u, curW), f.d ? (f.d.w.type === 'fang' ? weaponLabel(t, 'fang') : f.d.w.name) : '反撃不可')}</div>${supRow(f.a.sup)}${linkRow(u, t)}${skillRow(f.a.skills, f.d?.skills ?? [])}`);
-  menu([['戦う', async () => { mode = 'busy'; await battle(u, curW, t); finish(u); }, 'primary'], ['もどる', openMenu]]);
+  const ws = usable(u).filter(w => inRange(WEAPONS[w], dist(u, t)));
+  const swap: [string, () => void][] = ws.length > 1 ? [[`武器を変える（→${weaponLabel(u, ws[(ws.indexOf(curW) + 1) % ws.length]).replace(/威力\d+$/, '')}）`, () => { curW = ws[(ws.indexOf(curW) + 1) % ws.length]; pickTarget(t); }]] : [];
+  menu([['戦う', async () => { mode = 'busy'; auto = null; await battle(u, curW, t); finish(u); }, 'primary'], ...autoItems(), ...swap, ['もどる', goBack, 'back']]);
 }
 function chooseHeal(sid: string, ts: Unit[]) {
   mode = 'heal'; curW = sid; targets = ts; picked = null;
-  info('<p class="hint">回復する味方をタップ。</p>'); menu([['もどる', openMenu]]);
+  info('<p class="hint">回復する味方をタップ。</p>'); menu([['もどる', openMenu, 'back']]);
   if (ts.length === 1) pickHeal(ts[0]);
 }
 function pickHeal(t: Unit) {
@@ -655,7 +720,7 @@ function pickHeal(t: Unit) {
     <div class="n">${WEAPONS[curW].name}</div><div class="k">回復</div><div class="n heal">+${amt}</div>
     <div class="n"></div><div class="k">HP</div><div class="n">${t.hp} → ${t.hp + amt} / ${t.st.hp}</div></div>
     <p class="fcsup heal">経験値 +${healExp(amt)}</p>`);
-  menu([['回復する', async () => { mode = 'busy'; await doHeal(u, curW, t); finish(u); }, 'primary'], ['もどる', openMenu]]);
+  menu([['回復する', async () => { mode = 'busy'; auto = null; await doHeal(u, curW, t); finish(u); }, 'primary'], ...autoItems(), ['もどる', goBack, 'back']]);
 }
 async function doHeal(u: Unit, sid: string, t: Unit) {
   const h = heal(u, sid, t), wind = healingWind(S, u, t);
@@ -683,7 +748,7 @@ function supRow(sup: { hit: number; avo: number; crit: number; dmg: number; from
   return `<p class="fcsup">絆：${sup.from.map(f => `${f.name}（${f.rank}）`).join('、')}　${fx}</p>`;
 }
 async function finish(u: Unit) {
-  mode = 'busy'; u.done = true; sel = picked = inspect = null; targets = [];
+  mode = 'busy'; u.done = true; sel = picked = inspect = null; targets = []; auto = null;
   if (await checkEnd()) return;
   if (alive(S, 'blue').every(b => b.done)) { mode = 'idle'; endTurn(); } else idle();
 }
@@ -717,6 +782,12 @@ cv.addEventListener('pointerup', e => {
   if (!d.moved) void tapAt(e.clientX, e.clientY);
 });
 cv.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.id) drag = null; });
+// PC：右クリックと Esc で1段戻る（ヘルプ・音の設定・会話などが開いているときは、それらが先）
+cv.addEventListener('contextmenu', e => { e.preventDefault(); if (mode !== 'busy' && goBack()) audio.sfx('cancel'); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || mode === 'busy' || ['help', 'snd', 'dlg', 'title', 'camp', 'show'].some(id => !$(id).hidden)) return;
+  if (goBack()) { e.preventDefault(); audio.sfx('cancel'); }
+}, true);
 cv.addEventListener('click', e => {
   if (performance.now() < skipClickUntil) { skipClickUntil = 0; return; }
   void tapAt(e.clientX, e.clientY);
@@ -741,15 +812,25 @@ async function tapAt(clientX: number, clientY: number) {
       info(`<p class="hint">${t.name}　守備+${t.def}　回避+${t.avo}${t.heal ? '　ターン開始時にHP回復' : ''}${t.note ? '　' + t.note : ''}${block ? '（飛行ユニットのみ通れる）' : ''}</p>`);
     }
   } else if (mode === 'move') {
-    if (!stops.has(key(tx, ty))) { audio.sfx('cancel'); return idle(); }
-    mode = 'busy'; if (tx !== sel!.x || ty !== sel!.y) audio.sfx('move'); sel!.mv = dist(origin, { x: tx, y: ty }); await tween(sel!, tx, ty); openMenu();
+    const s = sel!;
+    if (u === s) { audio.sfx('cancel'); return idle(); } // 同じユニットをもう一度タップ：選択解除
+    if (u && u.team === 'red') { const cs = autoCands(s, u, 'atk'); if (cs.length) return autoStart(u, 'atk', cs); }
+    if (u && u.team === 'blue') { const cs = autoCands(s, u, 'heal'); if (cs.length) return autoStart(u, 'heal', cs); }
+    if (u) { idle(); return tapAt(clientX, clientY); } // 届かない敵・ほかの味方：選び直し／範囲を見る
+    if (!stops.has(key(tx, ty))) { audio.sfx('cancel'); return idle(); } // 範囲の外の何もないマス：選択解除
+    mode = 'busy'; if (tx !== s.x || ty !== s.y) audio.sfx('move'); s.mv = dist(origin, { x: tx, y: ty }); await tween(s, tx, ty); openMenu();
   } else if (mode === 'menu') {
-    if (u && u.team === 'red') { const wid = usable(sel!).find(w => inRange(WEAPONS[w], dist(sel!, u))); if (wid) { chooseTarget(wid, alive(S, 'red').filter(t => inRange(WEAPONS[wid], dist(sel!, t)))); pickTarget(u); } }
-    if (u && u.team === 'blue') { const sid = staves(sel!).find(w => healTargets(S, sel!, w).includes(u)); if (sid) { chooseHeal(sid, healTargets(S, sel!, sid)); pickHeal(u); } }
-  } else if (mode === 'target') {
-    if (u && targets.includes(u)) pickTarget(u); else openMenu();
-  } else if (mode === 'heal') {
-    if (u && targets.includes(u)) pickHeal(u); else openMenu();
+    if (u && u.team === 'red') { const wid = usable(sel!).find(w => inRange(WEAPONS[w], dist(sel!, u))); if (wid) { chooseTarget(wid, alive(S, 'red').filter(t => inRange(WEAPONS[wid], dist(sel!, t)))); pickTarget(u); return; } }
+    if (u && u.team === 'blue') { const sid = staves(sel!).find(w => healTargets(S, sel!, w).includes(u)); if (sid) { chooseHeal(sid, healTargets(S, sel!, sid)); pickHeal(u); return; } }
+    audio.sfx('cancel'); undoMove(); // 地図の別の場所：移動を取り消す
+  } else if (mode === 'target' || mode === 'heal') {
+    if (u && targets.includes(u)) return mode === 'target' ? pickTarget(u) : pickHeal(u);
+    if (!auto) { audio.sfx('cancel'); return openMenu(); }
+    const ci = u ? -1 : auto.cands.findIndex(c => c.x === tx && c.y === ty);
+    if (ci >= 0) return autoPlace(ci); // 別の候補マス：位置を変える
+    const s = sel!;
+    if (u && u !== s) { auto = null; s.x = origin.x; s.y = origin.y; s.mv = 0; mode = 'move'; return tapAt(clientX, clientY); } // 別の敵・味方：移動前から選び直す
+    audio.sfx('cancel'); undoMove();
   }
 }
 
@@ -1107,7 +1188,7 @@ function credits(): Promise<void> {
 type CampTab = 'units' | 'shop' | 'bonds' | 'tent' | 'log';
 let campTab: CampTab = 'units';
 const esc = (t: string) => t.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]!));
-const MTYPE_NAMES = { foot: '歩兵', armor: '重装', horse: '騎馬', fly: '飛行' } as const;
+const MTYPE_NAMES = { foot: '歩兵', armor: '重装', horse: '騎馬', beast: '獣', fly: '飛行' } as const;
 const gainText = (g: Partial<Stats>) => STAT_KEYS.filter(k => g[k]).map(k => `${STAT_NAMES[k]}+${g[k]}`).join(' ');
 function campMsg(t: string) { $('campMsg').textContent = t; }
 const pendingFinale = () => !!camp && !camp.ended && !!chapterDef(camp.cleared - 1)?.ending;
@@ -1441,7 +1522,7 @@ function renderPrep() {
   }
   const su = schoolUnit(plan, p.picks);
   if (su) body.appendChild(schoolPicker(su));
-  const row = el('div', 'row');
+  const row = el('div', 'row prepBtns');
   row.appendChild(btn(`この${n}人で出撃する`, () => { const picks = p.picks; prep = null; start(newChapter(p.index, c.roster, c.bonds, c.difficulty, picks, !!c.hard), true); }, 'primary', !p.picks.length && plan.free > 0));
   row.appendChild(btn('章間にもどる', () => showCamp()));
   body.appendChild(row);
@@ -1568,7 +1649,7 @@ document.addEventListener('click', e => {
   const b = (e.target as HTMLElement | null)?.closest?.('button');
   if (!b || b.disabled || b.closest('#menu') && mode === 'busy') return;
   const t = b.textContent ?? '';
-  audio.sfx(/もどる|キャンセル|いいえ|閉じる|タイトルへ|章間にもどる/.test(t) ? 'cancel' : b.classList.contains('primary') || b.classList.contains('diff') ? 'decide' : 'button');
+  audio.sfx(/もどる|キャンセル|選択解除|いいえ|閉じる|タイトルへ|章間にもどる/.test(t) ? 'cancel' : b.classList.contains('primary') || b.classList.contains('diff') ? 'decide' : 'button');
 }, true);
 $('btnNew').onclick = () => { setLevel(false); showTitle('難易度を選んでください。', 'diff'); };
 /** 新規ゲームの敵の強さ（ふつう／むずかしい）。倒れた仲間の扱い（カジュアル／クラシック）のボタンで始まる。 */
@@ -1613,6 +1694,8 @@ $('gridBtn').onclick = () => {
   syncGridBtn();
 };
 syncGridBtn();
+/** 横向きスマホでは勝敗条件・副目標を1行に畳んでいる：タップで開閉。 */
+for (const id of ['goal', 'bonusGoal']) $(id).addEventListener('click', () => $('app').classList.toggle('goalsOpen'));
 /** 速度の切り替え（ふつう／はやい）。押すたびに入れ替わり、端末に保存する。 */
 function syncSpeedBtn() {
   const b = $('speedBtn');
