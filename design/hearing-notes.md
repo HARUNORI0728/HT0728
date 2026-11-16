@@ -151,3 +151,15 @@
 | 7 | ev_sylphie_companion | E：後日談（仲間版）。若木の背を測る | `Harvest-season afternoon on the hill, medium shot, she stands alone beside a young tree and measures its height against her palm, looking at the viewer with a gentle smile that carries a hint of wistfulness, golden light and drifting leaves.` |
 
 - 未決：絵の優先順位（予算が足りなければ、順3〜6を優先し、順4と順7を後回しにする案）
+
+## エリス専用イベント絵（2026-11-16）
+- 決定：「ちょい追加」とのことなので、2枚を追加（おすすめ案で記録）。エリスのイベント絵は、既存の2枚（第9章幕間の慰霊の石 `ev_eris_memorial`、告白 `eris`）とあわせて4枚
+- 理由・ユーザーの言葉：「エリスもちょい追加で」
+- 実装担当への申し送り：シルフィの分と同じ。プロンプトを `design/portrait-prompts.md` に移し、台本に `一枚絵：` の行を足す。外見文は portrait-prompts.md の eris の文を先頭に付ける。ルーデウスは後ろ姿か画面端
+- 追加の2枚：
+  | ID | 場面と台本の場所 | プロンプト下書き |
+  |---|---|---|
+  | ev_eris_sheathe | 第9章の終幕。縛られたダリウスの前で剣を収める（script-ch9-10.md） | `Night inside a noble's mansion hall lit by torches, medium shot, she stands before a bound kneeling man seen at the edge of the frame, her sword tip trembling, then slowly sliding it back into the scabbard, looking down with a hard, restrained, sorrowful expression, red ponytail swaying.` |
+  | ev_eris_wedding | 後日談（結婚版）。道場と慰霊の石（script-endings.md） | `Clear morning in front of a small village sword dojo with a wooden training yard, wide shot, she grins with her wooden sword on her shoulder and holds out a hand toward the viewer, a small stone memorial visible on the hill behind, warm sunlight, confident and tender smile.` |
+- 他の候補（採用していない）：後日談の仲間版（剣の修行に出る）、第4章でシルフィに張り合う場面、ふたりの時間3「剣を置く日」
+- 未決：アリエルのイベント絵を増やすか
