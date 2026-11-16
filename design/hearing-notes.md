@@ -133,3 +133,21 @@
 - 理由・ユーザーの言葉：「シルフィにもこだわりたい」「専用のイベント絵を増やす」
 - 現状：シルフィのイベント絵は、第4章の正体判明（ev_sylphie_reveal）と告白場面（sylphiette）の2枚が予定されている。どちらも未納品
 - 未決：増やす場面の選定、枚数
+
+## シルフィエット専用イベント絵（2026-11-16）
+- 決定：候補A〜Eの5枚を全部追加する。既存の予定（正体判明・告白）とあわせて、シルフィのイベント絵は7枚
+- 理由・ユーザーの言葉：「全部書いちゃえ」
+- 実装担当への申し送り：このセッションは `design/hearing-notes.md` しか触れないため、プロンプトの下書きをここに置く。`design/portrait-prompts.md` の「イベント絵」に移し、台本の該当場面に `一枚絵：` の行を足してほしい。置き場所は `assets/events/<ID>.png`、16:9、全年齢向け
+- 外見文は portrait-prompts.md の sylphiette の文を、プロンプトの先頭（イベント絵の共通スタイルの後）に付ける。ルーデウスは後ろ姿か画面端に置き、シルフィを主役にする
+
+| 順 | ID | 場面と台本の場所 | プロンプト下書き |
+|---|---|---|---|
+| 1 | ev_sylphie_reveal | 第4章の終幕。フードを外す（script-ch3-5.md に一枚絵の指定あり。プロンプト未確認なら新規） | `Dusk at a ruined chapel gate, medium shot, she lowers her cloak hood to reveal short white hair, looking at the viewer with a frightened, hopeful, trembling smile, wind stirring her hair.` |
+| 2 | sylphiette（告白） | 発注済みのため再掲しない（portrait-prompts.md の告白の節） | — |
+| 3 | ev_sylphie_sapling | A：第4章の幕間「丘の木の下で」。苗木を植える | `Sunset on a bare hill with the ruined village far below, wide shot, she kneels in the soil and gently pats earth around a tiny sapling, a young man seen from behind kneeling beside her at the edge of the frame, she looks up with a soft, relieved smile.` |
+| 4 | ev_sylphie_rearguard | B：第8章の迷宮。殿を引き受ける | `Collapsing underground labyrinth with falling rubble and glowing crystal light, dynamic wide shot, she stands alone between the viewer and the crumbling tunnel, wand raised, wind magic swirling around her white hair and cloak, glancing back over her shoulder with a determined, gentle smile.` |
+| 5 | ev_sylphie_sapling2 | C：ふたりの時間3（第9章クリア後）。育った苗木 | `Quiet dusk on the same hill, medium shot, a knee-high sapling in the foreground, she crouches beside it with fingertips on its leaves while the burnt village lies below, turning to the viewer with a calm, hopeful expression, a young man at the edge of the frame.` |
+| 6 | ev_sylphie_wedding | D：後日談（結婚版）。家と若木 | `Golden evening on the hill beside a small new house with a lit window, medium shot, she carries a water pail toward a young tree, her white hair uncovered and shining in the wind, looking at the viewer with a shy, deeply happy smile (dere expression).` |
+| 7 | ev_sylphie_companion | E：後日談（仲間版）。若木の背を測る | `Harvest-season afternoon on the hill, medium shot, she stands alone beside a young tree and measures its height against her palm, looking at the viewer with a gentle smile that carries a hint of wistfulness, golden light and drifting leaves.` |
+
+- 未決：絵の優先順位（予算が足りなければ、順3〜6を優先し、順4と順7を後回しにする案）
