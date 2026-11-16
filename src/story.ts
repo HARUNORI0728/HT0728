@@ -1,8 +1,9 @@
 // Story assembly with no DOM: which support / confession / wife conversation to play, and the ending sequence
 // (epilogue → 7 afterwords, married or companion version → closing) with the screenplay's 差し替え・差し込み applied.
 import { CAST, type Line, type SupportPair, type SupportRank } from './data';
-import { CANDIDATES, dist, marriedTo, onMap, pairKey, type Bonds, type State, type Unit } from './logic';
-import { BATTLE_BARKS, DATE_TALKS, SCENES, SUPPORT_SCENES, WIFE_TALKS, type DateTalk, type Scene, type SceneId, type WifeTalk } from './script/scenes';
+import { CANDIDATES, addBond, dist, findPair, marriedTo, onMap, pairKey, type Bonds, type State, type Unit } from './logic';
+import { GIFT_BOND, MEAL_BOND } from './shop';
+import { BATTLE_BARKS, CAMP_LINES, DAILY_TALKS, DATE_TALKS, GIFT_LIKES, SCENES, SUPPORT_SCENES, WIFE_TALKS, type DailyTalk, type DateTalk, type Scene, type SceneId, type WifeTalk } from './script/scenes';
 
 const nameOf = (id: string) => CAST[id]?.name ?? id;
 /** A scene by id when the screenplay has it (ids of the ending documents are not checked at compile time). */
@@ -87,6 +88,54 @@ export function adjacentBark(s: State, att: Unit, def: Unit): Line[] | null {
 }
 /** 撤退：a partner Rudeus married has fallen. */
 export const fallBark = (s: State, u: Unit): Line[] | null => (marriedTo(s.bonds).includes(u.id) ? barkLines(s, `${u.id}:fall`, u.id) : null);
+
+// ---------- 天幕：キャンプの日々・食卓・贈り物 (design/script-camp.md) ----------
+
+type Member = { id: string; out?: boolean };
+/**
+ * キャンプの日々 that can be watched now: from minCleared on, with every speaking member in the roster and not fallen
+ * (classic). skipAbsent scenes only need the chapter; the lines of absent members are dropped (dailyLines).
+ */
+export function dailyTalksAvailable(roster: Member[], cleared: number): DailyTalk[] {
+  const here = new Set(roster.filter(u => !u.out).map(u => u.id));
+  return DAILY_TALKS.filter(d => cleared >= d.minCleared && (d.skipAbsent || d.members.every(m => here.has(m))));
+}
+/** A camp talk's lines; for skipAbsent scenes, lines of members not in `present` are dropped (absent = all lines kept). */
+export function dailyLines(d: DailyTalk, present?: string[]): Line[] {
+  if (!d.skipAbsent || !present) return d.scene.lines;
+  const gone = new Set(d.members.filter(m => !present.includes(m)).map(nameOf));
+  return d.scene.lines.filter(l => !gone.has(l.who));
+}
+const pick = <T>(xs: T[], rnd: () => number): T | undefined => xs[Math.floor(rnd() * xs.length)];
+/** Support pairs among the given ids (each pair once). */
+const pairsAmong = (ids: string[]) => ids.flatMap((a, i) => ids.slice(i + 1).map(b => findPair(a, b)).filter((p): p is NonNullable<typeof p> => !!p));
+/**
+ * 食卓：Rudeus and `guests` eat together. Every support pair among them gains MEAL_BOND (up to the next rank's threshold).
+ * Returns the lines (Hanna's opening, one line from each guest, Rudeus's closing) and the pairs that gained.
+ */
+export function shareMeal(bonds: Bonds, guests: string[], rnd = Math.random): { lines: Line[]; gained: { a: string; b: string; added: number }[] } {
+  const one = (k: string) => { const l = pick(CAMP_LINES[k] ?? [], rnd); return l ? [l] : []; };
+  const lines = [...one('meal:ハンナ'), ...guests.flatMap(id => one(`meal:${id}`)), ...one('meal:rudeus')];
+  const gained = pairsAmong(['rudeus', ...guests]).map(p => ({ a: p.a, b: p.b, added: addBond(bonds, p, MEAL_BOND) })).filter(g => g.added > 0);
+  return { lines, gained };
+}
+/** The support pair a gift to `id` deepens: Rudeus × id, or (no such pair) id's pair with the fewest points among `present`. */
+export function giftPair(bonds: Bonds, id: string, present: string[]) {
+  const own = findPair('rudeus', id);
+  if (own) return own;
+  return present.filter(o => o !== id).map(o => findPair(id, o)).filter((p): p is NonNullable<typeof p> => !!p)
+    .sort((x, y) => (bonds[pairKey(x.a, x.b)]?.pts ?? 0) - (bonds[pairKey(y.a, y.b)]?.pts ?? 0))[0];
+}
+/** 贈り物：gives `gift` (its name) to `id`. Liked gifts add GIFT_BOND.like, others .plain. Returns the reaction and the gain. */
+export function giveGift(bonds: Bonds, id: string, gift: string, present: string[]): { lines: Line[]; like: boolean; pair?: { a: string; b: string }; added: number } {
+  const like = GIFT_LIKES[id] === gift;
+  const lines = (CAMP_LINES[`gift:${id}:${like ? 'like' : 'plain'}`] ?? [{ who: nameOf(id), text: `${gift}、ありがとう。` }]).map(l => ({ ...l, text: l.text.replace(/\{品\}/g, gift) }));
+  const p = giftPair(bonds, id, present);
+  const added = p ? addBond(bonds, p, like ? GIFT_BOND.like : GIFT_BOND.plain) : 0;
+  return { lines, like, pair: p ? { a: p.a, b: p.b } : undefined, added };
+}
+/** The gift `id` likes (its name), if any. */
+export const likedGift = (id: string): string | undefined => GIFT_LIKES[id];
 
 // ---------- the ending (plot.md §3, script-endings.md) ----------
 

@@ -9,13 +9,14 @@ import {
   LINK_NAME, type Bonds, type Difficulty, type SortiePlan, type State, type Unit,
 } from './logic';
 import { confessionScene, endingSequence, placeholderTalk, sceneById, supportScene, wifeLines, wifeTalksAvailable } from './story';
-import { adjacentBark, dateTalksAvailable, fallBark, wedChapters, wedKey } from './story';
-import { DATE_TALKS, WIFE_TALKS, type DateTalk, type WifeTalk } from './script/scenes';
+import { adjacentBark, dailyLines, dailyTalksAvailable, dateTalksAvailable, fallBark, wedChapters, wedKey } from './story';
+import { DAILY_TALKS, DATE_TALKS, WIFE_TALKS, type DailyTalk, type DateTalk, type WifeTalk } from './script/scenes';
+import { renderTentCare, validTent, type TentUse } from './ui/tent-ui';
 import { artLog, cueBgm, play, setOnBg, setOnCg } from './ui/dialogue';
 import { BGM_FILES } from './audio-manifest';
 import { JINGLES, SONG_NAMES } from './audio/songs';
 import { invBlock, renderShop } from './ui/shop-ui';
-import { ITEMS, chapterReward, shopName, takeLoot } from './shop';
+import { GIFT_PER_CAMP, ITEMS, chapterReward, shopName, takeLoot } from './shop';
 import { hideTutorial, mountHelp, openHelp, startTutorial, tutorialDone, tutorialStep } from './ui/help';
 import { BG_ART, EVENT_ART } from './art-manifest';
 import { RES, T } from './render/common';
@@ -156,6 +157,8 @@ interface Camp {
   stash?: string[];
   /** 成績（クリア記録用）：クリアした章の合計ターン、倒れた仲間の延べ人数、何周目か（2以上のとき）。v6 の任意項目。 */
   turns?: number; falls?: number; round?: number;
+  /** 天幕の食卓・贈り物・稽古をこの章間に使ったか（ui/tent-ui.ts）。v6 の任意項目。章をクリアすると新しい Camp になり空に戻る。 */
+  tent?: TentUse;
 }
 /**
  * seen = conversations watched (for the camp's 記録): scene ids (序章・開幕・終幕・幕間) and support talks
@@ -213,7 +216,7 @@ function normalize(d: any): SaveData | null {
   const c = d?.camp;
   let cp: Camp | null = null;
   if (c && Array.isArray(c.roster) && typeof c.next === 'number' && typeof c.cleared === 'number' && c.cleared >= 1) {
-    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), gold: Number.isFinite(c.gold) && c.gold > 0 ? Math.floor(c.gold) : 0, ...(c.ended === true ? { ended: true } : {}), ...(SCHOOLS.includes(c.school) ? { school: c.school } : {}), ...(c.hard === true ? { hard: true } : {}), ...(Array.isArray(c.bench) ? { bench: c.bench.filter((g: any) => g && typeof g.id === 'string' && typeof g.exp === 'number') } : {}), ...(Array.isArray(c.stash) ? { stash: c.stash.filter(validStash) } : {}), ...runStats(c) };
+    cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), gold: Number.isFinite(c.gold) && c.gold > 0 ? Math.floor(c.gold) : 0, ...(c.ended === true ? { ended: true } : {}), ...(SCHOOLS.includes(c.school) ? { school: c.school } : {}), ...(c.hard === true ? { hard: true } : {}), ...(Array.isArray(c.bench) ? { bench: c.bench.filter((g: any) => g && typeof g.id === 'string' && typeof g.exp === 'number') } : {}), ...(Array.isArray(c.stash) ? { stash: c.stash.filter(validStash) } : {}), ...runStats(c), ...(validTent(c.tent) ? { tent: validTent(c.tent) } : {}) };
   }
   const married = Array.isArray(d?.married) ? d.married.filter((k: unknown) => typeof k === 'string' && CANDIDATES.includes(k as string)) : [];
   if (cp) ensureMarried(cp.bonds, married);
@@ -1213,8 +1216,15 @@ function renderWed() {
   e.hidden = !w.length;
   e.innerHTML = w.length ? `<span>結婚</span>${w.map(id => `${faceHtml({ id, name: castName(id), cls: CAST[id]?.cls ?? '', team: 'blue' }, 'pair')}<b>${esc(castName(id))}</b>`).join('')}` : '';
 }
-/** Wife talks and ふたりの時間 watchable now and not yet watched (the 天幕 tab shows a mark). */
-const unreadWife = () => (camp ? [...wifeTalksAvailable(marriedTo(camp.bonds), camp.cleared), ...availableDates()].filter(w => !seen.includes(w.id)) : []);
+/** キャンプの日々・wife talks・ふたりの時間 watchable now and not yet watched (the 天幕 tab shows a mark). */
+const unreadWife = () => (camp ? [...availableDailies(), ...wifeTalksAvailable(marriedTo(camp.bonds), camp.cleared), ...availableDates()].filter(w => !seen.includes(w.id)) : []);
+/** キャンプの日々 watchable now (design/script-camp.md). */
+const availableDailies = (): DailyTalk[] => (camp ? dailyTalksAvailable(camp.roster, camp.cleared) : []);
+/** Plays a camp talk; present = the ids in the roster now (skipAbsent scenes drop the lines of absent members). */
+async function playDaily(d: DailyTalk, present?: string[]) {
+  audio.bgm('daily'); if (d.scene.bgm) cueBgm(d.scene.bgm);
+  await play(dailyLines(d, present), { bg: d.scene.bg });
+}
 /** ふたりの時間 watchable now. A partner married before the confession date was recorded counts from this camp. */
 function availableDates(): DateTalk[] {
   if (!camp) return [];
@@ -1320,39 +1330,57 @@ function bondRow(p: SupportPair, bonds: Bonds) {
     <div class="wps">上限 ${p.max}${p.max === 'S' ? '（恋愛）' : ''}　次：${bd.rank < maxRank(p) ? RANKS[bd.rank] : '—'}</div>`);
 }
 
-/** 天幕：嫁同士の会話（world.md §5.2）。結婚した相手の組み合わせが条件を満たすと見られる。未読には印。 */
+/** 天幕の節の開閉（描き直しても保つ。初めは未読のある節と「キャンプの日々」を開く）。 */
+const tentOpen: Record<string, boolean> = {};
+/**
+ * 天幕：キャンプの日々（design/script-camp.md）・ふたりの時間（script-romance.md）・嫁同士の会話（world.md §5.2）・
+ * 食卓と贈り物（ui/tent-ui.ts）を節に分けて並べる。節の見出しに未読の数。
+ */
 function renderTent() {
   const body = $('campBody'), c = camp!, wed = marriedTo(c.bonds);
-  // ふたりの時間（design/script-romance.md）：結ばれた相手との短い場面。章が進むと続きが解放される。
-  body.appendChild(el('h3', 'prepHead', 'ふたりの時間'));
-  const dates = availableDates(), dbox = el('div', 'logList');
-  body.appendChild(el('p', 'hint', wed.length ? `結ばれた相手と過ごす、章の合間のひととき。${wed.map(id => {
+  const section = (key: string, title: string, unread: number, note = '') => {
+    const d = document.createElement('details'); d.className = 'galSec tentSec'; d.dataset.sec = key;
+    d.open = tentOpen[key] ?? (unread > 0 || key === 'daily');
+    d.innerHTML = `<summary>${esc(title)}${unread ? `<b class="unreadN">未読 ${unread}</b>` : ''}<small>${esc(note)}</small></summary>`;
+    d.addEventListener('toggle', () => { tentOpen[key] = d.open; });
+    body.appendChild(d); return d;
+  };
+  const item = (unread: boolean, label: string, go: () => Promise<unknown>, id: string) =>
+    btn(`${unread ? '● ' : ''}${label}`, () => replay(async () => { markSeen(id); playedLog.push(id); save(); await go(); }).then(renderCamp), 'logItem' + (unread ? ' unread' : ''));
+  // キャンプの日々：章の進み具合と、そのときいる仲間で解放される掛け合い。
+  const dailies = availableDailies(), present = c.roster.filter(u => !u.out).map(u => u.id);
+  const s1 = section('daily', 'キャンプの日々', dailies.filter(d => !seen.includes(d.id)).length, `${dailies.length} / ${DAILY_TALKS.length}`), l1 = el('div', 'logList');
+  l1.appendChild(el('p', 'hint', '天幕のまわりの、にぎやかな毎日。章が進み、仲間が増えると新しい話が見られる。'));
+  for (const d of dailies) l1.appendChild(item(!seen.includes(d.id), `${d.no}「${d.scene.title}」　${d.members.filter(m => m !== 'rudeus' && present.includes(m)).slice(0, 4).map(castName).join('・')}${d.members.length > 5 ? 'ほか' : ''}`, () => playDaily(d, present), d.id));
+  s1.appendChild(l1);
+  // ふたりの時間：結ばれた相手との短い場面。章が進むと続きが解放される。
+  const dates = availableDates();
+  const s2 = section('date', 'ふたりの時間', dates.filter(d => !seen.includes(d.id)).length), l2 = el('div', 'logList');
+  l2.appendChild(el('p', 'hint', wed.length ? `結ばれた相手と過ごす、章の合間のひととき。${wed.map(id => {
     const all = DATE_TALKS.filter(d => d.who === id), got = all.filter(d => seen.includes(d.id)).length;
     return `${castName(id)} ${got}/${all.length}`;
   }).join('　')}（続きは章が進むと見られる）` : '告白に応えた相手と、ここで二人の時間を過ごせる。'));
-  for (const d of dates) {
-    const unread = !seen.includes(d.id);
-    dbox.appendChild(btn(`${unread ? '● ' : ''}${castName(d.who)}　${d.no}「${d.scene.title}」`, () => replay(async () => {
-      markSeen(d.id); playedLog.push(d.id); save();
-      await playDate(d);
-    }).then(renderCamp), 'logItem' + (unread ? ' unread' : '')));
-  }
-  body.appendChild(dbox);
-  body.appendChild(el('h3', 'prepHead', '嫁どうしの会話'));
+  for (const d of dates) l2.appendChild(item(!seen.includes(d.id), `${castName(d.who)}　${d.no}「${d.scene.title}」`, () => playDate(d), d.id));
+  s2.appendChild(l2);
+  // 嫁どうしの会話
   const list = wifeTalksAvailable(wed, c.cleared);
-  body.appendChild(el('p', 'hint', wed.length >= 2 ? '天幕の奥から、にぎやかな声が聞こえる。結婚した相手どうしの会話を見られる。' : `結婚した相手が2人以上になると、ここで嫁どうしの会話を見られる（いまは${wed.length}人）。`));
-  const box = el('div', 'logList');
-  for (const w of list) {
-    const unread = !seen.includes(w.id);
-    const b = btn(`${unread ? '● ' : ''}${w.scene.title}　（${w.common ? wed.map(castName).join('・') : w.members.map(castName).join(' × ')}）`, () => replay(async () => {
-      markSeen(w.id); playedLog.push(w.id); save();
-      audio.bgm('daily'); if (w.scene.bgm) cueBgm(w.scene.bgm);
-      await play(wifeLines(w, wed), { bg: w.scene.bg });
-    }).then(renderCamp), 'logItem' + (unread ? ' unread' : ''));
-    box.appendChild(b);
-  }
-  if (wed.length >= 2 && !list.length) box.appendChild(el('p', 'hint', 'いまは見られる会話がない。'));
-  body.appendChild(box);
+  const s3 = section('wife', '嫁どうしの会話', list.filter(w => !seen.includes(w.id)).length), l3 = el('div', 'logList');
+  l3.appendChild(el('p', 'hint', wed.length >= 2 ? '天幕の奥から、にぎやかな声が聞こえる。結婚した相手どうしの会話を見られる。' : `結婚した相手が2人以上になると、ここで嫁どうしの会話を見られる（いまは${wed.length}人）。`));
+  for (const w of list) l3.appendChild(item(!seen.includes(w.id), `${w.scene.title}　（${w.common ? wed.map(castName).join('・') : w.members.map(castName).join(' × ')}）`, async () => {
+    audio.bgm('daily'); if (w.scene.bgm) cueBgm(w.scene.bgm);
+    await play(wifeLines(w, wed), { bg: w.scene.bg });
+  }, w.id));
+  if (wed.length >= 2 && !list.length) l3.appendChild(el('p', 'hint', 'いまは見られる会話がない。'));
+  s3.appendChild(l3);
+  // 食卓・贈り物・稽古
+  const t = c.tent ?? {}, left = (t.meal ? 0 : 1) + Math.max(0, GIFT_PER_CAMP - (t.gifts?.length ?? 0));
+  const s4 = section('care', '食卓・贈り物', 0, left ? '' : 'この章間はおしまい'), l4 = el('div', 'logList tentCare');
+  renderTentCare({
+    camp: c, body: l4, save, msg: campMsg, refresh: renderCamp, face: (u, cls) => faceHtml(u, cls),
+    talk: (lines, bg, bgm) => replay(async () => { audio.bgm(bgm); await play(lines, { bg }); }),
+    learn: id => markSeen(`like:${id}`), knows: id => seen.includes(`like:${id}`),
+  });
+  s4.appendChild(l4);
 }
 /** 記録: every story scene and support talk watched so far, in story order; tap one to watch it again. */
 function renderLog() {
@@ -1394,6 +1422,11 @@ function renderLog() {
   const wedNow = (w: WifeTalk) => [...new Set([...(camp ? marriedTo(camp.bonds) : lastWed), ...w.members])];
   for (const w of WIFE_TALKS) l4.appendChild(has(w.id) ? btn(w.scene.title, () => replay(async () => { audio.bgm('daily'); if (w.scene.bgm) cueBgm(w.scene.bgm); await play(wifeLines(w, wedNow(w)), { bg: w.scene.bg }); }), 'logItem') : lock());
   sec4.appendChild(l4);
+  // キャンプの日々（離脱した仲間の行は、いまの名簿で飛ばす）
+  const secD = section('キャンプの日々', DAILY_TALKS.filter(d => has(d.id)).length, DAILY_TALKS.length), lD = el('div', 'logList');
+  const presentNow = camp ? camp.roster.filter(u => !u.out).map(u => u.id) : undefined;
+  for (const d of DAILY_TALKS) lD.appendChild(has(d.id) ? btn(`${d.no}「${d.scene.title}」`, () => replay(() => playDaily(d, presentNow)), 'logItem') : lock());
+  secD.appendChild(lD);
   // 一枚絵と背景
   const pics = [...Object.keys(EVENT_ART).map(n => ({ k: `cg:${n}`, n, cg: true })), ...Object.keys(BG_ART).filter(n => n !== 'title').map(n => ({ k: `bg:${n}`, n, cg: false }))];
   const sec5 = section('一枚絵と背景', pics.filter(p => has(p.k)).length, pics.length), grid = el('div', 'bgGrid');
@@ -1433,7 +1466,7 @@ function bgLabel(name: string) {
     const sc = SCENES[id];
     if (sc?.bg === name) return (sc.chapter >= 1 && sc.chapter <= 10 && !/^第\d+章/.test(sc.title) ? `第${sc.chapter}章　` : '') + sc.title;
   }
-  const t = [...DATE_TALKS, ...WIFE_TALKS].find(w => w.scene.bg === name);
+  const t = [...DAILY_TALKS, ...DATE_TALKS, ...WIFE_TALKS].find(w => w.scene.bg === name);
   return t ? t.scene.title : name;
 }
 let galleryMode = false;

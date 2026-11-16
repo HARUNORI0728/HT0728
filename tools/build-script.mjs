@@ -9,7 +9,9 @@
 //                                           差し替え・…, 差し込み・…, 支援・<名前>×<名前>・<C|B|A|S>,
 //                                           嫁同士・<2桁>　<組>「<題>」（組 = A×B or A×B×C: all of them married; or a common
 //                                           script such as 結婚相手3人）, ふたりの時間・<名前>・<番号>「<題>」（条件：告白の後 /
-//                                           告白のN章後 / 第N章のクリア後）, 戦闘・<名前>・<隣接|撤退> (design/script-romance.md).
+//                                           告白のN章後 / 第N章のクリア後）, 戦闘・<名前>・<隣接|撤退> (design/script-romance.md),
+//                                           日々・<2桁>「<題>」（条件：第N章のクリア後[・欠けた仲間の台詞は飛ばす]）,
+//                                           食卓・<名前>, 贈り物・<名前>・好き「<品>」 / 贈り物・<名前>・ふつう (design/script-camp.md).
 //   話者｜表情｜本文                      → one line. 表情 = normal/smile/angry/sad/dere, or - (no portrait: art: false).
 //                                           （地の文） = narration (who: '').
 //   BGM：<曲名>                           → music. Right under the heading: the scene's track (scene.bgm).
@@ -45,7 +47,14 @@ const NAME_IDS = {};
 const pairKey = (a, b) => (a < b ? a + '+' + b : b + '+' + a);
 
 const files = readdirSync(SRC_DIR).filter(f => /^script-.*\.md$/.test(f)).sort();
-const scenes = [], supports = [], wives = [], dates = [], barks = [], errors = [], warnings = [];
+const scenes = [], supports = [], wives = [], dates = [], barks = [], dailies = [], bits = [], errors = [], warnings = [];
+const giftLikes = {};
+// 贈り物の品の名前（src/shop.ts の GIFTS）。好きな品の名前がここにないと失敗にする。
+const GIFT_NAMES = new Set();
+{
+  const shop = readFileSync('src/shop.ts', 'utf8'), at = shop.indexOf('export const GIFTS');
+  if (at >= 0) for (const m of shop.slice(at, shop.indexOf('];', at)).matchAll(/name: '([^']+)'/g)) GIFT_NAMES.add(m[1]);
+}
 for (const file of files) {
   const path = `${SRC_DIR}/${file}`;
   const lenient = /^script-supports-/.test(file);
@@ -98,6 +107,22 @@ for (const file of files) {
         const afterM = cond.match(/告白の(\d+)章後/), minC = cond.match(/第(\d+)章のクリア後/);
         if (!/告白の/.test(cond) && !minC) { fail(at, `ふたりの時間の条件を読めません（告白の後 / 告白のN章後 / 第N章のクリア後）: ${cond}`); return; }
         extra = { who, no: Number(m[2]), afterWed: afterM ? Number(afterM[1]) : 0, minCleared: minC ? Number(minC[1]) : undefined };
+      } else if ((m = label.match(/^日々・(\d+)「(.+)」$/))) {
+        kind = 'daily'; id = `daily.${m[1].padStart(2, '0')}`; title = m[2];
+        if (dailies.some(s => s.id === id)) { fail(at, `キャンプの日々 ${label} の番号が二度出てきます`); return; }
+        const minC = cond.match(/第(\d+)章のクリア後/);
+        if (!minC) { fail(at, `キャンプの日々の条件を読めません（第N章のクリア後）: ${cond}`); return; }
+        extra = { no: Number(m[1]), minCleared: Number(minC[1]), skipAbsent: /欠けた仲間の台詞は飛ばす/.test(cond) };
+      } else if ((m = label.match(/^食卓・(.+)$/))) {
+        kind = 'bit'; id = `meal:${NAME_IDS[m[1]] ?? m[1]}`; title = label;
+      } else if ((m = label.match(/^贈り物・(.+?)・(?:好き「(.+)」|(ふつう))$/))) {
+        const who = NAME_IDS[m[1]];
+        if (!who) { fail(at, `贈り物の名前を読めません: ${m[1]}`); return; }
+        if (m[2]) {
+          if (GIFT_NAMES.size && !GIFT_NAMES.has(m[2])) { fail(at, `贈り物「${m[2]}」は src/shop.ts の GIFTS にありません（${[...GIFT_NAMES].join(' / ')}）`); return; }
+          giftLikes[who] = m[2];
+        }
+        kind = 'bit'; id = `gift:${who}:${m[2] ? 'like' : 'plain'}`; title = label;
       } else if ((m = label.match(/^戦闘・(.+?)・(隣接|撤退)$/))) {
         const who = NAME_IDS[m[1]];
         if (!who) { fail(at, `戦闘中のひとことの名前を読めません: ${m[1]}`); return; }
@@ -123,7 +148,8 @@ for (const file of files) {
       }
       if (kind === 'scene' && scenes.some(s => s.id === id)) fail(at, `場面 ${id} が二度出てきます`);
       scene = { id, title, label, cond, part: part?.title, chapter, lines: [], at, ...extra };
-      ({ support: supports, wife: wives, date: dates, bark: barks }[kind] ?? scenes).push(scene);
+      if (kind === 'bit' && bits.some(s => s.id === id)) { fail(at, `${label} が二度出てきます`); return; }
+      ({ support: supports, wife: wives, date: dates, bark: barks, daily: dailies, bit: bits }[kind] ?? scenes).push(scene);
       return;
     }
     const h4 = raw.match(/^#### (.+)$/);
@@ -181,7 +207,10 @@ for (const file of files) {
 const hasText = s => s.lines.some(l => l.text) || s.choice?.branches.some(b => b.some(l => l.text));
 for (const s of scenes) if (!hasText(s)) errors.push(`${s.id}: 台詞がありません`);
 for (const s of scenes) if (s.choice && s.choice.branches.some(b => !b.some(l => l.text))) errors.push(`${s.id}: 選択肢の続き（#### ▼…）が空です`);
-for (const s of [...dates, ...barks]) if (!hasText(s)) errors.push(`${s.at}: 台詞がありません`);
+for (const s of [...dates, ...barks, ...dailies, ...bits]) if (!hasText(s)) errors.push(`${s.at}: 台詞がありません`);
+// キャンプの日々：台詞を話す仲間（CAST にいる人）が、その場面に必要な仲間。
+for (const s of dailies) s.members = [...new Set(s.lines.map(l => NAME_IDS[l.who]).filter(Boolean))];
+dailies.sort((a, b) => a.no - b.no);
 for (const s of [...supports, ...wives]) if (!s.bad && !hasText(s)) { warnings.push(`${s.at}: 台詞がありません（この場面は読み飛ばします）`); s.bad = true; }
 for (const s of scenes) if (s.bgm === undefined && !s.id.startsWith('frag:')) warnings.push(`${s.id}: BGM の指定がありません（直前の曲が続きます）`);
 if (warnings.length) console.warn('build-script: ' + warnings.join('\n  '));
@@ -229,6 +258,20 @@ export interface DateTalk { id: string; who: string; no: number; afterWed: numbe
 export const DATE_TALKS: DateTalk[] = [
 ${okDates.map(s => `  { id: ${q(s.id)}, who: ${q(s.who)}, no: ${s.no}, afterWed: ${s.afterWed},${s.minCleared !== undefined ? ` minCleared: ${s.minCleared},` : ''} scene: ${sceneBody(s)} },`).join('\n')}
 ];
+/**
+ * キャンプの日々（design/script-camp.md）：天幕の複数人の掛け合い。minCleared = この章のクリア後から。members = 台詞を話す仲間
+ * （全員が名簿にいて離脱していないときに見られる）。skipAbsent = 離脱した仲間がいても見られ、その人の行を飛ばす。
+ */
+export interface DailyTalk { id: string; no: number; minCleared: number; members: string[]; skipAbsent: boolean; scene: Scene }
+export const DAILY_TALKS: DailyTalk[] = [
+${dailies.map(s => `  { id: ${q(s.id)}, no: ${s.no}, minCleared: ${s.minCleared}, members: ${q(s.members)}, skipAbsent: ${s.skipAbsent}, scene: ${sceneBody(s)} },`).join('\n')}
+];
+/** 天幕の食卓・贈り物の台詞（design/script-camp.md）：\`meal:<id|名前>\`、\`gift:<id>:like|plain\`。 */
+export const CAMP_LINES: Record<string, Line[]> = {
+${bits.map(s => `  ${q(s.id)}: [\n${s.lines.map(l => `    ${q(l)},`).join('\n')}\n  ],`).join('\n')}
+};
+/** 仲間ごとの好きな贈り物（src/shop.ts の GIFTS の名前）。 */
+export const GIFT_LIKES: Record<string, string> = ${q(giftLikes)};
 /** 戦闘中のひとこと（design/script-romance.md）。\`<id>:adj\` = ルーデウスと隣り合って戦った、\`<id>:fall\` = 倒れた。 */
 export const BATTLE_BARKS: Record<string, Line[]> = {
 ${barks.map(s => `  ${q(s.id)}: [\n${s.lines.map(l => `    ${q(l)},`).join('\n')}\n  ],`).join('\n')}
@@ -238,6 +281,6 @@ mkdirSync('src/script', { recursive: true });
 let old = '';
 try { old = readFileSync(OUT, 'utf8'); } catch { /* first run */ }
 if (old !== out) writeFileSync(OUT, out);
-const all = [...scenes, ...okSupports, ...okWives, ...okDates, ...barks];
+const all = [...scenes, ...okSupports, ...okWives, ...okDates, ...barks, ...dailies, ...bits];
 const allLines = s => [...s.lines, ...(s.choice?.branches.flat() ?? [])];
-console.log(`build-script: ${scenes.length} scenes, ${okSupports.length} support talks, ${okWives.length} wife talks, ${okDates.length} date talks, ${barks.length} battle lines, ${all.reduce((n, s) => n + allLines(s).filter(l => l.text).length, 0)} lines, ${all.reduce((n, s) => n + (s.bg && s.bg !== 'none' ? 1 : 0) + allLines(s).filter(l => l.bg && l.bg !== 'none').length, 0)} backgrounds, ${all.reduce((n, s) => n + allLines(s).filter(l => l.cg).length, 0)} event pictures → ${OUT}${old === out ? ' (unchanged)' : ''}`);
+console.log(`build-script: ${scenes.length} scenes, ${okSupports.length} support talks, ${okWives.length} wife talks, ${okDates.length} date talks, ${dailies.length} camp talks, ${bits.length} camp bits, ${barks.length} battle lines, ${all.reduce((n, s) => n + allLines(s).filter(l => l.text).length, 0)} lines, ${all.reduce((n, s) => n + (s.bg && s.bg !== 'none' ? 1 : 0) + allLines(s).filter(l => l.bg && l.bg !== 'none').length, 0)} backgrounds, ${all.reduce((n, s) => n + allLines(s).filter(l => l.cg).length, 0)} event pictures → ${OUT}${old === out ? ' (unchanged)' : ''}`);

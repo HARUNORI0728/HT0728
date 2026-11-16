@@ -333,6 +333,18 @@
   @media (prefers-reduced-motion: reduce) { #dlgText.fadein { animation: none; } }
   .logList { display: flex; flex-direction: column; gap: 6px; }
   button.logItem.unread { border-color: var(--rose); }
+  .tentSec { margin-top: 8px; }
+  .tentSec > summary .unreadN { margin-left: 8px; font-weight: normal; font-family: var(--text); font-size: 12.5px; color: var(--rose); }
+  .tentSec > .logList { padding: 0 10px 10px; }
+  .tentSec .hint { margin: 2px 0; }
+  .tentPicks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+  .tentPicks .pick { padding: 6px 8px; }
+  .tentPicks .pick .pname b { font-size: 15px; }
+  .tentPicks .pick em { font-size: 12.5px; padding: 1px 6px; }
+  .tentPicks .pick .pname { gap: 6px; }
+  .giftRow button { flex: 1 1 110px; }
+  .giftRow button[aria-pressed="true"] { color: var(--gold); border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+  .prepHead small { color: var(--dim); font-family: var(--text); font-size: 12.5px; margin-left: 6px; }
   #campTabs button.unread::after { content: "●"; color: var(--rose); font-size: 10px; margin-left: 3px; vertical-align: top; }
   #campWed { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-family: var(--pixel); color: var(--ink); font-size: 14px; }
   #campWed > span { color: var(--rose); margin-right: 4px; }

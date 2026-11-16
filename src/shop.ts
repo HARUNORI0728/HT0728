@@ -155,3 +155,25 @@ export function withdraw(stash: string[], i: number, u: Unit): boolean {
   stash.splice(i, 1);
   return true;
 }
+
+// ---------- 天幕：贈り物・食卓・稽古（design/script-camp.md） ----------
+/**
+ * 贈り物（商人から買って、その場で仲間に渡す）。好みは design/script-camp.md の「贈り物・<名前>・好き「<品>」」（GIFT_LIKES）。
+ * 名前は脚本と同じ字で（tools/build-script.mjs がこの表の name を読んで照らし合わせる）。
+ */
+export const GIFTS: { id: string; name: string; price: number }[] = [
+  { id: 'flower', name: '野の花', price: 30 },
+  { id: 'sweets', name: '焼き菓子', price: 40 },
+  { id: 'whetstone', name: '砥石', price: 50 },
+  { id: 'book', name: '古い本', price: 60 },
+  { id: 'jerky', name: '干し肉', price: 30 },
+];
+/** 贈り物で増える絆：好きな品 / それ以外。1回の章間に渡せるのは GIFT_PER_CAMP 回まで（1人に1回）。 */
+export const GIFT_BOND = { like: 20, plain: 8 } as const;
+export const GIFT_PER_CAMP = 3;
+/** 食卓：ルーデウスと、呼んだ仲間 MEAL_GUESTS 人のあいだの支援の組それぞれに MEAL_BOND（1回の章間に1度）。 */
+export const MEAL_GUESTS = 2;
+export const MEAL_BOND = 10;
+/** 稽古：控えだった仲間1人に、銀を払って経験値（1回の章間に1度）。 */
+export const TRAIN_COST = 100;
+export const TRAIN_EXP = 50;
