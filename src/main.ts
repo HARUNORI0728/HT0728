@@ -595,12 +595,19 @@ function nextUnit() {
   nextIdx = (nextIdx + 1) % left.length;
   selectUnit(left[nextIdx]);
 }
+/** 確認の問い（ターン終了・撤退）：説明を操作欄の先頭にも出し、横向きスマホでも操作欄を開いたままにする。 */
+function confirmNote(text: string) {
+  const p = document.createElement('p'); p.className = 'menu-note'; p.textContent = text;
+  $('menu').prepend(p);
+  mobileMap.updateMenu('commands');
+}
 /** 「ターン終了」：まだ動いていない仲間がいれば確かめる。 */
 function askEndTurn() {
   const left = alive(S, 'blue').filter(u => !u.done);
   if (!left.length) { endTurn(); return; }
   info(`<p>まだ行動していない仲間が<b class="gold">${left.length}人</b>いる（${left.map(u => esc(u.name)).join('、')}）。ターンを終了する？</p>`);
   menu([['ターンを終了する', endTurn, 'primary'], ['もどる', idle]]);
+  confirmNote(`まだ行動していない仲間が${left.length}人いる。ターンを終了する？`);
 }
 /**
  * 撤退で戻る章間：この章へ出撃したときのキャンプ（戦闘中は書き換えないので、そのまま出撃前の状態）。
@@ -610,6 +617,7 @@ const retreatCamp = () => (camp && S && camp.next === S.chapter ? camp : null);
 function askRetreat() {
   info('<p>この章の戦闘を中断して、キャンプに戻ります。戦闘の内容は取り消されます。よろしいですか？</p>');
   menu([['撤退する', retreat, 'primary'], ['もどる', idle, 'back']]);
+  confirmNote('戦闘を中断してキャンプに戻る。戦闘の内容は取り消される。');
 }
 /**
  * 撤退（自軍フェイズの待機中・敗北画面）：戦闘を破棄して出撃前のキャンプへ。経験値・銀・宝箱・倒れた仲間・支援値は
