@@ -1,4 +1,4 @@
-# 実装TODO（2026-11-16 更新）
+# 実装TODO（2026-11-17 更新）
 
 2026-11-11 時点の旧版（A〜E の作業表と実装メモ）は、ほぼ完了したため整理した。詳しい経緯は `design/review-board/BOARD.md`、仕様と実装状況は `design/systems.md`、バランスは `design/balance-report.md`。
 各項目の末尾は根拠になるファイル。
@@ -30,32 +30,31 @@
 ### 操作・画面
 - カメラのスクロール、スマホの横向き画面、敵タップで自動移動して攻撃、速度設定（`src/main.ts`）。
 - チュートリアル、あそびかた（ヘルプ）、演出（ボスの名乗りなど）（`src/ui/help.ts`、`src/main.ts`）。
+- 第2章以降の戦闘から出撃前のキャンプに戻る撤退機能（`src/main.ts`、BOARD 2026-11-16 16:20 UTC）。
+- スマホ横向きでマップを全面表示。左右上部から情報・操作を開ける（`src/ui/mobile-map.ts`、e918cb9）。
 - クリア記録と引き継ぎ、鑑賞（曲・場面）（`src/main.ts`、保存キー `fittoa-save-v6`）。
 
 ### 素材
 - 会話の背景21点（タイトル含む）がそろっている（`src/art-manifest.ts`、`assets/backgrounds/`）。
-- 描いた地図は1〜6・8章（`src/art-manifest.ts` `MAP_ART`、`assets/maps/`）。
+- Dの画風の地図は全10章を体験版へ反映（`src/art-manifest.ts` `MAP_ART`、`assets/maps/`）。
 - 仲間の立ち絵と表情、結婚候補7人とヒロインのデレ顔（`assets/portraits/`、`design/review-board/codex-queue.md` Q-13）。
+- BGM切替3件（二重起動・第6章の交戦復元・決着後のマップ曲復帰）を修正済み。曲選択・勝敗音の静的テストは通過（b3b0a53、`tools/test-map-music.mjs`、`tools/test-audio-transition.mjs`）。
 - 音楽24曲（`assets/audio/bgm/`、`tools/build-audio.mjs`。Q-03）。
 - 敵のマップ用絵（Q-02）。
+- 脇役立ち絵21枚（Q-14）は採用・配布済み。難民男女は使用台詞待ち（4097aff）。
 
 ## ② 未着手・途中のもの
 
 ### こちらで進められるもの
-- 作業中（別の担当）：戦闘の途中で撤退してキャンプへ戻る機能（`src/main.ts`）。
-- 作業中（別の担当）：BGMの不具合3件（会話開始での二重起動、第6章オーベール交戦の復元、第10章使徒撃破後のマップ曲の再起動）（`design/review-board/bgm-audit-2026-11-16.md`、`src/audio/`、`src/main.ts`）。
 - 遠隔治癒の「章ごと3回」と結界の杖（`src/data.ts` 杖の定義のコメント、`design/systems.md` §1）。
 - ペルギウスの召喚術の「章ごと8回」の回数制（`src/data.ts`）。
 - 魔術の基礎・鍵開けの効果（今は表示のみ。教本・鍵のかかった宝箱が必要）（`design/systems.md` §4）。
 - アリエルの上級職（`PROMOS` に princess が無い）（`design/balance-report.md` §5）。
-- 絵が納品されたときの組み込み：話者IDの登録と、台本の表情欄の設定（脇役、バラク、ロッタの笑顔・悲しみ）、`EVENT_ART` への登録（`src/art-manifest.ts`、`design/review-board/asset-audit-2026-11-16.md`）。
 - 武器の持ち替え・配置の入れ替え（出撃準備）は最小版のまま（`src/main.ts` 出撃準備、`design/systems.md` §8）。
 - 鑑賞の曲名は仮。「転移事件」を「遠い日の雨」に直す提案あり（低優先）（`src/main.ts` `TRACK_NAMES`、BOARD 2026-11-16 Codex の回答）。
 
-### 絵・音の納品待ち
-- 一枚絵19点がすべて未納（`EVENT_ART` は空。台本に指定があるのは18点で、嫁同士の集合1点は台本に指定なし）。順は、苗木3点（`ev_sylphie_sapling` `ev_sylphie_sapling2` `ev_sylphie_wedding`）→ `ev_eris_sheathe` → `ev_eris_wedding` → `ev_sylphie_rearguard` → `ev_sylphie_companion` → 既存12点（Q-05）（`src/art-manifest.ts`、`design/portrait-prompts.md`、`design/review-board/codex-queue.md`）。
-- 脇役の立ち絵（Q-14）が未納。ハンナ・トトの4表情を最優先、次に belt、adventurer、bandit、soldier、surveyor、envoy、beastkid、refugee_m、refugee_f、バラク（通常・怒り）、ロッタ（笑顔・悲しみ）（`design/review-board/asset-audit-2026-11-16.md`、BOARD 2026-11-16 15:50 UTC）。
-- 描いた地図が7・9・10章で未納（コード描画で代用）。木箱・宝箱に見える小物は描かない約束（`src/art-manifest.ts` `MAP_ART`、`design/map-paint-prompts.md`）。
+### 絵・音の組み込みと残件
+- 一枚絵19点の原本は納品済み（6e18283）。先行16点は体験版に反映済み（42fa10a）。オルステッドとの別れ・全員集合・嫁同士の茶会は配布と実画面確認が残る。茶会の挿入先はClaude担当（`design/review-board/codex-queue.md` Q-05）。
 - 音楽の入れ替え・追加の予定は今のところ無い。
 
 ### ユーザーの判断待ち
