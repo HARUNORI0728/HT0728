@@ -130,7 +130,10 @@ export const EVENT_ART: Record<string, string> = {
   ev_sylphie_sapling: 'assets/events/ev_sylphie_sapling.webp?v=91f92719',
   ev_sylphie_sapling2: 'assets/events/ev_sylphie_sapling2.webp?v=35d69257',
   ev_sylphie_wedding: 'assets/events/ev_sylphie_wedding.webp?v=6c6bff78',
+  linia: 'assets/events/linia.webp?v=98e92b4e',
+  pursena: 'assets/events/pursena.webp?v=2e11a2b2',
   roxy: 'assets/events/roxy.webp?v=f4850f7b',
+  sara: 'assets/events/sara.webp?v=0c266511',
   sylphiette: 'assets/events/sylphiette.webp?v=8f5195e1',
 };
 /** Painted map backgrounds by chapter (ch01–ch10), stretched over the whole map. Chapters without one are drawn by code. */
