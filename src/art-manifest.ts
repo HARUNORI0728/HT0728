@@ -119,8 +119,11 @@ export const BG_ART: Record<string, string> = {
 };
 /** Event pictures by name (screenplay 一枚絵：<名前>). */
 export const EVENT_ART: Record<string, string> = {
+  ev_eris_sheathe: 'assets/events/ev_eris_sheathe.webp?v=8cc5a9d7',
+  ev_eris_wedding: 'assets/events/ev_eris_wedding.webp?v=e5e44947',
   ev_sylphie_sapling: 'assets/events/ev_sylphie_sapling.webp?v=91f92719',
-  ev_sylphie_sapling2: 'assets/events/ev_sylphie_sapling2.webp?v=282fff67',
+  ev_sylphie_sapling2: 'assets/events/ev_sylphie_sapling2.webp?v=35d69257',
+  ev_sylphie_wedding: 'assets/events/ev_sylphie_wedding.webp?v=6c6bff78',
 };
 /** Painted map backgrounds by chapter (ch01–ch10), stretched over the whole map. Chapters without one are drawn by code. */
 export const MAP_ART: Record<string, string> = {
