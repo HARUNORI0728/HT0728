@@ -483,7 +483,9 @@
       height: 100vh; height: 100dvh; padding: var(--pt) var(--pr) var(--pb) var(--pl); font-size: 13px; line-height: 1.5; overflow: hidden;
     }
     #app { position: relative; max-width: none; height: 100%; display: block; }
+    #stage { border: 0; border-radius: 0; box-shadow: none; }
     #stage, #cv { width: 100%; height: 100%; }
+    .mapToggle, #mapBackdrop { touch-action: manipulation; }
     #panel:empty { display: none; }
     .mapToggle { display: block; position: absolute; top: 6px; z-index: 7; min-width: 56px; min-height: 44px; padding: 4px 8px; background: #211c30; }
     .mapToggle[aria-expanded="true"] { color: var(--gold); border-color: var(--gold); }

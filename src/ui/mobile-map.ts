@@ -1,8 +1,9 @@
 type Drawer = 'info' | 'actions';
 type MenuView = 'map' | 'commands' | 'forecast';
+type MapViewport = { width: number; height: number; cornerBottom: number };
 
 /** Reuse the battle UI in short landscape layouts, restoring its original DOM order on rotation. */
-export function mountMobileMap(onViewport: (aspect: number | null) => void) {
+export function mountMobileMap(onViewport: (viewport: MapViewport | null) => void) {
   const layout = matchMedia('(orientation: landscape) and (max-height: 540px)');
   const find = (id: string) => document.getElementById(id)!;
   const stage = find('stage'), info = find('info'), hud = find('hud'), menu = find('menu');
@@ -37,7 +38,13 @@ export function mountMobileMap(onViewport: (aspect: number | null) => void) {
 
   function measure() {
     if (!layout.matches) return;
-    if (stage.clientHeight > 0) onViewport(stage.clientWidth / stage.clientHeight);
+    const { clientWidth: width, clientHeight: height } = stage;
+    if (!width || !height) return;
+    const cornerBottom = Math.max(
+      toggles.info.offsetTop + toggles.info.offsetHeight,
+      toggles.actions.offsetTop + toggles.actions.offsetHeight,
+    ) - stage.offsetTop + 2;
+    onViewport({ width, height, cornerBottom });
   }
 
   function reflow() {

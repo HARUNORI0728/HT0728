@@ -95,29 +95,38 @@ let shakeFx = { t0: 0, dur: 0, amp: 0 }, flashFx = { t0: 0, dur: 0, a: 0 };
 
 // ---------- camera ----------
 // The default canvas shows 12×8 tiles; larger maps scroll. `cam` is the top-left of the view in map pixels.
-// Figures stand taller than a tile, so the view may scroll TOP_PAD above row 0 to keep the top row's heads on screen.
+// Figures stand taller than a tile, so the view may scroll above row 0 to keep the top row's heads on screen.
 const cam = { x: 0, y: 0 };
 /** The view in map pixels (12×8 tiles). The canvas backing store is RES times larger so sprites stay sharp. */
 const DEFAULT_VW = 12 * T, DEFAULT_VH = 8 * T;
+const LANDSCAPE_VW = 9 * T, LANDSCAPE_VH = 6.5 * T;
+const TOP_PAD = Math.round(T * 0.45);
 let VW = DEFAULT_VW, VH = DEFAULT_VH;
+let cameraTopPad = TOP_PAD;
 cv.width = VW * RES; cv.height = VH * RES;
 
-function fitMapViewport(aspect: number | null) {
-  const width = aspect === null ? DEFAULT_VW : Math.round(Math.max(DEFAULT_VW, DEFAULT_VH * aspect));
-  const height = aspect === null ? DEFAULT_VH : Math.round(Math.max(DEFAULT_VH, DEFAULT_VW / aspect));
-  if (width === VW && height === VH) return;
+function fitMapViewport(viewport: { width: number; height: number; cornerBottom: number } | null) {
+  const aspect = viewport ? viewport.width / viewport.height : DEFAULT_VW / DEFAULT_VH;
+  const width = viewport ? Math.round(Math.max(LANDSCAPE_VW, LANDSCAPE_VH * aspect)) : DEFAULT_VW;
+  const height = viewport ? Math.round(Math.max(LANDSCAPE_VH, LANDSCAPE_VW / aspect)) : DEFAULT_VH;
+  // Keep the top row's tile centers reachable below the corner buttons at the upper pan limit.
+  const topPad = viewport ? Math.max(TOP_PAD, Math.ceil(viewport.cornerBottom * height / viewport.height - T / 2)) : TOP_PAD;
+  if (width === VW && height === VH && topPad === cameraTopPad) return;
+  cameraTopPad = topPad;
   cam.x += (VW - width) / 2;
   cam.y += (VH - height) / 2;
-  VW = width; VH = height;
-  cv.width = VW * RES; cv.height = VH * RES;
+  if (width !== VW || height !== VH) {
+    drag = null;
+    VW = width; VH = height;
+    cv.width = VW * RES; cv.height = VH * RES;
+  }
   if (S) { clampCam(); cv.style.touchAction = scrolls() ? 'none' : 'manipulation'; }
 }
-const TOP_PAD = Math.round(T * 0.45);
 const cols = () => S.map[0].length, rows = () => S.map.length;
 /** Camera limits in map pixels (a map smaller than the view is centred). */
 function camBounds() {
   const maxX = cols() * T - VW, maxY = rows() * T - VH;
-  return { minX: maxX < 0 ? maxX / 2 : 0, maxX: maxX < 0 ? maxX / 2 : maxX, minY: maxY < -TOP_PAD ? maxY / 2 : -TOP_PAD, maxY: maxY < -TOP_PAD ? maxY / 2 : maxY };
+  return { minX: maxX < 0 ? maxX / 2 : 0, maxX: maxX < 0 ? maxX / 2 : maxX, minY: maxY < -cameraTopPad ? maxY / 2 : -cameraTopPad, maxY: maxY < -cameraTopPad ? maxY / 2 : maxY };
 }
 const scrolls = () => { if (!S) return false; const b = camBounds(); return b.maxX > b.minX || b.maxY > b.minY; };
 function clampCam() {
@@ -806,7 +815,7 @@ async function finish(u: Unit) {
 
 // Drag to scroll (maps larger than the screen only). A press that moves less than DRAG_PX stays a tap.
 // On scrolling maps a tap is taken from pointerup (the browser's own click after it is ignored), because
-// browsers may drop the synthesized click once a touch gesture has scrolled. 15×10 maps keep using click.
+// browsers may drop the synthesized click once a touch gesture has scrolled. Maps that fit keep using click.
 const DRAG_PX = 10;
 let drag: { id: number; sx: number; sy: number; cx: number; cy: number; moved: boolean } | null = null;
 let skipClickUntil = 0;
@@ -1683,9 +1692,9 @@ async function start(state: State, intro: boolean) {
   terrain = null; topPad = null; hud(); menu([]);
   info('<p class="hint">地図を描いています……</p>');
   await paintTerrain();
-  // Scrolling maps take over touch drags on the canvas; 15×10 maps keep the page's normal touch behaviour.
+  // Scrolling maps take over touch drags on the canvas; maps that fit keep the page's normal touch behaviour.
   cv.style.touchAction = scrolls() ? 'none' : 'manipulation';
-  drag = null; cam.x = 0; cam.y = -TOP_PAD;
+  drag = null; cam.x = 0; cam.y = -cameraTopPad;
   const lead = S.units.find(u => u.id === 'rudeus' && u.hp > 0) ?? alive(S, 'blue')[0];
   if (lead) centerOn(lead.x, lead.y); else clampCam();
   $('title').hidden = true; hud(); info(''); menu([]);
