@@ -119,8 +119,12 @@ export const BG_ART: Record<string, string> = {
 };
 /** Event pictures by name (screenplay 一枚絵：<名前>). */
 export const EVENT_ART: Record<string, string> = {
+  ev_eris_memorial: 'assets/events/ev_eris_memorial.webp?v=adb9aba8',
   ev_eris_sheathe: 'assets/events/ev_eris_sheathe.webp?v=8cc5a9d7',
   ev_eris_wedding: 'assets/events/ev_eris_wedding.webp?v=e5e44947',
+  ev_sylphie_companion: 'assets/events/ev_sylphie_companion.webp?v=7dd67019',
+  ev_sylphie_rearguard: 'assets/events/ev_sylphie_rearguard.webp?v=84cfbb01',
+  ev_sylphie_reveal: 'assets/events/ev_sylphie_reveal.webp?v=a33c54c7',
   ev_sylphie_sapling: 'assets/events/ev_sylphie_sapling.webp?v=91f92719',
   ev_sylphie_sapling2: 'assets/events/ev_sylphie_sapling2.webp?v=35d69257',
   ev_sylphie_wedding: 'assets/events/ev_sylphie_wedding.webp?v=6c6bff78',
