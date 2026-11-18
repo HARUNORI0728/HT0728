@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex">
+<title>名刺｜HAL経営相談室</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=Noto+Serif+JP:wght@500;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+<style>
+@page{size:91mm 55mm;margin:0}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#d9d5cc}
+body{font-family:"Noto Sans JP",sans-serif;color:#141b2e;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.sheet{display:flex;flex-wrap:wrap;gap:10mm;padding:12mm;justify-content:center}
+.card{width:91mm;height:55mm;position:relative;overflow:hidden;box-shadow:0 3mm 8mm -3mm rgba(20,27,46,.45)}
+@media print{html,body{background:none}.sheet{display:block;padding:0}.card{box-shadow:none;page-break-after:always;break-after:page}.card:last-child{page-break-after:auto;break-after:auto}}
+/* front */
+.front{background:#fbf9f4}
+.front .deco{position:absolute;right:-26mm;top:-14mm;width:66mm;opacity:.9}
+.front .deco ellipse{fill:none;stroke:#a8833a;stroke-width:.5}
+.front .deco ellipse.n{stroke:#141b2e;opacity:.18}
+.front .brand{position:absolute;left:7mm;top:6.2mm;display:flex;align-items:center;gap:2.2mm}
+.front .brand svg{width:10mm;height:10mm;overflow:visible}
+.front .brand b{display:block;font-family:"Noto Serif JP",serif;font-weight:600;font-size:3.1mm;letter-spacing:.16em;line-height:1.3}
+.front .brand i{display:block;font-style:normal;font-family:"Playfair Display",serif;font-size:1.5mm;letter-spacing:.32em;color:#a8833a}
+.front .who{position:absolute;left:7mm;top:19.6mm}
+.front .role{font-size:1.95mm;letter-spacing:.12em;line-height:1.6}
+.front .role em{font-style:normal;color:#a8833a;display:block}
+.front .name{font-family:"Noto Serif JP",serif;font-weight:600;font-size:5.4mm;letter-spacing:.24em;margin-top:1.6mm;line-height:1.25}
+.front .roman{font-family:"Playfair Display",serif;font-size:1.75mm;letter-spacing:.36em;color:#6b7183;margin-top:.6mm}
+.front .line{position:absolute;left:7mm;right:7mm;bottom:14.6mm;height:.2mm;background:linear-gradient(90deg,#a8833a,rgba(168,131,58,.15))}
+.front .info{position:absolute;left:7mm;right:7mm;bottom:4.6mm;display:grid;grid-template-columns:auto 1fr;column-gap:2.4mm;row-gap:.45mm;font-size:1.75mm;letter-spacing:.06em;line-height:1.5}
+.front .info dt{font-family:"Playfair Display",serif;color:#a8833a;letter-spacing:.2em;font-size:1.5mm;padding-top:.15mm}
+/* back */
+.back{background:radial-gradient(48mm 30mm at 50% 0%,rgba(201,164,90,.22),transparent 70%),#141b2e;color:#f4efe4}
+.back .orbit{position:absolute;left:50%;top:50%;width:120mm;transform:translate(-50%,-50%);opacity:.5}
+.back .orbit ellipse{fill:none;stroke:#c9a45a;stroke-width:.35}
+.back .center{position:absolute;left:0;right:0;top:7mm;text-align:center}
+.back .center svg{width:15mm;height:15mm;overflow:visible}
+.back .shop{font-family:"Noto Serif JP",serif;font-weight:600;font-size:3mm;letter-spacing:.24em;text-indent:.24em;margin-top:1.4mm}
+.back .copy{font-family:"Noto Serif JP",serif;font-weight:500;font-size:2.35mm;letter-spacing:.2em;text-indent:.2em;color:#c9a45a;margin-top:1.6mm}
+.back .svc{position:absolute;left:6mm;bottom:5mm;font-size:1.55mm;letter-spacing:.14em;line-height:1.75;color:#c9cdd8}
+.back .svc span{color:#c9a45a}
+.back .qrbox{position:absolute;right:5.5mm;bottom:4.6mm;width:11.6mm;padding:1.2mm;background:#fbf9f4;border-radius:.6mm;text-align:center}
+.back .qrbox .qr{display:block;width:100%;height:auto}
+.back .qrbox small{display:block;font-family:"Playfair Display",serif;font-size:1.2mm;letter-spacing:.24em;color:#141b2e;margin-top:.5mm}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+<!-- 表面 -->
+<section class="card front">
+  <svg class="deco" viewBox="0 0 200 200" aria-hidden="true"><g transform="rotate(-24 100 100)"><ellipse cx="100" cy="100" rx="96" ry="34"/><ellipse class="n" cx="100" cy="100" rx="74" ry="26"/><ellipse cx="100" cy="100" rx="52" ry="18"/></g></svg>
+  <div class="brand"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><circle cx="60" cy="60" r="44" fill="none" stroke="#a8833a" stroke-width="1.6"/><path d="M46.0,42h6v34h-6zM42.0,42h14v1.7h-14zM42.0,74.3h14v1.7h-14zM68.0,42h6v34h-6zM64.0,42h14v1.7h-14zM64.0,74.3h14v1.7h-14zM52.0,57.98h16v2.2h-16z" fill="#141b2e"/><g transform="rotate(-24 60 60)"><ellipse cx="60" cy="60" rx="57" ry="16" fill="none" stroke="#a8833a" stroke-width="1.38"/><circle cx="117" cy="60" r="4.8" fill="#a8833a"/></g></svg><div><b>HAL経営相談室</b><i>SME CONSULTING OFFICE</i></div></div>
+  <div class="who">
+    <p class="role">代表　中小企業診断士<em>AI導入・補助金活用支援</em></p>
+    <p class="name">武内 治憲</p>
+    <p class="roman">HARUNORI TAKEUCHI</p>
+  </div>
+  <div class="line"></div>
+  <dl class="info">
+    <dt>MAIL</dt><dd>info@example.jp</dd>
+    <dt>WEB</dt><dd>https://example.jp</dd>
+    <dt>OFFICE</dt><dd>東京都台東区浅草</dd>
+  </dl>
+</section>
+
+<!-- 裏面 -->
+<section class="card back">
+  <svg class="orbit" viewBox="0 0 400 160" aria-hidden="true"><g transform="rotate(-12 200 80)"><ellipse cx="200" cy="80" rx="190" ry="54"/><ellipse cx="200" cy="80" rx="140" ry="38"/></g></svg>
+  <div class="center">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><circle cx="60" cy="60" r="44" fill="none" stroke="#c9a45a" stroke-width="1.6"/><path d="M46.0,42h6v34h-6zM42.0,42h14v1.7h-14zM42.0,74.3h14v1.7h-14zM68.0,42h6v34h-6zM64.0,42h14v1.7h-14zM64.0,74.3h14v1.7h-14zM52.0,57.98h16v2.2h-16z" fill="#f4efe4"/><g transform="rotate(-24 60 60)"><ellipse cx="60" cy="60" rx="57" ry="16" fill="none" stroke="#c9a45a" stroke-width="1.38"/><circle cx="117" cy="60" r="4.8" fill="#c9a45a"/></g></svg>
+    <p class="shop">HAL経営相談室</p>
+    <p class="copy">経営資源を、AIで未来へ。</p>
+  </div>
+  <p class="svc"><span>◆</span> AI導入支援<br><span>◆</span> 補助金活用支援<br><span>◆</span> 経営戦略・事業計画</p>
+  <div class="qrbox"><svg class="qr" xmlns="http://www.w3.org/2000/svg" width="25" height="25" class="segno"><path class="qrline" stroke="#141b2e" d="M0 0.5h7m2 0h1m1 0h3m4 0h7m-25 1h1m5 0h1m2 0h3m6 0h1m5 0h1m-25 1h1m1 0h3m1 0h1m2 0h3m1 0h2m1 0h1m1 0h1m1 0h3m1 0h1m-25 1h1m1 0h3m1 0h1m1 0h1m4 0h1m1 0h1m2 0h1m1 0h3m1 0h1m-25 1h1m1 0h3m1 0h1m2 0h1m2 0h1m1 0h1m3 0h1m1 0h3m1 0h1m-25 1h1m5 0h1m1 0h1m1 0h1m1 0h3m3 0h1m5 0h1m-25 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-17 1h2m4 0h3m-16 1h2m3 0h1m2 0h1m1 0h1m1 0h2m1 0h1m1 0h2m1 0h1m-22 1h1m1 0h3m6 0h1m3 0h1m1 0h3m1 0h1m1 0h2m-22 1h4m1 0h2m1 0h5m1 0h1m2 0h3m1 0h1m-25 1h4m3 0h3m1 0h1m4 0h1m2 0h1m1 0h1m-22 1h4m2 0h1m1 0h1m2 0h1m1 0h4m1 0h2m4 0h1m-22 1h2m2 0h1m1 0h2m2 0h1m1 0h2m1 0h2m3 0h2m-25 1h2m2 0h1m1 0h1m1 0h1m2 0h3m1 0h4m2 0h2m1 0h1m-23 1h2m5 0h1m1 0h1m1 0h1m2 0h2m1 0h3m-22 1h4m1 0h6m1 0h3m1 0h5m2 0h1m-16 1h2m1 0h1m2 0h1m1 0h1m3 0h1m3 0h1m-25 1h7m2 0h1m1 0h3m2 0h1m1 0h1m1 0h1m3 0h1m-25 1h1m5 0h1m3 0h3m2 0h2m3 0h1m2 0h2m-25 1h1m1 0h3m1 0h1m2 0h2m1 0h1m2 0h6m2 0h2m-25 1h1m1 0h3m1 0h1m2 0h1m1 0h4m2 0h1m2 0h1m1 0h2m-24 1h1m1 0h3m1 0h1m1 0h1m3 0h2m1 0h3m1 0h3m1 0h2m-25 1h1m5 0h1m1 0h1m1 0h1m1 0h2m1 0h6m-21 1h7m3 0h1m1 0h2m2 0h1m1 0h1m2 0h1m2 0h1"/></svg><small>WEBSITE</small></div>
+</section>
+
+</div>
+</body>
+</html>
