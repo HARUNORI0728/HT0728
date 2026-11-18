@@ -32,28 +32,28 @@ body{font-family:"Noto Sans JP",sans-serif;color:#141b2e;-webkit-print-color-adj
 .front .line{position:absolute;left:7mm;right:7mm;bottom:14.6mm;height:.2mm;background:linear-gradient(90deg,#a8833a,rgba(168,131,58,.15))}
 .front .info{position:absolute;left:7mm;right:7mm;bottom:4.6mm;display:grid;grid-template-columns:auto 1fr;column-gap:2.4mm;row-gap:.45mm;font-size:1.75mm;letter-spacing:.06em;line-height:1.5}
 .front .info dt{font-family:"Playfair Display",serif;color:#a8833a;letter-spacing:.2em;font-size:1.5mm;padding-top:.15mm}
-/* back */
-.back{background:radial-gradient(60mm 26mm at 0% 0%,rgba(201,164,90,.16),transparent 70%),#141b2e;color:#f4efe4}
-.back .orbit{position:absolute;right:-30mm;top:-20mm;width:80mm;opacity:.35}
-.back .orbit ellipse{fill:none;stroke:#c9a45a;stroke-width:.4}
-.back .head{position:absolute;left:6mm;right:6mm;top:5mm}
-.back .label{display:flex;align-items:center;gap:1.4mm;font-family:"Playfair Display",serif;font-size:1.45mm;letter-spacing:.3em;color:#c9a45a}
-.back .label svg{width:4.6mm;height:4.6mm;overflow:visible}
-.back .lead{font-family:"Noto Serif JP",serif;font-weight:600;font-size:2.7mm;letter-spacing:.06em;line-height:1.45;margin-top:1.1mm}
-.back .lead em{font-style:normal;color:#c9a45a}
-.back .svc{position:absolute;left:6mm;right:6mm;top:17.2mm;display:grid;grid-template-columns:repeat(3,1fr);column-gap:3mm;padding-top:2.2mm;border-top:.2mm solid rgba(201,164,90,.55)}
-.back .svc li{list-style:none}
-.back .svc .no{font-family:"Playfair Display",serif;font-size:1.6mm;letter-spacing:.2em;color:#c9a45a}
-.back .svc h3{font-family:"Noto Serif JP",serif;font-weight:600;font-size:2.15mm;letter-spacing:.08em;margin:.4mm 0 .7mm;white-space:nowrap}
-.back .svc p{font-size:1.6mm;line-height:1.62;letter-spacing:0;white-space:nowrap;color:#c9cdd8}
-.back .foot{position:absolute;left:6mm;bottom:5mm;width:58mm}
-.back .proof{font-size:1.65mm;line-height:1.6;letter-spacing:.04em;color:#e6e2d8}
-.back .cta{display:flex;align-items:center;gap:1.6mm;margin-top:1.4mm;font-size:1.6mm;letter-spacing:.06em;color:#c9cdd8}
-.back .cta b{font-weight:500;background:#c9a45a;color:#141b2e;padding:.35mm 1.4mm;border-radius:.4mm;letter-spacing:.12em;font-size:1.75mm}
-.back .qrwrap{position:absolute;right:6mm;bottom:5mm;display:flex;align-items:flex-end;gap:1.6mm}
-.back .qrwrap small{display:block;text-align:right;font-size:1.4mm;line-height:1.55;letter-spacing:.06em;color:#c9cdd8}
-.back .qrwrap small i{display:block;font-style:normal;font-family:"Playfair Display",serif;font-size:1.3mm;letter-spacing:.24em;color:#c9a45a}
-.back .qrbox{width:13.4mm;height:13.4mm;padding:1.2mm;background:#fff;border-radius:.6mm}
+/* back : 淡いゴールド＋カード */
+.back{background:linear-gradient(135deg,#f4ecdb 0%,#ecdfc4 100%);color:#141b2e}
+.back .orbit{position:absolute;right:-30mm;top:-22mm;width:82mm;opacity:.45}
+.back .orbit ellipse{fill:none;stroke:#a8833a;stroke-width:.35}
+.back .head{position:absolute;left:5.5mm;right:5.5mm;top:4.8mm}
+.back .label{display:flex;align-items:center;gap:1.4mm;font-family:"Playfair Display",serif;font-size:1.5mm;letter-spacing:.3em;color:#8f6d2c}
+.back .label svg{width:4.8mm;height:4.8mm;overflow:visible}
+.back .lead{font-family:"Noto Serif JP",serif;font-weight:600;font-size:2.95mm;letter-spacing:.05em;line-height:1.4;margin-top:1mm}
+.back .lead em{font-style:normal;color:#8f6d2c}
+.back .svc{position:absolute;left:5mm;right:5mm;top:17.8mm;display:grid;grid-template-columns:repeat(3,1fr);column-gap:1.8mm}
+.back .svc li{list-style:none;background:rgba(255,255,255,.68);border-radius:.9mm;padding:1.5mm 1.5mm 1.6mm;box-shadow:0 .3mm .8mm -.3mm rgba(120,90,30,.25)}
+.back .svc .no{display:block;font-family:"Playfair Display",serif;font-size:1.7mm;letter-spacing:.2em;color:#a8833a;line-height:1}
+.back .svc h3{font-family:"Noto Serif JP",serif;font-weight:600;font-size:2.3mm;letter-spacing:.06em;margin:.9mm 0 .8mm;white-space:nowrap;line-height:1.3}
+.back .svc p{font-size:1.75mm;line-height:1.6;white-space:nowrap;color:#3d4357}
+.back .foot{position:absolute;left:5.5mm;bottom:4.8mm}
+.back .proof{font-size:1.75mm;line-height:1.5;letter-spacing:.03em;color:#141b2e}
+.back .cta{display:flex;align-items:center;gap:1.6mm;margin-top:1.5mm;font-size:1.7mm;letter-spacing:.04em;color:#3d4357}
+.back .cta b{font-weight:500;background:#141b2e;color:#f4ecdb;padding:.4mm 1.6mm;border-radius:.4mm;letter-spacing:.12em;font-size:1.9mm}
+.back .qrwrap{position:absolute;right:5mm;bottom:4.6mm;display:flex;align-items:flex-end;gap:1.5mm}
+.back .qrwrap small{display:block;text-align:right;font-size:1.55mm;line-height:1.5;letter-spacing:.04em;color:#3d4357}
+.back .qrwrap small i{display:block;font-style:normal;font-family:"Playfair Display",serif;font-size:1.35mm;letter-spacing:.24em;color:#8f6d2c;margin-bottom:.3mm}
+.back .qrbox{width:13.6mm;height:13.6mm;padding:1.2mm;background:#fff;border-radius:.7mm}
 .back .qrbox .qr{display:block;width:100%;height:100%}
 </style>
 </head>
@@ -82,17 +82,17 @@ body{font-family:"Noto Sans JP",sans-serif;color:#141b2e;-webkit-print-color-adj
 <section class="card back">
   <svg class="orbit" viewBox="0 0 200 200" aria-hidden="true"><g transform="rotate(-24 100 100)"><ellipse cx="100" cy="100" rx="96" ry="34"/><ellipse cx="100" cy="100" rx="60" ry="21"/></g></svg>
   <div class="head">
-    <p class="label"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><circle cx="60" cy="60" r="44" fill="none" stroke="#c9a45a" stroke-width="1.6"/><path d="M46.0,42h6v34h-6zM42.0,42h14v1.7h-14zM42.0,74.3h14v1.7h-14zM68.0,42h6v34h-6zM64.0,42h14v1.7h-14zM64.0,74.3h14v1.7h-14zM52.0,57.98h16v2.2h-16z" fill="#f4efe4"/><g transform="rotate(-24 60 60)"><ellipse cx="60" cy="60" rx="57" ry="16" fill="none" stroke="#c9a45a" stroke-width="1.38"/><circle cx="117" cy="60" r="4.8" fill="#c9a45a"/></g></svg>WHAT WE DO</p>
+    <p class="label"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><circle cx="60" cy="60" r="44" fill="none" stroke="#a8833a" stroke-width="1.6"/><path d="M46.0,42h6v34h-6zM42.0,42h14v1.7h-14zM42.0,74.3h14v1.7h-14zM68.0,42h6v34h-6zM64.0,42h14v1.7h-14zM64.0,74.3h14v1.7h-14zM52.0,57.98h16v2.2h-16z" fill="#141b2e"/><g transform="rotate(-24 60 60)"><ellipse cx="60" cy="60" rx="57" ry="16" fill="none" stroke="#a8833a" stroke-width="1.38"/><circle cx="117" cy="60" r="4.8" fill="#a8833a"/></g></svg>WHAT WE DO</p>
     <p class="lead">会社に眠る資源を、<em>AI</em>で「誰でも使える仕組み」に。</p>
   </div>
   <ul class="svc">
-    <li><span class="no">01</span><h3>AI導入支援</h3><p>日報や見積、ベテランの経験を<br>AIで誰でも使える形に。</p></li>
-    <li><span class="no">02</span><h3>補助金活用支援</h3><p>AI・IT投資と補助金を、<br>ひとつの計画に組み立てます。</p></li>
-    <li><span class="no">03</span><h3>事業計画・経営戦略</h3><p>生まれた時間と資源を、<br>次の一手につなげます。</p></li>
+    <li><span class="no">01</span><h3>AI導入支援</h3><p>日報や見積、熟練の経験を<br>AIで誰でも使える形に。</p></li>
+    <li><span class="no">02</span><h3>補助金活用支援</h3><p>AI・IT投資と補助金を<br>ひとつの計画として設計。</p></li>
+    <li><span class="no">03</span><h3>事業計画・経営戦略</h3><p>生まれた時間と資源を<br>次の一手につなげます。</p></li>
   </ul>
   <div class="foot">
-    <p class="proof">業務ツールを自ら開発してきた中小企業診断士が、<br>小さく試すところから伴走します。</p>
-    <p class="cta"><b>初回相談無料</b>ITに詳しい社員がいなくても大丈夫です</p>
+    <p class="proof">業務ツールを自ら開発してきた診断士が、伴走します。</p>
+    <p class="cta"><b>初回相談無料</b>ITに詳しくなくても大丈夫です</p>
   </div>
   <div class="qrwrap">
     <small><i>WEBSITE</i>支援内容と<br>ご相談はこちら</small>
