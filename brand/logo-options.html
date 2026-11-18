@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>ロゴ案｜HAL経営相談室</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Noto+Serif+JP:wght@500;600&family=Noto+Sans+JP:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#141b2e;--gold:#a8833a;--gold2:#c9a45a;--paper:#f7f4ee;--line:rgba(20,27,46,.12)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--navy);font-family:"Noto Sans JP",sans-serif;line-height:1.9;letter-spacing:.04em}
+.wrap{width:min(1160px,100% - 40px);margin:0 auto;padding:64px 0 96px}
+h1{font-family:"Noto Serif JP",serif;font-weight:600;font-size:clamp(24px,3vw,34px);letter-spacing:.12em}
+.lead{color:#4a5166;margin-top:12px;max-width:760px}
+.opt{margin-top:56px;background:#fffdf9;border:1px solid var(--line);padding:clamp(24px,4vw,44px);box-shadow:0 20px 44px -34px rgba(20,27,46,.45)}
+.opt h2{font-family:"Noto Serif JP",serif;font-weight:600;font-size:20px;letter-spacing:.12em;display:flex;align-items:baseline;gap:14px}
+.opt h2 span{font-family:"Playfair Display",serif;font-style:italic;font-size:30px;color:var(--gold)}
+.opt p.concept{color:#4a5166;margin:8px 0 26px;font-size:14.5px}
+.row{display:grid;grid-template-columns:1.3fr 1fr 1fr .55fr;gap:16px}
+.cell{border:1px solid var(--line);display:grid;place-items:center;padding:26px 14px;min-height:190px;position:relative}
+.cell small{position:absolute;left:10px;top:6px;font-size:11px;color:#8a8f9c;letter-spacing:.1em}
+.cell.dark{background:var(--navy);border-color:var(--navy)}
+.cell.dark small{color:#8f97ad}
+.lockup{display:flex;align-items:center;gap:16px}
+.lockup svg{width:72px;height:72px;flex:none}
+.lockup b{display:block;font-family:"Noto Serif JP",serif;font-weight:600;font-size:22px;letter-spacing:.16em;line-height:1.4}
+.lockup i{display:block;font-style:normal;font-family:"Playfair Display",serif;font-size:10px;letter-spacing:.34em;color:var(--gold)}
+.mark svg{width:120px;height:120px}
+.tiny{display:flex;gap:14px;align-items:flex-end}
+.tiny svg:nth-child(1){width:48px;height:48px}.tiny svg:nth-child(2){width:32px;height:32px}.tiny svg:nth-child(3){width:20px;height:20px}
+.note{margin-top:56px;font-size:13px;color:#6a7080}
+@media (max-width:860px){.row{grid-template-columns:1fr 1fr}.cell:first-child{grid-column:1/-1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ロゴ案 ─ HAL経営相談室</h1>
+  <p class="lead">「頭文字の紋章風」と「軌道のシンボル」の2方向から4案です。各案を、屋号と組み合わせた形、白地、紺地、小さく使ったとき（ファビコンなど）で並べています。</p>
+  <div id="list"></div>
+  <p class="note">※ 確認用の下書きです。決定後、文字を図形に変換した正式なデータ（SVG・PNG・印刷用）を作ります。<br>※ 映画のHALを連想させる赤い目のような表現は、権利面と印象面から避けています。</p>
+</div>
+<script>
+var SERIF='Playfair Display, Georgia, serif';
+function H(c,size,y){return '<text x="60" y="'+y+'" text-anchor="middle" font-family="'+SERIF+'" font-size="'+size+'" font-weight="500" fill="'+c+'">H</text>'}
+var marks={
+ A:{name:'紋章',concept:'二重の円に頭文字「H」。円の右上に小さな金の点を置き、「一歩先を行く」を表します。格式と信頼感を重視した、もっとも王道の形です。',
+   svg:function(m,g){return '<circle cx="60" cy="60" r="55" fill="none" stroke="'+g+'" stroke-width="1.6"/><circle cx="60" cy="60" r="48.5" fill="none" stroke="'+g+'" stroke-width=".7"/>'+H(m,50,77)+'<circle cx="98.9" cy="21.1" r="4.6" fill="'+g+'"/>'}},
+ B:{name:'軌道',concept:'頭文字「H」を楕円の軌道が取り巻き、手前を金の点が回ります。サイトのトップの軌道と同じ世界観で、「会社の資源をAIで未来へつなぐ」動きを表します。',
+   svg:function(m,g){return '<g transform="rotate(-20 60 60)"><path d="M6,60 A54,19 0 0 1 114,60" fill="none" stroke="'+g+'" stroke-width="1.3" opacity=".55"/></g>'+H(m,58,80)+'<g transform="rotate(-20 60 60)"><path d="M114,60 A54,19 0 0 1 6,60" fill="none" stroke="'+g+'" stroke-width="1.6"/><circle cx="88" cy="76.4" r="5" fill="'+g+'"/></g>'}},
+ C:{name:'紋章＋軌道',concept:'円の紋章を、軌道が外へ突き抜けていきます。軌道上の点は円の外側にあり、「枠を越えて一歩先へ」を表します。紋章の格式と、軌道の先進性を両立した案です。',
+   svg:function(m,g){return '<circle cx="60" cy="60" r="44" fill="none" stroke="'+g+'" stroke-width="1.4"/>'+H(m,46,76)+'<g transform="rotate(-24 60 60)"><ellipse cx="60" cy="60" rx="57" ry="16" fill="none" stroke="'+g+'" stroke-width="1.2"/><circle cx="117" cy="60" r="4.8" fill="'+g+'"/></g>'}},
+ D:{name:'三重の軌道',concept:'サイトのトップと同じ三重の軌道を、中心の「H」に集めた案です。経営・AI・補助金の三つの支援が、ひとつの会社を中心に回るイメージです。',
+   svg:function(m,g){return '<g transform="rotate(-20 60 60)" fill="none"><ellipse cx="60" cy="60" rx="56" ry="25" stroke="'+g+'" stroke-width="1.2"/><ellipse cx="60" cy="60" rx="43" ry="19" stroke="'+m+'" stroke-width=".9" opacity=".45"/><ellipse cx="60" cy="60" rx="30" ry="13" stroke="'+g+'" stroke-width="1"/></g>'+H(m,40,74)+'<g transform="rotate(-20 60 60)"><circle cx="116" cy="60" r="4.2" fill="'+g+'"/><circle cx="17" cy="70" r="3.6" fill="'+m+'"/><circle cx="76" cy="47.6" r="3.2" fill="'+g+'"/></g>'}}
+};
+function svg(k,m,g){return '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ロゴ案'+k+'">'+marks[k].svg(m,g)+'</svg>'}
+var html='';
+Object.keys(marks).forEach(function(k){
+  var L='#141b2e',G='#a8833a',DL='#f4efe4',DG='#c9a45a';
+  html+='<section class="opt"><h2><span>'+k+'</span>'+marks[k].name+'</h2><p class="concept">'+marks[k].concept+'</p><div class="row">'+
+   '<div class="cell"><small>屋号と組み合わせ</small><div class="lockup">'+svg(k,L,G)+'<div><b>HAL経営相談室</b><i>SME CONSULTING OFFICE</i></div></div></div>'+
+   '<div class="cell mark"><small>白地</small>'+svg(k,L,G)+'</div>'+
+   '<div class="cell mark dark"><small>紺地</small>'+svg(k,DL,DG)+'</div>'+
+   '<div class="cell"><small>小さく使う</small><div class="tiny">'+svg(k,L,G)+svg(k,L,G)+svg(k,L,G)+'</div></div>'+
+   '</div></section>';
+});
+document.getElementById('list').innerHTML=html;
+</script>
+</body>
+</html>
