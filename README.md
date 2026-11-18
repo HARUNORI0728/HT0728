@@ -12,3 +12,7 @@ AI導入支援と補助金活用に強みを持つ中小企業診断士事務所
   - `logo-options.html` … ロゴ案の比較用
   - `ogp.png` … SNSで共有されたときの画像（公開時にドメインと合わせて設定）
 - `apple-touch-icon.png` … スマホのホーム画面に追加したときのアイコン
+- `business/` … 事業運営の資料（たたき台）
+  - `pricing.md` … 支援メニューと料金表
+  - `service-manual.md` … サービスの進め方マニュアル
+  - `contact-and-address.md` … 電話番号と住所の運用案
