@@ -9,6 +9,7 @@
 <meta name="theme-color" content="#f7f4ee">
 <meta name="format-detection" content="telephone=no">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="ja_JP">
 <meta property="og:site_name" content="HAL経営相談室">
@@ -547,8 +548,18 @@ footer small{font-family:var(--serif-en);letter-spacing:.2em;font-size:12px}
 .loader .ld-word{opacity:1;animation:none;font-family:var(--serif-en);font-size:52px;line-height:1.2;letter-spacing:.5em;text-indent:.5em;color:#141b2e;overflow:hidden}
 .ld-word span{display:inline-block;transform:translateY(110%);animation:ldRise .7s cubic-bezier(.2,.8,.2,1) forwards}
 .ld-word span:nth-child(2){animation-delay:.1s}.ld-word span:nth-child(3){animation-delay:.2s}
+.ld-mark{width:96px;height:96px;display:block;margin:0 auto 14px;overflow:visible}
+.ld-c,.ld-o{fill:none;stroke:#a8833a;stroke-dasharray:100;stroke-dashoffset:100}
+.ld-c{stroke-width:1.4;animation:ldDraw .7s cubic-bezier(.6,0,.2,1) forwards}
+.ld-o{stroke-width:1.2;animation:ldDraw .7s cubic-bezier(.6,0,.2,1) .15s forwards}
+.ld-h{fill:#141b2e;opacity:0;animation:fadeIn .45s ease .3s forwards}
+.ld-dot{fill:#a8833a;transform-box:fill-box;transform-origin:center;transform:scale(0);animation:ldPop .35s cubic-bezier(.3,1.6,.5,1) .7s forwards}
+.ld-name{font-family:var(--serif-jp);font-weight:600;font-size:20px;letter-spacing:.3em;text-indent:.3em;color:#141b2e;opacity:0;animation:fadeIn .5s ease .35s forwards}
+.loader .ld-line{width:180px;margin:12px auto 10px}
+@keyframes ldDraw{to{stroke-dashoffset:0}}
+@keyframes ldPop{to{transform:scale(1)}}
 .ld-line{width:240px;height:1px;margin:14px auto;background:#a8833a;transform:scaleX(0);animation:bar .8s cubic-bezier(.2,.8,.2,1) .25s forwards}
-.loader .ld-sub{font-family:var(--serif-jp);font-size:13px;letter-spacing:.6em;text-indent:.6em;color:#a8833a;opacity:0;animation:fadeIn .5s ease .5s forwards}
+.loader .ld-sub{font-family:var(--serif-en);font-size:10px;letter-spacing:.42em;text-indent:.42em;color:#a8833a;opacity:0;animation:fadeIn .5s ease .5s forwards}
 @keyframes ldRise{to{transform:none}}
 @keyframes ldFade{to{opacity:0}}
 @keyframes ldUpB{to{transform:translateY(-101%)}}
@@ -559,6 +570,7 @@ footer small{font-family:var(--serif-en);letter-spacing:.2em;font-size:12px}
 .js .reveal{transform:translateY(46px)}
 
 /* ----- 仕上げ ----- */
+.contact-mark{display:block;width:64px;height:64px;margin:0 auto 22px;overflow:visible}
 .brand-mark{border:none!important;border-radius:0;width:50px;height:50px;display:block}
 .brand-mark .logo-mark{width:100%;height:100%;overflow:visible;display:block}
 @media (max-width:520px){.brand-mark{width:42px;height:42px}}
@@ -635,9 +647,14 @@ footer .brand-name small{color:#c9a45a}
 <!-- ローディング演出 -->
 <div class="loader" aria-hidden="true">
   <div class="ld">
-    <p class="ld-word"><span>H</span><span>A</span><span>L</span></p>
+    <svg class="ld-mark" viewBox="0 0 120 120">
+      <circle class="ld-c" cx="60" cy="60" r="44" pathLength="100"/>
+      <path class="ld-h" d="M46.0,42h6v34h-6zM42.0,42h14v1.7h-14zM42.0,74.3h14v1.7h-14zM68.0,42h6v34h-6zM64.0,42h14v1.7h-14zM64.0,74.3h14v1.7h-14zM52.0,57.98h16v2.2h-16z"/>
+      <g transform="rotate(-24 60 60)"><ellipse class="ld-o" cx="60" cy="60" rx="57" ry="16" pathLength="100"/><circle class="ld-dot" cx="117" cy="60" r="4.8"/></g>
+    </svg>
+    <p class="ld-name">HAL経営相談室</p>
     <div class="ld-line"></div>
-    <p class="ld-sub">経営相談室</p>
+    <p class="ld-sub">SME CONSULTING OFFICE</p>
   </div>
 </div>
 
@@ -937,6 +954,7 @@ footer .brand-name small{color:#c9a45a}
   <!-- お問い合わせ -->
   <section class="contact" id="contact">
     <div class="wrap reveal">
+      <svg class="contact-mark" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><circle cx="60" cy="60" r="44" fill="none" stroke="#c9a45a" stroke-width="1.4"/><path d="M46.0,42h6v34h-6zM42.0,42h14v1.7h-14zM42.0,74.3h14v1.7h-14zM68.0,42h6v34h-6zM64.0,42h14v1.7h-14zM64.0,74.3h14v1.7h-14zM52.0,57.98h16v2.2h-16z" fill="#f4efe4"/><g transform="rotate(-24 60 60)"><ellipse cx="60" cy="60" rx="57" ry="16" fill="none" stroke="#c9a45a" stroke-width="1.20"/><circle cx="117" cy="60" r="4.8" fill="#c9a45a"/></g></svg>
       <p class="eyebrow" style="justify-content:center">CONTACT</p>
       <h2>まずは、<span class="gold-text">お話を</span><br>お聞かせください。</h2>
       <p>「AIで何ができるのか知りたい」「使える補助金があるか確認したい」など、まとまっていない段階のご相談も歓迎します。初回のご相談は無料です。無理な勧誘はいたしません。</p>
