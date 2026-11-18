@@ -27,22 +27,34 @@ body{font-family:"Noto Sans JP",sans-serif;color:#141b2e;-webkit-print-color-adj
 .front .role em{font-style:normal;color:#a8833a;display:block}
 .front .name{font-family:"Noto Serif JP",serif;font-weight:600;font-size:5.4mm;letter-spacing:.24em;margin-top:1.6mm;line-height:1.25}
 .front .roman{font-family:"Playfair Display",serif;font-size:1.75mm;letter-spacing:.36em;color:#6b7183;margin-top:.6mm}
+.front .copy{position:absolute;right:7mm;bottom:17mm;font-family:"Noto Serif JP",serif;font-weight:500;font-size:2.2mm;letter-spacing:.16em;color:#141b2e}
+.front .copy em{font-style:normal;color:#a8833a}
 .front .line{position:absolute;left:7mm;right:7mm;bottom:14.6mm;height:.2mm;background:linear-gradient(90deg,#a8833a,rgba(168,131,58,.15))}
 .front .info{position:absolute;left:7mm;right:7mm;bottom:4.6mm;display:grid;grid-template-columns:auto 1fr;column-gap:2.4mm;row-gap:.45mm;font-size:1.75mm;letter-spacing:.06em;line-height:1.5}
 .front .info dt{font-family:"Playfair Display",serif;color:#a8833a;letter-spacing:.2em;font-size:1.5mm;padding-top:.15mm}
 /* back */
-.back{background:radial-gradient(48mm 30mm at 50% 0%,rgba(201,164,90,.22),transparent 70%),#141b2e;color:#f4efe4}
-.back .orbit{position:absolute;left:50%;top:50%;width:120mm;transform:translate(-50%,-50%);opacity:.5}
-.back .orbit ellipse{fill:none;stroke:#c9a45a;stroke-width:.35}
-.back .center{position:absolute;left:0;right:0;top:7mm;text-align:center}
-.back .center svg{width:15mm;height:15mm;overflow:visible}
-.back .shop{font-family:"Noto Serif JP",serif;font-weight:600;font-size:3mm;letter-spacing:.24em;text-indent:.24em;margin-top:1.4mm}
-.back .copy{font-family:"Noto Serif JP",serif;font-weight:500;font-size:2.35mm;letter-spacing:.2em;text-indent:.2em;color:#c9a45a;margin-top:1.6mm}
-.back .svc{position:absolute;left:6mm;bottom:5mm;font-size:1.55mm;letter-spacing:.14em;line-height:1.75;color:#c9cdd8}
-.back .svc span{color:#c9a45a}
-.back .qrbox{position:absolute;right:5.5mm;bottom:4.6mm;width:11.6mm;padding:1.2mm;background:#fbf9f4;border-radius:.6mm;text-align:center}
-.back .qrbox .qr{display:block;width:100%;height:auto}
-.back .qrbox small{display:block;font-family:"Playfair Display",serif;font-size:1.2mm;letter-spacing:.24em;color:#141b2e;margin-top:.5mm}
+.back{background:radial-gradient(60mm 26mm at 0% 0%,rgba(201,164,90,.16),transparent 70%),#141b2e;color:#f4efe4}
+.back .orbit{position:absolute;right:-30mm;top:-20mm;width:80mm;opacity:.35}
+.back .orbit ellipse{fill:none;stroke:#c9a45a;stroke-width:.4}
+.back .head{position:absolute;left:6mm;right:6mm;top:5mm}
+.back .label{display:flex;align-items:center;gap:1.4mm;font-family:"Playfair Display",serif;font-size:1.45mm;letter-spacing:.3em;color:#c9a45a}
+.back .label svg{width:4.6mm;height:4.6mm;overflow:visible}
+.back .lead{font-family:"Noto Serif JP",serif;font-weight:600;font-size:2.7mm;letter-spacing:.06em;line-height:1.45;margin-top:1.1mm}
+.back .lead em{font-style:normal;color:#c9a45a}
+.back .svc{position:absolute;left:6mm;right:6mm;top:17.2mm;display:grid;grid-template-columns:repeat(3,1fr);column-gap:3mm;padding-top:2.2mm;border-top:.2mm solid rgba(201,164,90,.55)}
+.back .svc li{list-style:none}
+.back .svc .no{font-family:"Playfair Display",serif;font-size:1.6mm;letter-spacing:.2em;color:#c9a45a}
+.back .svc h3{font-family:"Noto Serif JP",serif;font-weight:600;font-size:2.15mm;letter-spacing:.08em;margin:.4mm 0 .7mm;white-space:nowrap}
+.back .svc p{font-size:1.6mm;line-height:1.62;letter-spacing:0;white-space:nowrap;color:#c9cdd8}
+.back .foot{position:absolute;left:6mm;bottom:5mm;width:58mm}
+.back .proof{font-size:1.65mm;line-height:1.6;letter-spacing:.04em;color:#e6e2d8}
+.back .cta{display:flex;align-items:center;gap:1.6mm;margin-top:1.4mm;font-size:1.6mm;letter-spacing:.06em;color:#c9cdd8}
+.back .cta b{font-weight:500;background:#c9a45a;color:#141b2e;padding:.35mm 1.4mm;border-radius:.4mm;letter-spacing:.12em;font-size:1.75mm}
+.back .qrwrap{position:absolute;right:6mm;bottom:5mm;display:flex;align-items:flex-end;gap:1.6mm}
+.back .qrwrap small{display:block;text-align:right;font-size:1.4mm;line-height:1.55;letter-spacing:.06em;color:#c9cdd8}
+.back .qrwrap small i{display:block;font-style:normal;font-family:"Playfair Display",serif;font-size:1.3mm;letter-spacing:.24em;color:#c9a45a}
+.back .qrbox{width:13.4mm;height:13.4mm;padding:1.2mm;background:#fff;border-radius:.6mm}
+.back .qrbox .qr{display:block;width:100%;height:100%}
 </style>
 </head>
 <body>
@@ -57,6 +69,7 @@ body{font-family:"Noto Sans JP",sans-serif;color:#141b2e;-webkit-print-color-adj
     <p class="name">武内 治憲</p>
     <p class="roman">HARUNORI TAKEUCHI</p>
   </div>
+  <p class="copy">経営資源を、<em>AI</em>で未来へ。</p>
   <div class="line"></div>
   <dl class="info">
     <dt>MAIL</dt><dd>info@example.jp</dd>
@@ -67,14 +80,24 @@ body{font-family:"Noto Sans JP",sans-serif;color:#141b2e;-webkit-print-color-adj
 
 <!-- 裏面 -->
 <section class="card back">
-  <svg class="orbit" viewBox="0 0 400 160" aria-hidden="true"><g transform="rotate(-12 200 80)"><ellipse cx="200" cy="80" rx="190" ry="54"/><ellipse cx="200" cy="80" rx="140" ry="38"/></g></svg>
-  <div class="center">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><circle cx="60" cy="60" r="44" fill="none" stroke="#c9a45a" stroke-width="1.6"/><path d="M46.0,42h6v34h-6zM42.0,42h14v1.7h-14zM42.0,74.3h14v1.7h-14zM68.0,42h6v34h-6zM64.0,42h14v1.7h-14zM64.0,74.3h14v1.7h-14zM52.0,57.98h16v2.2h-16z" fill="#f4efe4"/><g transform="rotate(-24 60 60)"><ellipse cx="60" cy="60" rx="57" ry="16" fill="none" stroke="#c9a45a" stroke-width="1.38"/><circle cx="117" cy="60" r="4.8" fill="#c9a45a"/></g></svg>
-    <p class="shop">HAL経営相談室</p>
-    <p class="copy">経営資源を、AIで未来へ。</p>
+  <svg class="orbit" viewBox="0 0 200 200" aria-hidden="true"><g transform="rotate(-24 100 100)"><ellipse cx="100" cy="100" rx="96" ry="34"/><ellipse cx="100" cy="100" rx="60" ry="21"/></g></svg>
+  <div class="head">
+    <p class="label"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><circle cx="60" cy="60" r="44" fill="none" stroke="#c9a45a" stroke-width="1.6"/><path d="M46.0,42h6v34h-6zM42.0,42h14v1.7h-14zM42.0,74.3h14v1.7h-14zM68.0,42h6v34h-6zM64.0,42h14v1.7h-14zM64.0,74.3h14v1.7h-14zM52.0,57.98h16v2.2h-16z" fill="#f4efe4"/><g transform="rotate(-24 60 60)"><ellipse cx="60" cy="60" rx="57" ry="16" fill="none" stroke="#c9a45a" stroke-width="1.38"/><circle cx="117" cy="60" r="4.8" fill="#c9a45a"/></g></svg>WHAT WE DO</p>
+    <p class="lead">会社に眠る資源を、<em>AI</em>で「誰でも使える仕組み」に。</p>
   </div>
-  <p class="svc"><span>◆</span> AI導入支援<br><span>◆</span> 補助金活用支援<br><span>◆</span> 経営戦略・事業計画</p>
-  <div class="qrbox"><svg class="qr" xmlns="http://www.w3.org/2000/svg" width="25" height="25" class="segno"><path class="qrline" stroke="#141b2e" d="M0 0.5h7m2 0h1m1 0h3m4 0h7m-25 1h1m5 0h1m2 0h3m6 0h1m5 0h1m-25 1h1m1 0h3m1 0h1m2 0h3m1 0h2m1 0h1m1 0h1m1 0h3m1 0h1m-25 1h1m1 0h3m1 0h1m1 0h1m4 0h1m1 0h1m2 0h1m1 0h3m1 0h1m-25 1h1m1 0h3m1 0h1m2 0h1m2 0h1m1 0h1m3 0h1m1 0h3m1 0h1m-25 1h1m5 0h1m1 0h1m1 0h1m1 0h3m3 0h1m5 0h1m-25 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-17 1h2m4 0h3m-16 1h2m3 0h1m2 0h1m1 0h1m1 0h2m1 0h1m1 0h2m1 0h1m-22 1h1m1 0h3m6 0h1m3 0h1m1 0h3m1 0h1m1 0h2m-22 1h4m1 0h2m1 0h5m1 0h1m2 0h3m1 0h1m-25 1h4m3 0h3m1 0h1m4 0h1m2 0h1m1 0h1m-22 1h4m2 0h1m1 0h1m2 0h1m1 0h4m1 0h2m4 0h1m-22 1h2m2 0h1m1 0h2m2 0h1m1 0h2m1 0h2m3 0h2m-25 1h2m2 0h1m1 0h1m1 0h1m2 0h3m1 0h4m2 0h2m1 0h1m-23 1h2m5 0h1m1 0h1m1 0h1m2 0h2m1 0h3m-22 1h4m1 0h6m1 0h3m1 0h5m2 0h1m-16 1h2m1 0h1m2 0h1m1 0h1m3 0h1m3 0h1m-25 1h7m2 0h1m1 0h3m2 0h1m1 0h1m1 0h1m3 0h1m-25 1h1m5 0h1m3 0h3m2 0h2m3 0h1m2 0h2m-25 1h1m1 0h3m1 0h1m2 0h2m1 0h1m2 0h6m2 0h2m-25 1h1m1 0h3m1 0h1m2 0h1m1 0h4m2 0h1m2 0h1m1 0h2m-24 1h1m1 0h3m1 0h1m1 0h1m3 0h2m1 0h3m1 0h3m1 0h2m-25 1h1m5 0h1m1 0h1m1 0h1m1 0h2m1 0h6m-21 1h7m3 0h1m1 0h2m2 0h1m1 0h1m2 0h1m2 0h1"/></svg><small>WEBSITE</small></div>
+  <ul class="svc">
+    <li><span class="no">01</span><h3>AI導入支援</h3><p>日報や見積、ベテランの経験を<br>AIで誰でも使える形に。</p></li>
+    <li><span class="no">02</span><h3>補助金活用支援</h3><p>AI・IT投資と補助金を、<br>ひとつの計画に組み立てます。</p></li>
+    <li><span class="no">03</span><h3>事業計画・経営戦略</h3><p>生まれた時間と資源を、<br>次の一手につなげます。</p></li>
+  </ul>
+  <div class="foot">
+    <p class="proof">業務ツールを自ら開発してきた中小企業診断士が、<br>小さく試すところから伴走します。</p>
+    <p class="cta"><b>初回相談無料</b>ITに詳しい社員がいなくても大丈夫です</p>
+  </div>
+  <div class="qrwrap">
+    <small><i>WEBSITE</i>支援内容と<br>ご相談はこちら</small>
+    <div class="qrbox"><svg class="qr" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 25 25" shape-rendering="crispEdges" aria-label="ウェブサイトのQRコード"><path stroke="#141b2e" d="M0 0.5h7m2 0h5m4 0h7m-25 1h1m5 0h1m1 0h2m1 0h4m3 0h1m5 0h1m-25 1h1m1 0h3m1 0h1m2 0h1m1 0h1m1 0h1m2 0h1m1 0h1m1 0h3m1 0h1m-25 1h1m1 0h3m1 0h1m1 0h3m1 0h1m1 0h3m1 0h1m1 0h3m1 0h1m-25 1h1m1 0h3m1 0h1m1 0h3m3 0h1m1 0h1m1 0h1m1 0h3m1 0h1m-25 1h1m5 0h1m2 0h2m1 0h1m3 0h1m1 0h1m5 0h1m-25 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-17 1h1m2 0h1m1 0h4m-16 1h1m1 0h4m1 0h3m1 0h2m2 0h3m1 0h2m1 0h1m-24 1h6m1 0h5m1 0h5m1 0h5m-23 1h2m2 0h3m1 0h2m1 0h2m1 0h3m1 0h3m2 0h1m-24 1h1m1 0h1m1 0h1m3 0h1m1 0h1m1 0h1m3 0h3m1 0h4m-25 1h4m2 0h1m1 0h1m1 0h1m2 0h1m1 0h2m1 0h2m4 0h1m-25 1h1m1 0h1m1 0h1m2 0h2m3 0h5m3 0h1m2 0h1m-24 1h3m1 0h3m1 0h9m1 0h1m1 0h5m-25 1h1m2 0h1m1 0h1m1 0h1m2 0h3m1 0h1m2 0h3m1 0h2m1 0h1m-25 1h1m1 0h2m1 0h4m3 0h3m1 0h5m1 0h2m-16 1h1m1 0h5m1 0h1m3 0h1m1 0h2m-24 1h7m2 0h2m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m3 0h1m-25 1h1m5 0h1m1 0h1m1 0h2m2 0h3m3 0h1m-21 1h1m1 0h3m1 0h1m1 0h1m2 0h3m1 0h6m3 0h1m-25 1h1m1 0h3m1 0h1m1 0h1m1 0h1m1 0h2m2 0h3m4 0h2m-25 1h1m1 0h3m1 0h1m2 0h2m2 0h3m1 0h1m2 0h5m-25 1h1m5 0h1m1 0h2m5 0h1m3 0h2m1 0h3m-25 1h7m3 0h1m1 0h3m1 0h1m1 0h1m2 0h1m2 0h1"/></svg></div>
+  </div>
 </section>
 
 </div>
