@@ -231,7 +231,7 @@ function mapMatches(map: unknown, ch: Chapter): boolean {
 export function skillsOf(u: Unit): string[] {
   if (u.team === 'red') return (u.skills ?? []).slice(0, SKILL_LIMIT);
   const c = CHARS[u.id], school = u.school ?? c?.school;
-  const cls = (CLASSES[u.cls].skills ?? []).map(k => (k === 'school' ? school : k)).filter((k): k is string => !!k && !!SKILLS[k]);
+  const cls = (CLASSES[u.cls].skills ?? []).map(k => (k === 'school' ? (c?.skills?.includes('threeSchools') ? null : school) : k)).filter((k): k is string => !!k && !!SKILLS[k]);
   return [...(c?.skills ?? []), ...(u.skills ?? []), ...cls].filter((k, i, a) => a.indexOf(k) === i).slice(0, SKILL_LIMIT + (CLASSES[u.cls].tier === 2 ? 1 : 0));
 }
 export const hasSkill = (u: Unit, id: string) => skillsOf(u).includes(id);
@@ -394,6 +394,9 @@ function side(s: State, att: Unit, w: Weapon, def: Unit, dw: Weapon | null, init
   let dmgB = 0, hitB = 0, critB = 0, avoB = 0, guard = 0, spdB = 0;
   // 攻める側
   if (init && A.includes('swordGod') && on('swordGod')) { hitB += 10; dmgB += 1; }
+  // 三流派の心得（パウロ）：三流派をそれぞれ控えめに。剣神＝仕掛けて命中+5、北神＝相性不利の命中-15を半分（+8）、水神＝受けるダメージ-1
+  if (init && A.includes('threeSchools') && on('threeSchools')) hitB += 5;
+  if (tri < 0 && A.includes('threeSchools')) hitB += 8;
   if (!magic && A.includes('sore') && att.hp * 2 <= att.st.hp && on('sore')) dmgB += 3;
   if (A.includes('kingFlash')) critB += 10;
   if (A.includes('pride') && att.hp >= att.st.hp && on('pride')) hitB += 10;
@@ -437,6 +440,7 @@ function side(s: State, att: Unit, w: Weapon, def: Unit, dw: Weapon | null, init
   if (D.includes('pride') && def.hp >= def.st.hp) avoB += 10;
   if (royalNear(s, def)) avoB += 5;
   if (init && D.includes('waterGod')) dmgB -= 2;
+  if (init && D.includes('threeSchools')) dmgB -= 1;
   if (!magic && alive(s, def.team).some(a => a.uid !== def.uid && dist(a, def) === 1 && hasSkill(a, 'guardian'))) guard += 2;
   if (!magic && dist(att, def) === 2 && D.includes('shieldStance')) guard += 3;
   const dmg = Math.max(0, (magic ? att.st.mag : att.st.str) + weaponMight(att, w) * (effective(w, def) ? 2 : 1) + tri + sa.dmg + dmgB - (magic ? def.st.res + (D.includes('manaBarrier') ? 3 : 0) : def.st.def + guard) - (flying ? 0 : t.def));

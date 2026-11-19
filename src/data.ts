@@ -52,7 +52,7 @@ export const SKILLS: Record<string, SkillDef> = {
   sore: { name: '負けず嫌い', desc: 'HPが最大の半分以下のとき、力+3', kind: 'unique' },
   guardian: { name: '守護の戦士', desc: '隣接する味方の守備+2', kind: 'unique' },
   kingFlash: { name: '剣王の一閃', desc: '必殺+10', kind: 'unique' },
-  threeSchools: { name: '三流派の心得', desc: '出撃準備で剣神流・水神流・北神流から1つを選んで装備する', kind: 'unique' },
+  threeSchools: { name: '三流派の心得', desc: '三流派を少しずつ修める。自分から攻撃すると命中+5（剣神）、武器相性が不利でも命中の不利が半分（北神）、敵から攻撃されると受けるダメージ-1（水神）', kind: 'unique' },
   teacher: { name: '師の教え', desc: '隣接する味方が戦闘や杖で得る経験値+20%', kind: 'unique' },
   shieldBlock: { name: '盾受け', desc: '敵から攻撃された戦闘で、技%（最大30%）の確率で受けるダメージを半減', kind: 'unique', proc: true },
   healingWind: { name: '癒しの風', desc: '杖で回復したとき、回復した相手に隣接する他の味方もHP+3', kind: 'unique' },

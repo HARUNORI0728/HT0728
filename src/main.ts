@@ -1567,7 +1567,7 @@ async function goNext() {
   }
   if (!camp || !hasChapter(camp.next)) return;
   const plan = sortiePlan(camp.next, camp.roster);
-  if (!plan.choose && !schoolUnit(plan, plan.picks)) { start(newChapter(camp.next, camp.roster, camp.bonds, camp.difficulty, undefined, !!camp.hard), true); return; }
+  if (!plan.choose) { start(newChapter(camp.next, camp.roster, camp.bonds, camp.difficulty, undefined, !!camp.hard), true); return; }
   prep = { index: camp.next, plan, picks: [...plan.picks] };
   campMsg('');
   renderPrep();
@@ -1621,7 +1621,7 @@ function renderPrep() {
     body.appendChild(b);
   }
   const su = schoolUnit(plan, p.picks);
-  if (su) body.appendChild(schoolPicker(su));
+  void su; // 三流派の心得は選択式をやめた（三つとも控えめに効く）
   const row = el('div', 'row prepBtns');
   row.appendChild(btn(`この${n}人で出撃する`, () => { const picks = p.picks; prep = null; start(newChapter(p.index, c.roster, c.bonds, c.difficulty, picks, !!c.hard), true); }, 'primary', !p.picks.length && plan.free > 0));
   row.appendChild(btn('章間にもどる', () => showCamp()));
