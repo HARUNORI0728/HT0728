@@ -1,10 +1,15 @@
 type Drawer = 'info' | 'actions';
-type MenuView = 'map' | 'commands' | 'forecast';
+type MenuView = 'map' | 'select' | 'commands' | 'forecast';
 type MapViewport = { width: number; height: number; cornerBottom: number };
 
-/** Reuse the battle UI in short landscape layouts, restoring its original DOM order on rotation. */
+/**
+ * Reuse the battle UI in phone layouts (short landscape, or narrow portrait), restoring its original DOM order otherwise.
+ * Landscape: drawers float over the map. Portrait: the HUD stays as a slim strip on top and one drawer sits under the map
+ * as a bottom sheet (the map shrinks instead of being covered); a selected unit also opens its small command sheet.
+ */
 export function mountMobileMap(onViewport: (viewport: MapViewport | null) => void) {
-  const layout = matchMedia('(orientation: landscape) and (max-height: 540px)');
+  const layout = matchMedia('(orientation: landscape) and (max-height: 540px), (orientation: portrait) and (max-width: 560px)');
+  const portrait = matchMedia('(orientation: portrait) and (max-width: 560px)');
   const find = (id: string) => document.getElementById(id)!;
   const stage = find('stage'), info = find('info'), hud = find('hud'), menu = find('menu');
   const goal = find('goal'), bonus = find('bonusGoal'), backdrop = find('mapBackdrop');
@@ -51,8 +56,8 @@ export function mountMobileMap(onViewport: (viewport: MapViewport | null) => voi
     for (const toggle of Object.values(toggles)) toggle.hidden = !layout.matches;
     if (layout.matches) {
       drawers.info.append(goal, bonus, info);
-      drawers.actions.append(hud, menu);
-      show(view === 'map' ? null : 'actions');
+      if (portrait.matches) { positions[1].home.after(hud); drawers.actions.append(menu); } else drawers.actions.append(hud, menu);
+      show(wanted());
       measure();
     } else {
       opened = null;
@@ -66,6 +71,8 @@ export function mountMobileMap(onViewport: (viewport: MapViewport | null) => voi
     }
   }
 
+  const wanted = (): Drawer | null => view === 'map' || view === 'select' && !portrait.matches ? null : 'actions';
+
   function close() {
     if (!opened) return false;
     show(null);
@@ -77,6 +84,7 @@ export function mountMobileMap(onViewport: (viewport: MapViewport | null) => voi
   }
   backdrop.addEventListener('click', close);
   layout.addEventListener('change', reflow);
+  portrait.addEventListener('change', reflow);
   new ResizeObserver(measure).observe(stage);
   reflow();
 
@@ -84,7 +92,7 @@ export function mountMobileMap(onViewport: (viewport: MapViewport | null) => voi
     close,
     updateMenu(next: MenuView) {
       view = next;
-      show(next === 'map' ? null : 'actions');
+      show(wanted());
     },
   };
 }

@@ -107,8 +107,11 @@ cv.width = VW * RES; cv.height = VH * RES;
 
 function fitMapViewport(viewport: { width: number; height: number; cornerBottom: number } | null) {
   const aspect = viewport ? viewport.width / viewport.height : DEFAULT_VW / DEFAULT_VH;
-  const width = viewport ? Math.round(Math.max(LANDSCAPE_VW, LANDSCAPE_VH * aspect)) : DEFAULT_VW;
-  const height = viewport ? Math.round(Math.max(LANDSCAPE_VH, LANDSCAPE_VW / aspect)) : DEFAULT_VH;
+  // Portrait phones: fixed tile size from the width (about 54px, at least 7 columns); the height follows the stage,
+  // so opening a bottom sheet only shortens the view instead of rescaling the tiles.
+  const portrait = viewport && aspect < 1;
+  const width = !viewport ? DEFAULT_VW : portrait ? Math.round(Math.max(7, viewport.width / 54) * T) : Math.round(Math.max(LANDSCAPE_VW, LANDSCAPE_VH * aspect));
+  const height = !viewport ? DEFAULT_VH : portrait ? Math.round(width / aspect) : Math.round(Math.max(LANDSCAPE_VH, LANDSCAPE_VW / aspect));
   // Keep the top row's tile centers reachable below the corner buttons at the upper pan limit.
   const topPad = viewport ? Math.max(TOP_PAD, Math.ceil(viewport.cornerBottom * height / viewport.height - T / 2)) : TOP_PAD;
   if (width === VW && height === VH && topPad === cameraTopPad) return;
@@ -120,7 +123,15 @@ function fitMapViewport(viewport: { width: number; height: number; cornerBottom:
     VW = width; VH = height;
     cv.width = VW * RES; cv.height = VH * RES;
   }
-  if (S) { clampCam(); cv.style.touchAction = scrolls() ? 'none' : 'manipulation'; }
+  if (S) {
+    clampCam();
+    // Keep the selected unit (and the forecast target) on screen when a sheet shrinks the view.
+    const focus = mode === 'idle' || mode === 'busy' ? [] : [sel, picked].filter((u): u is Unit => !!u);
+    if (viewport && focus.length && !focus.every(u => inView(u.x, u.y, 0))) {
+      centerOn((Math.min(...focus.map(u => u.x)) + Math.max(...focus.map(u => u.x))) / 2, (Math.min(...focus.map(u => u.y)) + Math.max(...focus.map(u => u.y))) / 2);
+    }
+    cv.style.touchAction = scrolls() ? 'none' : 'manipulation';
+  }
 }
 const cols = () => S.map[0].length, rows = () => S.map.length;
 /** Camera limits in map pixels (a map smaller than the view is centred). */
@@ -524,7 +535,7 @@ function menu(items: [string, () => void, string?][]) {
     };
     m.appendChild(b);
   }
-  mobileMap.updateMenu(mode === 'menu' ? 'commands' : (mode === 'target' || mode === 'heal') && picked ? 'forecast' : 'map');
+  mobileMap.updateMenu(mode === 'menu' ? 'commands' : (mode === 'target' || mode === 'heal') && picked ? 'forecast' : mode === 'move' && sel ? 'select' : 'map');
 }
 
 // ---------- music ----------

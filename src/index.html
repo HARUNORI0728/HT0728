@@ -475,8 +475,8 @@
     #menu button.back { order: -1; flex: 0 1 auto; }
   }
   .mapToggle, .mapDrawer, #mapBackdrop { display: none; }
-  /* スマホ横向き：地図を画面いっぱいに広げ、必要な欄だけ左右から開く。 */
-  @media (orientation: landscape) and (max-height: 540px) {
+  /* スマホ（横向きの低い画面・縦向きの狭い画面）：地図を画面いっぱいに広げ、必要な欄だけ開く。 */
+  @media (orientation: landscape) and (max-height: 540px), (orientation: portrait) and (max-width: 560px) {
     body {
       --pt: max(4px, env(safe-area-inset-top, 0px)); --pb: max(4px, env(safe-area-inset-bottom, 0px));
       --pl: max(4px, env(safe-area-inset-left, 0px)); --pr: max(4px, env(safe-area-inset-right, 0px));
@@ -525,6 +525,25 @@
     #tut .tutBtns button { min-height: 32px; }
     #rushBtn { min-height: 32px; }
     #banner { top: 34%; }
+  }
+  /* 縦向きスマホ：上に小さな帯（章名・ターン・格子・速度・音・？）、地図は残り全部、欄は地図の下からせり上がる（地図は隠さず縮むだけ）。 */
+  @media (orientation: portrait) and (max-width: 560px) {
+    #app { display: flex; flex-direction: column; gap: 4px; }
+    #hud { flex: 0 0 auto; order: 0; min-height: 44px; padding: 0 64px; justify-content: center; flex-wrap: wrap; row-gap: 0; }
+    #hud .hudBreak { display: none; }
+    #chTitle { font-size: 12.5px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #hud button { min-height: 40px; min-width: 40px; }
+    #stage { flex: 1 1 0; min-height: 0; height: auto; order: 1; }
+    .mapToggle { top: 0; min-width: 58px; }
+    #mapInfoToggle { left: 0; }
+    #mapActionsToggle { right: 0; }
+    #mapBackdrop { display: none !important; }
+    .mapDrawer { position: static; order: 2; width: auto; max-height: 48%; flex: 0 0 auto; padding: 6px; gap: 6px; }
+    #mapActionsDrawer #menu { order: -1; }
+    #menu button.back { order: -1; flex: 0 1 auto; min-width: 84px; }
+    #tut { left: 6px; right: 6px; top: 6px; }
+  }
+  @media (orientation: landscape) and (max-height: 540px) {
     /* タイトル・難易度：縦に収まらないときはスクロール（上下が切れない） */
     #title { justify-content: safe center; overflow-y: auto; gap: 8px; padding-block: 10px; }
     #star { margin-bottom: 4px; width: 10px; height: 10px; }
