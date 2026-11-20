@@ -11,6 +11,7 @@ AI導入支援と補助金活用に強みを持つ中小企業診断士事務所
   - `logo/` … ロゴ（C案）。`hal-mark.svg` 標準、`hal-mark-white.svg` 濃い背景用、`hal-mark-navy-bg.svg` 紺地付き
   - `business-card.html` / `.pdf` … 名刺（91×55mm、表裏）。メールとURL、QRコードは仮
   - `logo-options.html` … ロゴ案の比較用
+  - `image-list.md` … 画像生成AIで用意する画像の一覧と指示文
   - `ogp.png` … SNSで共有されたときの画像（公開時にドメインと合わせて設定）
 - `apple-touch-icon.png` … スマホのホーム画面に追加したときのアイコン
 - `business/` … 事業運営の資料（たたき台）
