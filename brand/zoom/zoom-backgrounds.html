@@ -103,6 +103,19 @@ em{font-style:normal;color:var(--gold)}
 .d .mk .mark{width:150px;height:150px}
 .d .mk b{font-family:"Noto Serif JP",serif;font-weight:600;font-size:30px;letter-spacing:.2em;padding-left:.2em}
 
+/* ---------- E 採用案：Dの背景＋Aの名前配置 ---------- */
+.e{background:
+  radial-gradient(1000px 760px at 50% 62%,rgba(255,255,255,.95),transparent 70%),
+  linear-gradient(180deg,#f7f3ea 0%,#ebe2d0 100%)}
+.e.navy{background:
+  radial-gradient(1000px 760px at 50% 62%,rgba(150,168,214,.18),transparent 70%),
+  linear-gradient(180deg,#1a2340 0%,#0f1528 100%)}
+.e .orb{position:absolute;left:50%;top:50%;width:2100px;height:2100px;transform:translate(-45%,-40%);opacity:.5}
+.e .brand{position:absolute;left:96px;top:84px}
+.e .who{position:absolute;left:96px;top:236px;padding-left:138px}
+.e .who p{font-size:26px;letter-spacing:.14em;color:var(--sub)}
+.e .who p b{font-family:"Noto Serif JP",serif;font-weight:600;font-size:46px;letter-spacing:.22em;color:var(--ink);margin-left:18px;vertical-align:-4px}
+
 .tag{position:absolute;left:24px;bottom:16px;font-size:14px;color:rgba(0,0,0,.25)}
 </style>
 </head>
@@ -141,6 +154,14 @@ em{font-style:normal;color:var(--gold)}
   <svg class="orb" viewBox="0 0 800 800"><g transform="rotate(-24 400 400)"><ellipse class="g" cx="400" cy="400" rx="390" ry="150"/><ellipse class="n" cx="400" cy="400" rx="300" ry="115"/></g></svg>
   <div class="mk"><span class="mark"></span><b>HAL経営相談室</b></div></template>
 
+<!-- E 採用案 -->
+<template id="E">
+  <svg class="orb" viewBox="0 0 800 800"><g transform="rotate(-24 400 400)"><ellipse class="g" cx="400" cy="400" rx="390" ry="150"/><ellipse class="n" cx="400" cy="400" rx="300" ry="115"/></g></svg>
+  <div class="brand-slot"></div>
+  <div class="who"><p>代表　中小企業診断士<b>武内 治憲</b></p></div></template>
+
+<section class="bg e light" id="e-light" data-t="E"></section>
+<section class="bg e navy"  id="e-navy"  data-t="E"></section>
 <section class="bg a light" id="a-light" data-t="A"></section>
 <section class="bg a navy"  id="a-navy"  data-t="A"></section>
 <section class="bg b navy"  id="b-navy"  data-t="B"></section>
