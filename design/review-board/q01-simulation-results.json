@@ -6,8 +6,8 @@
       "chapter": 9,
       "counts": {
         "win": 6,
-        "lose": 4,
-        "timeout": 2
+        "lose": 5,
+        "timeout": 1
       },
       "winningTurns": [
         13,
@@ -30,14 +30,14 @@
       ],
       "falls": {
         "cliff": 10,
-        "eris": 2,
-        "perugius": 6,
-        "rudeus": 3,
-        "zanoba": 2,
-        "ghislaine": 3,
-        "paul": 3,
+        "eris": 1,
+        "perugius": 5,
+        "rudeus": 4,
         "ruijerd": 1,
-        "sylphiette": 2
+        "ghislaine": 3,
+        "zanoba": 2,
+        "paul": 1,
+        "sylphiette": 1
       }
     },
     {
@@ -49,15 +49,15 @@
         12,
         12,
         13,
-        13,
+        14,
         14,
         14,
         15,
         16,
-        16,
         17,
         17,
-        18
+        18,
+        19
       ],
       "triggeredBattleScenes": [
         "ch10.battle1",
@@ -71,13 +71,11 @@
         "ch10.battle9"
       ],
       "falls": {
-        "sylphiette": 2,
+        "sylphiette": 4,
         "zanoba": 8,
-        "cliff": 7,
+        "cliff": 5,
         "ghislaine": 4,
-        "roxy": 7,
-        "ruijerd": 1,
-        "paul": 1
+        "roxy": 5
       }
     }
   ],
@@ -97,7 +95,7 @@
       "chapter10": "win",
       "turns": [
         18,
-        15
+        14
       ]
     },
     {
@@ -115,12 +113,7 @@
     },
     {
       "seed": 5,
-      "chapter9": "win",
-      "chapter10": "win",
-      "turns": [
-        19,
-        13
-      ]
+      "chapter9": "lose"
     },
     {
       "seed": 6,
