@@ -177,6 +177,8 @@ const followLog: { name: string; x: number; y: number; before: boolean; after: b
 /** Between chapters: the party, its bonds, the difficulty, and which chapter comes next. ended = the story was finished. */
 interface Camp {
   next: number; cleared: number; roster: Unit[]; bonds: Bonds; difficulty: Difficulty; ended?: boolean;
+  /** Connects a finale in progress with its clear record across separate storage writes. */
+  endingId?: string;
   /** 所持金（銀）。章クリアごとに chapterReward が入る。 */
   gold: number;
   /** 直前の章で控えが得た経験値（部隊タブに表示）。 */
@@ -205,10 +207,10 @@ interface SaveData { v: 6; battle: State | null; camp: Camp | null; seen: string
 // v4: added `seen`. v3: State gained difficulty / bench / flags, Camp gained difficulty, Unit gained out / guest / left.
 const SAVE = 'fittoa-save-v6', SAVE_V5 = 'fittoa-save-v5', SAVE_V4 = 'fittoa-save-v4', SAVE_V3 = 'fittoa-save-v3', SAVE_V2 = 'fittoa-save-v2', SAVE_V1 = 'fittoa-save-v1';
 let camp: Camp | null = null, inBattle = false, seen: string[] = [];
-function save() {
+function save(): boolean {
   const bonds = camp?.bonds ?? (inBattle ? S?.bonds : undefined);
   const d: SaveData = { v: 6, battle: inBattle ? S : null, camp, seen, married: bonds ? marriedTo(bonds) : [] };
-  try { localStorage.setItem(SAVE, JSON.stringify(d)); } catch { /* storage unavailable */ }
+  try { localStorage.setItem(SAVE, JSON.stringify(d)); return true; } catch { return false; }
 }
 /**
  * Records a battle conversation in the stored save right away, without saving the rest of the state (a save in the
@@ -249,6 +251,14 @@ function normalize(d: any): SaveData | null {
   let cp: Camp | null = null;
   if (c && Array.isArray(c.roster) && typeof c.next === 'number' && typeof c.cleared === 'number' && c.cleared >= 1) {
     cp = { next: c.next, cleared: c.cleared, roster: c.roster.filter(validUnit), bonds: initBonds(c.bonds), difficulty: validDiff(c.difficulty), gold: Number.isFinite(c.gold) && c.gold > 0 ? Math.floor(c.gold) : 0, ...(c.ended === true ? { ended: true } : {}), ...(SCHOOLS.includes(c.school) ? { school: c.school } : {}), ...(c.hard === true ? { hard: true } : {}), ...(Array.isArray(c.bench) ? { bench: c.bench.filter((g: any) => g && typeof g.id === 'string' && typeof g.exp === 'number') } : {}), ...(Array.isArray(c.stash) ? { stash: c.stash.filter(validStash) } : {}), ...runStats(c), ...(validTent(c.tent) ? { tent: validTent(c.tent) } : {}) };
+    if (typeof c.endingId === 'string' && c.endingId) cp.endingId = c.endingId;
+    if (!battle && chapterDef(cp.cleared - 1)?.ending && (cp.endingId || cp.ended)) {
+      const clear = loadClear();
+      const endingId = cp.endingId;
+      if (endingId && clear?.runs.some(run => run.endingId === endingId)) cp.ended = true;
+      // Older versions saved ended before playback. Without a history, the missing clear is unambiguous.
+      else if (cp.ended && !clear) { delete cp.ended; cp.endingId ??= newEndingId(); }
+    }
   }
   const married = Array.isArray(d?.married) ? d.married.filter((k: unknown) => typeof k === 'string' && CANDIDATES.includes(k as string)) : [];
   if (cp) ensureMarried(cp.bonds, married);
@@ -271,12 +281,13 @@ function load(): SaveData | null {
   return null;
 }
 
-// ---------- クリア記録・引き継ぎ（別のキー。セーブ v6 は Camp の任意項目 turns / falls / round だけ） ----------
+// ---------- クリア記録・引き継ぎ（別のキー） ----------
 /** One finished story: who Rudeus married, the settings, and a few totals. */
-interface ClearRun { date: string; married: string[]; difficulty: Difficulty; hard: boolean; turns: number; falls: number; round: number }
+interface ClearRun { date: string; married: string[]; difficulty: Difficulty; hard: boolean; turns: number; falls: number; round: number; endingId?: string }
 /** runs = every clear (newest last, at most 20); seen = everything watched in any run (鑑賞); gold / stash = the last run's, for 引き継ぎ. */
 interface ClearData { v: 1; runs: ClearRun[]; seen: string[]; gold: number; stash: string[] }
 const CLEAR_KEY = 'fittoa-clear';
+const newEndingId = () => crypto.getRandomValues(new Uint32Array(4)).join('-');
 const fin = (n: unknown) => (typeof n === 'number' && Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0);
 /** Camp.turns / falls / round from a stored camp (v6 optional items; missing in older saves). */
 const runStats = (c: any) => ({ ...(fin(c?.turns) ? { turns: fin(c.turns) } : {}), ...(fin(c?.falls) ? { falls: fin(c.falls) } : {}), ...(fin(c?.round) > 1 ? { round: fin(c.round) } : {}) });
@@ -287,17 +298,19 @@ function loadClear(): ClearData | null {
     const runs: ClearRun[] = d.runs.filter((r: any) => r && typeof r.date === 'string').map((r: any) => ({
       date: r.date, married: Array.isArray(r.married) ? r.married.filter((k: unknown) => typeof k === 'string' && CANDIDATES.includes(k as string)) : [],
       difficulty: validDiff(r.difficulty), hard: r.hard === true, turns: fin(r.turns), falls: fin(r.falls), round: Math.max(1, fin(r.round)),
+      ...(typeof r.endingId === 'string' && r.endingId ? { endingId: r.endingId } : {}),
     }));
     if (!runs.length) return null;
     return { v: 1, runs, seen: Array.isArray(d.seen) ? d.seen.filter((k: unknown) => typeof k === 'string') : [], gold: fin(d.gold), stash: Array.isArray(d.stash) ? d.stash.filter(validStash) : [] };
   } catch { return null; }
 }
 /** Right after the ending first plays: adds this run to the clear record. */
-function recordClear(c: Camp) {
+function recordClear(c: Camp, endingId: string): boolean {
   const prev = loadClear();
-  const run: ClearRun = { date: new Date().toISOString().slice(0, 10), married: marriedTo(c.bonds), difficulty: c.difficulty, hard: !!c.hard, turns: c.turns ?? 0, falls: c.falls ?? 0, round: c.round ?? 1 };
+  if (prev?.runs.some(run => run.endingId === endingId)) return true;
+  const run: ClearRun = { date: new Date().toISOString().slice(0, 10), married: marriedTo(c.bonds), difficulty: c.difficulty, hard: !!c.hard, turns: c.turns ?? 0, falls: c.falls ?? 0, round: c.round ?? 1, endingId };
   const d: ClearData = { v: 1, runs: [...(prev?.runs ?? []), run].slice(-20), seen: [...new Set([...(prev?.seen ?? []), ...seen])], gold: c.gold, stash: [...(c.stash ?? [])] };
-  try { localStorage.setItem(CLEAR_KEY, JSON.stringify(d)); } catch { /* storage unavailable */ }
+  try { localStorage.setItem(CLEAR_KEY, JSON.stringify(d)); return true; } catch { return false; }
 }
 /** 引き継ぎ: State.flags `carry:gold` (silver), `carry:round` (this run's number), `carry:item:<id>` (count); moved into the camp after chapter 1. */
 const CARRY = 'carry:';
@@ -1224,18 +1237,29 @@ const endingLog: string[] = [];
  */
 async function playEnding(first: boolean, married?: string[]) {
   if (!camp && !married) return;
+  const completedCamp = first ? camp : null;
+  const endingId = completedCamp && (completedCamp.endingId ??= newEndingId());
   // married = a replay from the title's 鑑賞 (no camp): the last clear's marriages
   const ctx = camp && !married ? { married: marriedTo(camp.bonds), bonds: camp.bonds, out: camp.roster.filter(u => u.out && CANDIDATES.includes(u.id)).map(u => u.id) } : { married: married ?? [], bonds: {} as Bonds, out: [] };
-  if (first && camp) { camp.ended = true; save(); }
+  if (completedCamp) save();
   for (const part of endingSequence(ctx)) {
     endingLog.push(part.id);
     if (part.id.startsWith('after.')) await banner(`後日談　${part.title.replace(/^後日談　/, '').replace(/（.*$/, '')}`, 900);
     cueBgm(part.bgm);
     await play(part.lines, { bg: part.bg });
-    if (first) markSeen(part.id);
+    if (completedCamp) { markSeen(part.id); save(); }
   }
   await credits();
-  if (first && camp) { save(); recordClear(camp); showTitle('クリアおめでとう！　「つづきから」で章間に戻り、記録から結末を見返せる。「はじめから」で引き継いで始められる。'); }
+  if (completedCamp && endingId) {
+    // Save the linking ID and viewed scenes before the clear record, then mark the camp finished.
+    if (!save() || !recordClear(completedCamp, endingId)) {
+      showTitle('クリア記録を保存できませんでした。');
+      return;
+    }
+    completedCamp.ended = true;
+    save();
+    showTitle('クリアおめでとう！　「つづきから」で章間に戻り、記録から結末を見返せる。「はじめから」で引き継いで始められる。');
+  }
 }
 /** スタッフロール風の締め：名前が下から流れる。タップで飛ばせる。 */
 function credits(): Promise<void> {
@@ -1558,10 +1582,12 @@ async function goNext() {
   if (camp && pendingFinale()) {
     $<HTMLButtonElement>('btnNext').disabled = true;
     $('camp').hidden = true;
-    const ch = chapterDef(camp.cleared - 1);
-    await playScene(ch.outro);
-    if (ch.interlude) await playScene(ch.interlude);
-    await supportTalks(camp);
+    if (!camp.endingId) {
+      const ch = chapterDef(camp.cleared - 1);
+      await playScene(ch.outro);
+      if (ch.interlude) await playScene(ch.interlude);
+      await supportTalks(camp);
+    }
     await playEnding(true);
     return;
   }
@@ -1779,7 +1805,7 @@ $('btnGallery').onclick = () => showGallery();
 $('btnLoad').onclick = () => {
   const d = load();
   if (!d) return;
-  camp = d.camp; seen = d.seen;
+  camp = d.camp; seen = d.seen; inBattle = !!d.battle;
   if (d.battle) { d.battle.phase = 'blue'; start(d.battle, false); } else if (camp) { $('title').hidden = true; showCamp(); }
 };
 $('btnRetryPhase').onclick = () => { const d = load(); if (d?.battle) { camp = d.camp; seen = d.seen; d.battle.phase = 'blue'; start(d.battle, false); } };
