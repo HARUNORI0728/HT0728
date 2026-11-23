@@ -1,6 +1,11 @@
 type Drawer = 'info' | 'actions';
 type MenuView = 'map' | 'select' | 'commands' | 'forecast';
-type MapViewport = { width: number; height: number; cornerBottom: number };
+export type MapViewport = {
+  width: number;
+  height: number;
+  orientation: 'landscape' | 'portrait';
+  cornerBottom: number;
+};
 
 /**
  * Reuse the battle UI in phone layouts (short landscape, or narrow portrait), restoring its original DOM order otherwise.
@@ -45,11 +50,11 @@ export function mountMobileMap(onViewport: (viewport: MapViewport | null) => voi
     if (!layout.matches) return;
     const { clientWidth: width, clientHeight: height } = stage;
     if (!width || !height) return;
-    const cornerBottom = Math.max(
-      toggles.info.offsetTop + toggles.info.offsetHeight,
-      toggles.actions.offsetTop + toggles.actions.offsetHeight,
-    ) - stage.offsetTop + 2;
-    onViewport({ width, height, cornerBottom });
+    const cornerBottom = Math.max(0, Math.max(
+      toggles.info.getBoundingClientRect().bottom,
+      toggles.actions.getBoundingClientRect().bottom,
+    ) - stage.getBoundingClientRect().top + 2);
+    onViewport({ width, height, orientation: portrait.matches ? 'portrait' : 'landscape', cornerBottom });
   }
 
   function reflow() {

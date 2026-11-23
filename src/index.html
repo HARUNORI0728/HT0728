@@ -544,6 +544,9 @@
     #tut { left: 6px; right: 6px; top: 6px; }
   }
   @media (orientation: landscape) and (max-height: 540px) {
+    /* Keep the map corners available while retaining a full-size touch target. */
+    .mapToggle { min-width: 48px; }
+    #tut { left: 60px; right: 60px; }
     /* タイトル・難易度：縦に収まらないときはスクロール（上下が切れない） */
     #title { justify-content: safe center; overflow-y: auto; gap: 8px; padding-block: 10px; }
     #star { margin-bottom: 4px; width: 10px; height: 10px; }

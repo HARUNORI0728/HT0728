@@ -30,7 +30,7 @@ import { BLOCKING, changedTiles, drawGrid, drawGuideMarks, paintedLayer } from '
 import { audio } from './audio/engine';
 import { chooseMapTrack, engagedBoss, openingTrack, restoresMapTrack } from './audio/map-track';
 import { mountAudioUi } from './audio/ui';
-import { mountMobileMap } from './ui/mobile-map';
+import { mountMobileMap, type MapViewport } from './ui/mobile-map';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const cv = $<HTMLCanvasElement>('cv'), ctx = cv.getContext('2d')!;
@@ -99,19 +99,20 @@ let shakeFx = { t0: 0, dur: 0, amp: 0 }, flashFx = { t0: 0, dur: 0, a: 0 };
 const cam = { x: 0, y: 0 };
 /** The view in map pixels (12×8 tiles). The canvas backing store is RES times larger so sprites stay sharp. */
 const DEFAULT_VW = 12 * T, DEFAULT_VH = 8 * T;
-const LANDSCAPE_VW = 9 * T, LANDSCAPE_VH = 6.5 * T;
+const LANDSCAPE_MIN_COLS = 7.5, LANDSCAPE_MIN_ROWS = 5.5;
 const TOP_PAD = Math.round(T * 0.45);
 let VW = DEFAULT_VW, VH = DEFAULT_VH;
 let cameraTopPad = TOP_PAD;
 cv.width = VW * RES; cv.height = VH * RES;
 
-function fitMapViewport(viewport: { width: number; height: number; cornerBottom: number } | null) {
+function fitMapViewport(viewport: MapViewport | null) {
   const aspect = viewport ? viewport.width / viewport.height : DEFAULT_VW / DEFAULT_VH;
   // Portrait phones: fixed tile size from the width (about 54px, at least 7 columns); the height follows the stage,
   // so opening a bottom sheet only shortens the view instead of rescaling the tiles.
-  const portrait = viewport && aspect < 1;
-  const width = !viewport ? DEFAULT_VW : portrait ? Math.round(Math.max(7, viewport.width / 54) * T) : Math.round(Math.max(LANDSCAPE_VW, LANDSCAPE_VH * aspect));
-  const height = !viewport ? DEFAULT_VH : portrait ? Math.round(width / aspect) : Math.round(Math.max(LANDSCAPE_VH, LANDSCAPE_VW / aspect));
+  const width = !viewport ? DEFAULT_VW : viewport.orientation === 'portrait'
+    ? Math.round(Math.max(7, viewport.width / 54) * T)
+    : Math.round(Math.max(LANDSCAPE_MIN_COLS, LANDSCAPE_MIN_ROWS * aspect) * T);
+  const height = viewport ? Math.round(width / aspect) : DEFAULT_VH;
   // Keep the top row's tile centers reachable below the corner buttons at the upper pan limit.
   const topPad = viewport ? Math.max(TOP_PAD, Math.ceil(viewport.cornerBottom * height / viewport.height - T / 2)) : TOP_PAD;
   if (width === VW && height === VH && topPad === cameraTopPad) return;
@@ -137,7 +138,9 @@ const cols = () => S.map[0].length, rows = () => S.map.length;
 /** Camera limits in map pixels (a map smaller than the view is centred). */
 function camBounds() {
   const maxX = cols() * T - VW, maxY = rows() * T - VH;
-  return { minX: maxX < 0 ? maxX / 2 : 0, maxX: maxX < 0 ? maxX / 2 : maxX, minY: maxY < -cameraTopPad ? maxY / 2 : -cameraTopPad, maxY: maxY < -cameraTopPad ? maxY / 2 : maxY };
+  // Center short maps when there is enough headroom above the first row.
+  const minY = Math.min(-cameraTopPad, maxY / 2);
+  return { minX: maxX < 0 ? maxX / 2 : 0, maxX: maxX < 0 ? maxX / 2 : maxX, minY, maxY: Math.max(minY, maxY) };
 }
 const scrolls = () => { if (!S) return false; const b = camBounds(); return b.maxX > b.minX || b.maxY > b.minY; };
 function clampCam() {
