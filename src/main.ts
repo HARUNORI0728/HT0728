@@ -2,9 +2,9 @@
 import { CAST, CHAPTERS, CHARS, CLASSES, RANKS, RANK_PTS, STAT_KEYS, STAT_NAMES, SCHOOLS, SKILLS, SUPPORTS, SUPPORT_BONUS, WEAPONS, WTYPE_NAMES, chapterDef, hasChapter, type EnemyDef, type Line, type Stats, type SupportPair } from './data';
 import {
   DIFFICULTY_NAMES, levelName, POTION_HEAL, addExp, alive, bondStatus, canEscape, canSeize, dangerTiles, linkPartner, objectives, dist, expGain, fight, forecast, gainBonds, goalText, heal, healAmount, healExp, healTargets,
-  initBonds, inRange, key, loseCond, makeEnemy, makeUnit, maxRank, newChapter, nextNeed, outcome, pairKey, planEnemy, promote, promoOptions, rankName, rankUp, readyPairs,
+  initBonds, inRange, key, loseCond, makeEnemy, makeUnit, maxRank, newChapter, nextNeed, outcome, pairKey, planEnemy, promote, promoOptions, rankName, rankUp, readyPairs, talksPerClear,
   WEAPON_SLOTS, benchExp, chapterPicks, rosterOf, sCount, sLimit, sortiePlan, spawnReinforcements, staves, stopTiles, terrainAt, threatTiles, tierOf, turnsLeft, unitAt, upgradeState, usable, weaponLabel,
-  bossId, dueTalks, fightTalks, onMap, talkKey, clearSlow, expBoost, familiarHeal, hasSkill, healingWind, skillsOf, shownVisits, visitFlag, visitsFor,
+  bossId, dueTalks, fightTalks, needsMet, onMap, talkKey, clearSlow, expBoost, familiarHeal, hasSkill, healingWind, skillsOf, shownVisits, visitFlag, visitsFor,
   CANDIDATES, advanceStage, answerConfession, applyAiSwitch, applyTerrainChanges, ensureMarried, isConfession, markedTiles, marriedTo, seizeFlag, stageBgm, stageOf,
   LINK_NAME, type Bonds, type Difficulty, type SortiePlan, type State, type Unit,
 } from './logic';
@@ -559,7 +559,7 @@ function menu(items: [string, () => void, string?][]) {
     b.onclick = () => {
       if (mode === 'busy') return;
       fn();
-      if ((mode as string) === 'busy') mobileMap.close();
+      if ((mode as string) === 'busy') mobileMap.close(true);
     };
     m.appendChild(b);
   }
@@ -773,7 +773,8 @@ async function doVisit(u: Unit, v: NonNullable<ReturnType<typeof chapterDef>['vi
   mode = 'busy'; menu([]); hud();
   S.flags[visitFlag(v)] = true;
   audio.sfx('decide');
-  if (v.talk) { await playScene(v.talk, true); mapMusic(); }
+  const vt = v.talk && (needsMet(S, v.needs) ? v.talk : v.alt);
+  if (vt) { await playScene(vt, true); mapMusic(); }
   const others = [...S.units.filter(o => o.team === 'blue' && !o.guest && onMap(o)), ...S.bench.filter(o => !o.out && !o.guest)];
   const got = takeLoot(u, v.item, v.gold, others, true);
   if (got.silver) S.flags.loot = (Number(S.flags.loot) || 0) + got.silver;
@@ -1194,12 +1195,12 @@ async function endTurn() {
 const castName = (id: string) => CAST[id]?.name ?? id;
 /** Plays every support conversation that is ready (one rank per pair), confirming each rank. */
 async function supportTalks(c: Camp) {
-  const done = new Set<string>();
+  const done = new Map<string, number>(); // talks played per pair this clear (talksPerClear: a late joiner's pair may go two ranks)
   for (;;) {
     const ids = new Set(c.roster.map(u => u.id)); // only pairs who have both joined (start points alone can fill C)
-    const p = readyPairs(c.bonds, c.cleared).find(q => !done.has(pairKey(q.a, q.b)) && ids.has(q.a) && ids.has(q.b));
+    const p = readyPairs(c.bonds, c.cleared).find(q => (done.get(pairKey(q.a, q.b)) ?? 0) < talksPerClear(q) && ids.has(q.a) && ids.has(q.b));
     if (!p) break;
-    done.add(pairKey(p.a, p.b));
+    done.set(pairKey(p.a, p.b), (done.get(pairKey(p.a, p.b)) ?? 0) + 1);
     const next = RANKS[c.bonds[pairKey(p.a, p.b)].rank];
     if (next === 'S' && isConfession(p)) { await confession(c, p); continue; }
     await banner(`支援会話　${castName(p.a)} × ${castName(p.b)}　${next}`, 1100);
@@ -1499,6 +1500,8 @@ function renderLog() {
   const body = $('campBody'), clear = loadClear(), all = !!clear;
   // 見たもの：この周回の seen と、クリア記録に残った過去の周回の分。クリア後はすべて解放。
   const known = new Set([...seen, ...(clear?.seen ?? [])]), has = (k: string) => all || known.has(k);
+  // 再生から戻ると曲が camp／title に戻るので、曲一覧の「再生中」もそれに合わせる。
+  const replayLog = (go: () => Promise<unknown>) => replay(go).then(() => markTracks());
   body.appendChild(el('p', 'hint', all ? 'クリアしたので、すべての会話・背景・曲を見られる。' : 'これまでに見た会話・背景・曲を、もう一度見られる。まだ見ていないものは「？？？」。'));
   const lock = () => { const b = btn('？？？', () => {}, 'logItem locked'); b.disabled = true; return b; };
   const section = (title: string, n: number, total: number, open = false) => {
@@ -1513,31 +1516,31 @@ function renderLog() {
   for (const id of story) {
     const sc = SCENES[id];
     if (sc.chapter !== part) { part = sc.chapter; list.appendChild(el('h3', 'prepHead', esc(sc.chapter === 0 ? '序章' : sc.chapter === 11 ? '告白' : CHAPTERS[sc.chapter - 1]?.title.replace(/\s+/g, '　') ?? `第${sc.chapter}章`))); }
-    list.appendChild(has(id) ? btn(sc.title.replace(/^第\d+章　/, ''), () => replay(async () => { await playScene(id); }), 'logItem') : lock());
+    list.appendChild(has(id) ? btn(sc.title.replace(/^第\d+章　/, ''), () => replayLog(async () => { await playScene(id); }), 'logItem') : lock());
   }
   const lastRun = clear?.runs[clear.runs.length - 1], lastWed = lastRun?.married ?? [];
   if (camp?.ended || all) {
     list.appendChild(el('h3', 'prepHead', '結末'));
-    list.appendChild(btn('エピローグと後日談、スタッフロール', () => replay(() => replayEnding(lastRun)), 'logItem'));
+    list.appendChild(btn('エピローグと後日談、スタッフロール', () => replayLog(() => replayEnding(lastRun)), 'logItem'));
   }
   sec1.appendChild(list);
   // 支援会話（組ごと・ランクごと）
   const supKeys = SUPPORTS.flatMap(p => (['C', 'B', 'A', ...(p.max === 'S' ? ['S'] : [])] as string[]).map(r => ({ p, r, k: supKey(p.a, p.b, r) })));
   const sec2 = section('支援会話', supKeys.filter(s => has(s.k)).length, supKeys.length), l2 = el('div', 'logList');
-  for (const { p, r, k } of supKeys) l2.appendChild(has(k) ? btn(`${castName(p.a)} × ${castName(p.b)}　${r}`, () => replay(() => playSupport(p, r)), 'logItem') : lock());
+  for (const { p, r, k } of supKeys) l2.appendChild(has(k) ? btn(`${castName(p.a)} × ${castName(p.b)}　${r}`, () => replayLog(() => playSupport(p, r)), 'logItem') : lock());
   sec2.appendChild(l2);
   // ふたりの時間・嫁どうしの会話
   const sec3 = section('ふたりの時間', DATE_TALKS.filter(d => has(d.id)).length, DATE_TALKS.length), l3 = el('div', 'logList');
-  for (const d of DATE_TALKS) l3.appendChild(has(d.id) ? btn(`${castName(d.who)}　${d.no}「${d.scene.title}」`, () => replay(() => playDate(d)), 'logItem') : lock());
+  for (const d of DATE_TALKS) l3.appendChild(has(d.id) ? btn(`${castName(d.who)}　${d.no}「${d.scene.title}」`, () => replayLog(() => playDate(d)), 'logItem') : lock());
   sec3.appendChild(l3);
   const sec4 = section('嫁どうしの会話', WIFE_TALKS.filter(w => has(w.id)).length, WIFE_TALKS.length), l4 = el('div', 'logList');
   const wedNow = (w: WifeTalk) => [...new Set([...(camp ? marriedTo(camp.bonds) : lastWed), ...w.members])];
-  for (const w of WIFE_TALKS) l4.appendChild(has(w.id) ? btn(w.scene.title, () => replay(async () => { sceneMusic(w.scene.bgm, 'daily'); await play(wifeLines(w, wedNow(w)), { bg: w.scene.bg }); }), 'logItem') : lock());
+  for (const w of WIFE_TALKS) l4.appendChild(has(w.id) ? btn(w.scene.title, () => replayLog(async () => { sceneMusic(w.scene.bgm, 'daily'); await play(wifeLines(w, wedNow(w)), { bg: w.scene.bg }); }), 'logItem') : lock());
   sec4.appendChild(l4);
   // キャンプの日々（離脱した仲間の行は、いまの名簿で飛ばす）
   const secD = section('キャンプの日々', DAILY_TALKS.filter(d => has(d.id)).length, DAILY_TALKS.length), lD = el('div', 'logList');
   const presentNow = camp ? camp.roster.filter(u => !u.out).map(u => u.id) : undefined;
-  for (const d of DAILY_TALKS) lD.appendChild(has(d.id) ? btn(`${d.no}「${d.scene.title}」`, () => replay(() => playDaily(d, presentNow)), 'logItem') : lock());
+  for (const d of DAILY_TALKS) lD.appendChild(has(d.id) ? btn(`${d.no}「${d.scene.title}」`, () => replayLog(() => playDaily(d, presentNow)), 'logItem') : lock());
   secD.appendChild(lD);
   // 一枚絵と背景
   const pics = [...Object.keys(EVENT_ART).map(n => ({ k: `cg:${n}`, n, cg: true })), ...Object.keys(BG_ART).filter(n => n !== 'title').map(n => ({ k: `bg:${n}`, n, cg: false }))];
@@ -1547,7 +1550,7 @@ function renderLog() {
     const b = document.createElement('button'); b.type = 'button';
     if (has(p.k)) {
       b.innerHTML = `<img loading="lazy" src="${esc(url)}" alt=""><small>${esc(label)}</small>`;
-      b.onclick = () => replay(async () => { await play(p.cg ? [{ who: '', text: '', cg: p.n }, { who: '', text: '（思い出の一場面）' }] : [{ who: '', text: `（${label}）` }], p.cg ? {} : { bg: p.n }); });
+      b.onclick = () => replayLog(async () => { await play(p.cg ? [{ who: '', text: '', cg: p.n }, { who: '', text: '（思い出の一場面）' }] : [{ who: '', text: `（${label}）` }], p.cg ? {} : { bg: p.n }); });
     } else { b.innerHTML = '<span class="lockBox">？？？</span><small>　</small>'; b.disabled = true; }
     grid.appendChild(b);
   }
@@ -1556,7 +1559,7 @@ function renderLog() {
   const tracks = [...new Set([...SONG_NAMES, ...Object.keys(BGM_FILES)])].filter(n => !JINGLES.includes(n));
   const sec6 = section('曲', tracks.filter(n => has(`bgm:${n}`)).length, tracks.length), l6 = el('div', 'logList');
   const back = galleryMode ? 'title' : 'camp';
-  const mark = () => { for (const b of l6.querySelectorAll<HTMLButtonElement>('button[data-track]')) b.classList.toggle('playing', b.dataset.track === audio.current); };
+  const mark = () => markTracks(l6);
   for (const n of tracks) {
     if (!has(`bgm:${n}`)) { l6.appendChild(lock()); continue; }
     const b = btn(`♪ ${TRACK_NAMES[n] ?? n}`, () => { audio.bgm(audio.current === n ? back : n); mark(); }, 'logItem');
@@ -1565,6 +1568,10 @@ function renderLog() {
   l6.appendChild(btn('もとの曲にもどす', () => { audio.bgm(back); mark(); }));
   mark();
   sec6.appendChild(l6);
+}
+/** 鑑賞の曲一覧の「再生中」表示を、いま流れている曲に合わせる（会話・一枚絵の再生から戻ったときも）。 */
+function markTracks(root: ParentNode = $('campBody')) {
+  for (const b of root.querySelectorAll<HTMLButtonElement>('button[data-track]')) b.classList.toggle('playing', b.dataset.track === audio.current);
 }
 /** 曲名（鑑賞の「曲」）。 */
 const TRACK_NAMES: Record<string, string> = {

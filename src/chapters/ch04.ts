@@ -94,7 +94,7 @@ export const ch04: Chapter = {
     { scene: 'ch4.battle1', when: { type: 'turn', turn: 1, phase: 'blue' } },
     { scene: 'ch4.battle2', when: { type: 'firstFight', unit: 'sylphiette' } },
     { scene: 'ch4.battle3', when: { type: 'reinforce', wave: 0 } },
-    { scene: 'ch4.battle4', when: { type: 'turn', turn: 4, phase: 'blue' } },
+    { scene: 'ch4.battle4', when: { type: 'turn', turn: 4, phase: 'blue' }, needs: ['sylphiette'], alt: 'ch4.battle11' },
     { scene: 'ch4.battle8', when: { type: 'reinforce', wave: 1 } },
     { scene: 'ch4.battle9', when: { type: 'stageStart', stage: 1 } },
     { scene: 'ch4.battle10', when: { type: 'reinforce', wave: 1, stage: 1 } },

@@ -86,7 +86,7 @@ export const ch08: Chapter = {
     { scene: 'ch8.battle1', when: { type: 'turn', turn: 1, phase: 'blue' } },
     { scene: 'ch8.battle2', when: { type: 'firstFight', unit: 'isolde' } },
     { scene: 'ch8.battle3', when: { type: 'reinforce', wave: [0, 1, 2] } },
-    { scene: 'ch8.battle4', when: { type: 'turn', turn: 4, phase: 'blue' } },
+    { scene: 'ch8.battle4', when: { type: 'turn', turn: 4, phase: 'blue' }, needs: ['sylphiette'], alt: 'ch8.battle8' },
     { scene: 'ch8.battle5', when: { type: 'bossFight', boss: 'labyrinth' } },
     { scene: 'ch8.battle6', when: { type: 'bossDefeat', boss: 'labyrinth' } },
     { scene: 'ch8.battle7', when: { type: 'turn', turn: 8, phase: 'blue' } },

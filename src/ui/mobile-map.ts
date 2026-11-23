@@ -27,6 +27,9 @@ export function mountMobileMap(onViewport: (viewport: MapViewport | null) => voi
   });
   let opened: Drawer | null = null;
   let view: MenuView = 'map';
+  // The drawer the player opened with its toggle (cleared when they close it). It survives a rotation, and in portrait
+  // the info sheet stays open through map taps until closed by hand (the actions sheet still opens and closes by itself).
+  let manual: Drawer | null = null;
 
   function show(next: Drawer | null, focusDrawer = false) {
     if (!layout.matches) return;
@@ -62,7 +65,7 @@ export function mountMobileMap(onViewport: (viewport: MapViewport | null) => voi
     if (layout.matches) {
       drawers.info.append(goal, bonus, info);
       if (portrait.matches) { positions[1].home.after(hud); drawers.actions.append(menu); } else drawers.actions.append(hud, menu);
-      show(wanted());
+      show(wanted() ?? manual);
       measure();
     } else {
       opened = null;
@@ -78,16 +81,21 @@ export function mountMobileMap(onViewport: (viewport: MapViewport | null) => voi
 
   const wanted = (): Drawer | null => view === 'map' || view === 'select' && !portrait.matches ? null : 'actions';
 
-  function close() {
+  /** Closes the open drawer. keepManual = a programmatic close (an action started) that does not count as closing it by hand. */
+  function close(keepManual = false) {
+    if (!keepManual) manual = null;
     if (!opened) return false;
     show(null);
     return true;
   }
 
   for (const name of ['info', 'actions'] as const) {
-    toggles[name].addEventListener('click', event => show(opened === name ? null : name, event.detail === 0));
+    toggles[name].addEventListener('click', event => {
+      manual = opened === name ? null : name;
+      show(manual, event.detail === 0);
+    });
   }
-  backdrop.addEventListener('click', close);
+  backdrop.addEventListener('click', () => close());
   layout.addEventListener('change', reflow);
   portrait.addEventListener('change', reflow);
   new ResizeObserver(measure).observe(stage);
@@ -97,7 +105,7 @@ export function mountMobileMap(onViewport: (viewport: MapViewport | null) => voi
     close,
     updateMenu(next: MenuView) {
       view = next;
-      show(wanted());
+      show(wanted() ?? (manual === 'info' && portrait.matches ? 'info' : null));
     },
   };
 }

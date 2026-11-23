@@ -435,6 +435,7 @@ export type WinCond =
 export interface LoseCond { units: string[]; tile?: Tile; tiles?: Tile[]; tileBy?: string }
 /**
  * 指定ターン（段の中でも通しのターン番号）の敵軍フェイズ開始時に出現。出現マスが埋まっていれば次のターンに持ち越す。
+ * ボスを含む波は、ボス本人が出た時点で「出現」とみなす（会話 reinforce の発火。6章のオーベール）。
  * from = 発生源の敵の印（EnemyDef.tag）。その敵が盤面にいなければ（倒された・撤退）この増援は出ない（M6）。
  */
 export interface Reinforce { turn: number; units: EnemyDef[]; from?: string }
@@ -461,8 +462,10 @@ export type TalkWhen =
 /**
  * needs = この全員が盤面にいるときだけ再生する（仲間はキャラID、敵はボスのキャラID）。いなければ場面ごと飛ばす
  * （3章⑦のエリスとロキシーの掛け合い、7章⑥のバラク など）。
+ * alt = needs が欠けたとき、場面ごと飛ばす代わりに再生する場面（倒れて下がった仲間の台詞が抜けて話が宙に浮くもの。
+ * 4章④のシルフィエット、8章④の殿 など）。どちらかを再生した時点で両方とも済みにする。
  */
-export interface TalkEvent { scene: SceneId; when: TalkWhen; needs?: string[] }
+export interface TalkEvent { scene: SceneId; when: TalkWhen; needs?: string[]; alt?: SceneId }
 /** 盤面に加わる味方（段の切り替え時）。guest = ゲスト（操作できる。倒れると敗北、次章へ持ち越さない）。 */
 export interface AllyDef { id: string; x: number; y: number; guest?: boolean }
 /**
@@ -497,7 +500,8 @@ export interface StageDef {
  */
 export type Objective = ({ type: 'turns'; max: number } | { type: 'noLoss' } | { type: 'visits'; kind?: 'chest' | 'village' } | { type: 'boss'; boss: string })
   & { gold: number; label?: string };
-export interface VisitDef { x: number; y: number; kind: 'chest' | 'village'; item?: string; gold?: number; talk?: SceneId }
+/** needs / alt：会話 talk の話者がそろわない（倒れて下がった）ときは alt を再生する（7章の檻とリニア）。TalkEvent と同じ。 */
+export interface VisitDef { x: number; y: number; kind: 'chest' | 'village'; item?: string; gold?: number; talk?: SceneId; needs?: string[]; alt?: SceneId }
 export interface Chapter {
   title: string; map: string[];
   /** 物語上の目印。勝敗条件を持たず、盤面で位置と名前を表示する。 */
@@ -589,6 +593,11 @@ export type SupportRank = 'C' | 'B' | 'A' | 'S';
 export const RANKS: SupportRank[] = ['C', 'B', 'A', 'S'];
 /** Cumulative bond points needed for each rank. */
 export const RANK_PTS: Record<SupportRank, number> = { C: 30, B: 80, A: 150, S: 240 };
+/**
+ * 終盤に加わる仲間（第9章後半のペルギウス）。以後の章クリアが2回しかないので、この人を含む組だけは
+ * 1回の章クリアで支援会話を2段階まで進められ、絆も2段階先の分までためられる（そうしないと A に届かない）。
+ */
+export const LATE_JOINERS = ['perugius'];
 /** Points a pair earns when one of them fights while the other stands adjacent. */
 export const SUPPORT_GAIN = 10;
 /** Partners within this Manhattan distance grant their combat bonus. */

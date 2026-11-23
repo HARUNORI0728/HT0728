@@ -78,9 +78,9 @@ export const ch07: Chapter = {
   }],
   // 檻3つ（M13の訪問マス。地形は家屋のまま、檻の絵を重ねる）。訪問すると子どもを助ける短い会話と、奪われた荷（銀・傷薬）。
   visits: [
-    { x: 9, y: 5, kind: 'village', gold: 200, talk: 'ch7.battle8' },
+    { x: 9, y: 5, kind: 'village', gold: 200, talk: 'ch7.battle8', needs: ['linia'], alt: 'ch7.battle13' },
     { x: 13, y: 5, kind: 'village', item: 'potion', gold: 100, talk: 'ch7.battle9' },
-    { x: 9, y: 9, kind: 'village', gold: 250, talk: 'ch7.battle10' },
+    { x: 9, y: 9, kind: 'village', gold: 250, talk: 'ch7.battle10', needs: ['linia'], alt: 'ch7.battle14' },
   ],
   // 副目標（Chapter.bonus。ふつうの通しプレイの手数を見て、少し頑張れば届く線）
   bonus: [{ type: 'visits', kind: 'village', gold: 200, label: '檻の子どもを全員助ける{n}' }, { type: 'turns', max: 12, gold: 200 }],

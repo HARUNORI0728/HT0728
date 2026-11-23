@@ -436,11 +436,11 @@ function shopStep(roster, gold, cleared) {
 function campStep(roster, bonds, cleared) {
   // supports (talks skipped) and confessions (応える)
   const ids = new Set(roster.map(u => u.id));
-  const done = new Set();
+  const done = new Map();
   for (;;) {
-    const p = L.readyPairs(bonds, cleared).find(q => !done.has(L.pairKey(q.a, q.b)) && ids.has(q.a) && ids.has(q.b));
+    const p = L.readyPairs(bonds, cleared).find(q => (done.get(L.pairKey(q.a, q.b)) ?? 0) < (L.talksPerClear?.(q) ?? 1) && ids.has(q.a) && ids.has(q.b));
     if (!p) break;
-    done.add(L.pairKey(p.a, p.b));
+    done.set(L.pairKey(p.a, p.b), (done.get(L.pairKey(p.a, p.b)) ?? 0) + 1);
     const next = ['C', 'B', 'A', 'S'][bonds[L.pairKey(p.a, p.b)].rank];
     if (next === 'S' && L.isConfession(p)) L.answerConfession(bonds, p, true, cleared); else L.rankUp(bonds, p);
   }

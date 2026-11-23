@@ -1,6 +1,6 @@
 // Pure game rules: movement, combat math, level-ups, enemy AI. No DOM access here.
 import {
-  CAST, CHARS, chapterDef, CLASSES, ENEMY_BASE, FANG_BASE, FANG_MAX, MAGIC, PROMOS, RANKS, RANK_PTS, STAT_KEYS, SUPPORTS, SUPPORT_BONUS, SUPPORT_CAP, SUPPORT_GAIN, SUPPORT_RANGE,
+  CAST, CHARS, LATE_JOINERS, chapterDef, CLASSES, ENEMY_BASE, FANG_BASE, FANG_MAX, MAGIC, PROMOS, RANKS, RANK_PTS, STAT_KEYS, SUPPORTS, SUPPORT_BONUS, SUPPORT_CAP, SUPPORT_GAIN, SUPPORT_RANGE,
   SKILLS, SKILL_LIMIT, S_LIMIT, S_LIMIT_DEFAULT, TERRAIN, TRIANGLE, WEAPONS, ZOC_COST, moveCost,
   type AllyDef, type ArtId, type Chapter, type EnemyAI, type EnemyDef, type LoseCond, type Objective, type Reinforce, type Tile, type WinCond, type PromoReq, type Stats, type SupportBonus, type SupportPair, type SupportRank, type TalkEvent, type TalkWhen, type Team, type TerrainChange, type VisitDef, type Weapon,
 } from './data';
@@ -992,7 +992,10 @@ export function spawnReinforcements(s: State, appeared?: number[]): Unit[] {
     w.units.forEach((e, ei) => {
       const f = rfFlag(st, wi, ei);
       if (s.flags[f] || s.turn < w.turn || unitAt(s, e.x, e.y)) return;
-      const first = !w.units.some((_, j) => s.flags[rfFlag(st, wi, j)]);
+      // A wave led by a boss counts as appeared when the boss itself does (its talk opens with the boss's lines,
+      // e.g. 6章のオーベール), even if a blocked tile let the others come first.
+      const lead = w.units.findIndex(x => x.boss);
+      const first = lead >= 0 ? ei === lead : !w.units.some((_, j) => s.flags[rfFlag(st, wi, j)]);
       const u = makeEnemy(e, uid++, s.hard ? s.chapter : undefined);
       s.units.push(u); s.flags[f] = true; out.push(u);
       if (first) appeared?.push(wi);
@@ -1014,11 +1017,15 @@ export function needsMet(s: State, needs?: string[]): boolean {
 }
 /**
  * This chapter's battle conversations that match `test` and have not played yet: data order, except that
- * firstFight comes before bossFight when one combat sets off both. Talks whose `needs` are not on the map are left out.
+ * firstFight comes before bossFight when one combat sets off both. Talks whose `needs` are not on the map are left out,
+ * or replaced by their `alt` scene.
  */
 export function dueTalks(s: State, test: (w: TalkWhen) => boolean): TalkEvent[] {
   const pri = (w: TalkWhen) => { const i = TALK_ORDER.indexOf(w.type); return i < 0 ? TALK_ORDER.length : i; };
-  return (curChapter(s).talks ?? []).filter(e => !s.flags[talkKey(e.scene)] && test(e.when) && needsMet(s, e.needs)).sort((a, b) => pri(a.when) - pri(b.when));
+  return (curChapter(s).talks ?? [])
+    .filter(e => !s.flags[talkKey(e.scene)] && !(e.alt && s.flags[talkKey(e.alt)]) && test(e.when))
+    .flatMap(e => needsMet(s, e.needs) ? [e] : e.alt ? [{ ...e, scene: e.alt, needs: undefined }] : [])
+    .sort((a, b) => pri(a.when) - pri(b.when));
 }
 /**
  * Conversations a combat between `a` and `b` sets off (before the fight is shown). A boss fight with a member who
@@ -1131,11 +1138,17 @@ export function rankUp(bonds: Bonds, p: SupportPair): SupportRank | null {
   return RANKS[b.rank - 1];
 }
 
-/** Adds points to a pair, stopping at the threshold of the next reachable rank. Returns points actually added. */
+/** Support conversations a pair may play after one chapter clear: 2 for pairs with a late joiner (LATE_JOINERS), else 1. */
+export const talksPerClear = (p: SupportPair) => (LATE_JOINERS.includes(p.a) || LATE_JOINERS.includes(p.b) ? 2 : 1);
+/**
+ * Adds points to a pair, stopping at the threshold of the next reachable rank (for a late joiner's pair, the one after it,
+ * so that one clear can carry it two ranks). Returns points actually added.
+ */
 export function addBond(bonds: Bonds, p: SupportPair, amount: number): number {
   const k = pairKey(p.a, p.b), b = bonds[k] = { ...bondOf(bonds, p) };
-  const need = nextNeed(p, b);
+  let need = nextNeed(p, b);
   if (need === null) return 0;
+  if (talksPerClear(p) > 1 && b.rank + 1 < maxRank(p)) need = RANK_PTS[RANKS[b.rank + 1]];
   const before = b.pts;
   b.pts = Math.min(need, b.pts + amount);
   return b.pts - before;
