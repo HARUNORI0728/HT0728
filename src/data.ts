@@ -446,7 +446,7 @@ export interface Reinforce { turn: number; units: EnemyDef[]; from?: string }
  * - bossFight：ボス boss（キャラID。SPEAKER_IDS で名前から引く）と初めて戦闘になるとき。unit を付けると、その仲間との戦闘の専用版
  *   （M8②）。専用版がある組の戦闘では専用版だけを再生し、汎用版は済みにする。汎用版が先に出ていても、専用版は指定の仲間との初戦闘で出る。
  * - bossDefeat：ボス boss を倒したとき（撤退・捕縛を含む）。撃破の演出の直後。
- * - firstHeal：仲間 unit が初めて杖で回復したとき。回復の演出の直後。
+ * - firstHeal：仲間 unit が初めて杖で回復したとき。回復の演出の直後。target を付けると、その仲間（キャラID）を回復したときだけ。
  * - stageStart：段 stage が始まったとき（段の切り替えの直後。M8①）。
  * 同じ戦闘で重なったら firstFight → bossFight の順。話者が盤面にいない（離脱・未出撃）仲間の台詞は飛ばす。
  */
@@ -456,7 +456,7 @@ export type TalkWhen =
   | { type: 'firstFight'; unit: string }
   | { type: 'bossFight'; boss: string; unit?: string }
   | { type: 'bossDefeat'; boss: string }
-  | { type: 'firstHeal'; unit: string }
+  | { type: 'firstHeal'; unit: string; target?: string }
   | { type: 'stageStart'; stage: number };
 /**
  * needs = この全員が盤面にいるときだけ再生する（仲間はキャラID、敵はボスのキャラID）。いなければ場面ごと飛ばす

@@ -90,7 +90,7 @@ export const ch05: Chapter = {
     // 3ターン目の結晶の増援のうち、最初に出たもの（早く砕いた結晶の分は出ない）
     { scene: 'ch5.battle2', when: { type: 'reinforce', wave: [0, 1, 2] } },
     { scene: 'ch5.battle3', when: { type: 'firstFight', unit: 'sara' } },
-    { scene: 'ch5.battle4', when: { type: 'firstHeal', unit: 'sylphiette' } },
+    { scene: 'ch5.battle4', when: { type: 'firstHeal', unit: 'sylphiette', target: 'sara' } },
     { scene: 'ch5.battle10', when: { type: 'stageStart', stage: 1 } },
     { scene: 'ch5.battle5', when: { type: 'turn', turn: 7, phase: 'blue' } },
     { scene: 'ch5.battle11', when:{ type: 'turn', turn: 10, phase: 'red' }, needs: ['forest_lord'] },

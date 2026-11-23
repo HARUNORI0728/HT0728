@@ -354,7 +354,7 @@ function Sim(rnd, log) {
         if (b.seize && L.canSeize(s, u)) s.flags[L.seizeFlag(s)] = true;
         else if (b.escape && L.canEscape(s, u)) u.left = true;
         else if (b.target) combat(u, b.wid, b.target);
-        else if (b.heal) { const h = L.heal(u, b.wid, b.heal); L.healingWind?.(s, u, b.heal); L.addExp(u, L.expBoost ? L.expBoost(s, u, L.healExp(h)) : L.healExp(h), rnd); if (u.team === 'blue') talk(w => w.type === 'firstHeal' && w.unit === u.id); }
+        else if (b.heal) { const h = L.heal(u, b.wid, b.heal); L.healingWind?.(s, u, b.heal); L.addExp(u, L.expBoost ? L.expBoost(s, u, L.healExp(h)) : L.healExp(h), rnd); if (u.team === 'blue') talk(w => w.type === 'firstHeal' && w.unit === u.id && (!w.target || w.target === b.heal.id)); }
         else if (b.potion) { u.potions--; u.hp = Math.min(u.st.hp, u.hp + L.POTION_HEAL); }
         const o = check(); if (o === 'win' || o === 'lose') result = o;
       }

@@ -826,7 +826,7 @@ async function doHeal(u: Unit, sid: string, t: Unit) {
   float(t, `+${h}`, '#8fe0a0'); audio.sfx('heal');
   if (wind.length) { skillPop(u, SKILLS.healingWind.name); for (const w of wind) float(w.unit, `+${w.hp}`, '#8fe0a0'); }
   await sleep(450);
-  if (u.team === 'blue') await runTalks(dueTalks(S, w => w.type === 'firstHeal' && w.unit === u.id));
+  if (u.team === 'blue') await runTalks(dueTalks(S, w => w.type === 'firstHeal' && w.unit === u.id && (!w.target || w.target === t.id)));
   if (u.team === 'blue' && u.gr) {
     const gains = addExp(u, expBoost(S, u, healExp(h)));
     if (gains) audio.jingle('levelup');
