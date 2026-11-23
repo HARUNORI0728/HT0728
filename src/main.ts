@@ -1593,7 +1593,23 @@ function showGallery() {
   renderLog();
   $('camp').scrollTop = 0;
 }
-async function replay(go: () => Promise<unknown>) { const y = $('camp').scrollTop; await go(); $('camp').scrollTop = y; audio.bgm(galleryMode ? 'title' : 'camp'); }
+let replaying = false;
+async function replay(go: () => Promise<unknown>) {
+  if (replaying) return;
+  const screen = $('camp'), scroll = screen.scrollTop, wasInert = screen.inert;
+  const focus = document.activeElement;
+  replaying = true;
+  screen.inert = true;
+  try {
+    await go();
+  } finally {
+    replaying = false;
+    screen.inert = wasInert;
+    screen.scrollTop = scroll;
+    if (focus instanceof HTMLElement && screen.contains(focus)) focus.focus({ preventScroll: true });
+    audio.bgm(galleryMode ? 'title' : 'camp');
+  }
+}
 
 // ---------- sortie preparation ----------
 /** The sortie screen's state: which chapter, its plan, and the ids picked for the free slots. */
