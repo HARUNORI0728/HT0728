@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { createContext, runInContext } from 'node:vm';
+import { build } from 'esbuild';
 import ts from 'typescript';
 
 // Run the game's persistence and ending functions with fresh page state on each reload.
@@ -10,6 +12,7 @@ const source = ts.createSourceFile(
 const names = new Set([
   'save', 'normalize', 'load', 'loadClear', 'recordClear', 'newEndingId', 'fin', 'runStats',
   'validDiff', 'validStash', 'validUnit', 'markSeen', 'playEnding', 'pendingFinale', 'goNext',
+  'ENDING_S_PAIRS', 'readEndingBranches', 'replayEnding',
 ]);
 const functions = source.statements.filter(statement => (
   names.has(statement.name?.text ?? statement.declarationList?.declarations[0]?.name?.text)
@@ -29,13 +32,13 @@ const fixture = {
 };
 const seenAfterEnding = ['outro', 'ending', 'after.one'];
 
-function setup(camp = fixture.camp, clear) {
+function setup(camp = fixture.camp, clear, story = {}) {
   const storage = new Map([[SAVE, JSON.stringify({ ...fixture, camp })]]);
   if (clear) storage.set(CLEAR_KEY, JSON.stringify(clear));
   let nextId = 0;
   const visits = [];
 
-  function reload({ credits = async () => {}, rejectWrite = () => false } = {}) {
+  function reload({ credits = async () => {}, rejectWrite = () => false, play = async () => {}, cueBgm = () => {} } = {}) {
     const page = createContext({
       SAVE, SAVE_V5: 'v5', SAVE_V4: 'v4', SAVE_V3: 'v3', SAVE_V2: 'v2', SAVE_V1: 'v1', CLEAR_KEY,
       crypto: { getRandomValues(words) { words[0] = ++nextId; return words; } },
@@ -50,16 +53,18 @@ function setup(camp = fixture.camp, clear) {
       camp: null, inBattle: false, seen: [], endingLog: [],
       chapterDef: index => index === 9 ? { ending: true, outro: 'outro' } : undefined,
       ensureMarried() {}, initBonds: bonds => bonds, marriedTo: () => [], validTent() {},
+      pairKey: (a, b) => [a, b].sort().join('+'),
       endingSequence: () => [{ id: 'ending' }, { id: 'after.one', title: 'One' }],
-      async play() {}, async banner() {}, cueBgm() {}, credits,
+      ...story,
+      play, async banner() {}, cueBgm, credits,
       showTitle() {}, $: () => ({}),
       async playScene() { visits.push('outro'); },
       async supportTalks() { visits.push('supports'); },
     });
     runInContext(outputText + `
       const restored = load();
-      camp = restored.camp;
-      seen = restored.seen;
+      camp = restored?.camp ?? null;
+      seen = restored?.seen ?? [];
       globalThis.isPending = pendingFinale;
     `, page);
     return page;
@@ -140,6 +145,59 @@ const legacyCamp = { ...fixture.camp, ended: true };
   assert.deepEqual(game.visits, []);
   assert.equal(game.clear().runs.length, 1);
   assert.equal(game.save().camp.ended, true);
+}
+
+// Compare the actual generated ending on initial clear, after dropping the camp, and from the completed camp.
+{
+  const bundle = await build({
+    stdin: {
+      contents: `export { endingSequence } from './src/story.ts';
+        export { CANDIDATES, initBonds, makeUnit, marriedTo, pairKey } from './src/logic.ts';
+        export { CLASSES, WEAPONS } from './src/data.ts';`,
+      resolveDir: fileURLToPath(new URL('..', import.meta.url)),
+    },
+    bundle: true, platform: 'node', format: 'esm', write: false,
+  });
+  const story = await import(`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString('base64')}`);
+  const { CANDIDATES, endingSequence, initBonds, makeUnit, marriedTo, pairKey } = story;
+  const lukeSara = pairKey('luke', 'sara'), cliffElinalise = pairKey('cliff', 'elinalise');
+  const bonds = initBonds({
+    [lukeSara]: { rank: 4, pts: 0 }, [cliffElinalise]: { rank: 4, pts: 0 },
+    [pairKey('rudeus', 'roxy')]: { rank: 4, pts: 0 }, [pairKey('rudeus', 'sylphiette')]: { rank: 4, pts: 0 },
+  });
+  const roster = [...CANDIDATES, 'cliff'].map(id => ({ ...makeUnit(id), out: true }));
+  const married = marriedTo(bonds), out = [...CANDIDATES];
+  assert.equal(married.length, 2);
+  assert.equal(out.length, 7);
+  const capture = async (game, action) => {
+    let bgm;
+    const played = [];
+    const page = game.reload({ cueBgm: song => { bgm = song; }, play: async (lines, { bg }) => { played.push({ lines, bg, bgm }); } });
+    await action(page);
+    return played.map((part, i) => ({ ...part, id: page.endingLog[i] }));
+  };
+  const expected = endingSequence({ married, bonds, out }).map(({ id, lines, bg, bgm }) => ({ id, lines, bg, bgm }));
+  assert.equal(expected.length, 9);
+  const game = setup({ ...fixture.camp, bonds, roster }, undefined, story);
+  assert.deepEqual(await capture(game, page => page.playEnding(true)), expected);
+  const clear = game.clear();
+  assert.deepEqual(clear.runs[0].endingBranches, { sPairs: [cliffElinalise, lukeSara], out });
+  const replayLast = page => page.replayEnding(page.loadClear().runs.at(-1));
+  assert.deepEqual(await capture(setup(null, clear, story), replayLast), expected);
+  const { endingBranches, ...oldRun } = clear.runs[0];
+  const oldClear = { ...clear, runs: [oldRun] };
+  assert.deepEqual(await capture(setup(game.save().camp, oldClear, story), replayLast), expected);
+  const oldExpected = endingSequence({ married, bonds: {}, out: [] }).map(({ id, lines, bg, bgm }) => ({ id, lines, bg, bgm }));
+  assert.deepEqual(await capture(setup(null, oldClear, story), replayLast), oldExpected);
+  for (const id of ['after.sara.friend', 'epilogue.close']) {
+    assert.notDeepEqual(expected.find(part => part.id === id).lines, oldExpected.find(part => part.id === id).lines);
+  }
+
+  const brokenRun = { ...oldRun, endingBranches: { sPairs: [lukeSara, 'invalid+pair', 7, lukeSara, { rank: 4 }], out: ['sara', 'cliff', 'sara', null] } };
+  const malformedRun = { ...oldRun, endingBranches: { sPairs: { [cliffElinalise]: true }, out: 'sara' } };
+  const malformed = setup(null, { ...clear, runs: [brokenRun, malformedRun] }, story).reload().loadClear().runs;
+  assert.deepEqual(JSON.parse(JSON.stringify(malformed[0].endingBranches)), { sPairs: [lukeSara], out: ['sara'] });
+  assert.equal(malformed[1].endingBranches, undefined);
 }
 
 console.log('Ending persistence regression checks passed.');

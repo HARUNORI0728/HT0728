@@ -8,7 +8,7 @@ import {
   CANDIDATES, advanceStage, answerConfession, applyAiSwitch, applyTerrainChanges, ensureMarried, isConfession, markedTiles, marriedTo, seizeFlag, stageBgm, stageOf,
   LINK_NAME, type Bonds, type Difficulty, type SortiePlan, type State, type Unit,
 } from './logic';
-import { confessionScene, endingSequence, placeholderTalk, sceneById, supportScene, wifeLines, wifeTalksAvailable } from './story';
+import { confessionScene, endingSequence, placeholderTalk, sceneById, supportScene, wifeLines, wifeTalksAvailable, type EndingCtx } from './story';
 import { adjacentBark, dailyLines, dailyTalksAvailable, dateTalksAvailable, fallBark, wedChapters, wedKey } from './story';
 import { DAILY_TALKS, DATE_TALKS, WIFE_TALKS, type DailyTalk, type DateTalk, type WifeTalk } from './script/scenes';
 import { renderTentCare, validTent, type TentUse } from './ui/tent-ui';
@@ -286,7 +286,10 @@ function load(): SaveData | null {
 
 // ---------- クリア記録・引き継ぎ（別のキー） ----------
 /** One finished story: who Rudeus married, the settings, and a few totals. */
-interface ClearRun { date: string; married: string[]; difficulty: Difficulty; hard: boolean; turns: number; falls: number; round: number; endingId?: string }
+interface ClearRun { date: string; married: string[]; difficulty: Difficulty; hard: boolean; turns: number; falls: number; round: number; endingId?: string; endingBranches?: EndingBranches }
+interface EndingBranches { sPairs: string[]; out: string[] }
+// These are the S supports read by the epilogue and afterword patches in story.ts.
+const ENDING_S_PAIRS = [pairKey('cliff', 'elinalise'), pairKey('luke', 'sara')];
 /** runs = every clear (newest last, at most 20); seen = everything watched in any run (鑑賞); gold / stash = the last run's, for 引き継ぎ. */
 interface ClearData { v: 1; runs: ClearRun[]; seen: string[]; gold: number; stash: string[] }
 const CLEAR_KEY = 'fittoa-clear';
@@ -294,6 +297,13 @@ const newEndingId = () => crypto.getRandomValues(new Uint32Array(4)).join('-');
 const fin = (n: unknown) => (typeof n === 'number' && Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0);
 /** Camp.turns / falls / round from a stored camp (v6 optional items; missing in older saves). */
 const runStats = (c: any) => ({ ...(fin(c?.turns) ? { turns: fin(c.turns) } : {}), ...(fin(c?.falls) ? { falls: fin(c.falls) } : {}), ...(fin(c?.round) > 1 ? { round: fin(c.round) } : {}) });
+function readEndingBranches(value: unknown): { endingBranches?: EndingBranches } {
+  if (!value || typeof value !== 'object') return {};
+  const sPairs = 'sPairs' in value && Array.isArray(value.sPairs) ? value.sPairs : null;
+  const out = 'out' in value && Array.isArray(value.out) ? value.out : null;
+  if (!sPairs && !out) return {};
+  return { endingBranches: { sPairs: ENDING_S_PAIRS.filter(k => sPairs?.includes(k)), out: CANDIDATES.filter(id => out?.includes(id)) } };
+}
 function loadClear(): ClearData | null {
   try {
     const d = JSON.parse(localStorage.getItem(CLEAR_KEY) ?? 'null');
@@ -302,16 +312,18 @@ function loadClear(): ClearData | null {
       date: r.date, married: Array.isArray(r.married) ? r.married.filter((k: unknown) => typeof k === 'string' && CANDIDATES.includes(k as string)) : [],
       difficulty: validDiff(r.difficulty), hard: r.hard === true, turns: fin(r.turns), falls: fin(r.falls), round: Math.max(1, fin(r.round)),
       ...(typeof r.endingId === 'string' && r.endingId ? { endingId: r.endingId } : {}),
+      ...readEndingBranches(r.endingBranches),
     }));
     if (!runs.length) return null;
     return { v: 1, runs, seen: Array.isArray(d.seen) ? d.seen.filter((k: unknown) => typeof k === 'string') : [], gold: fin(d.gold), stash: Array.isArray(d.stash) ? d.stash.filter(validStash) : [] };
   } catch { return null; }
 }
 /** Right after the ending first plays: adds this run to the clear record. */
-function recordClear(c: Camp, endingId: string): boolean {
+function recordClear(c: Camp, endingId: string, ctx: EndingCtx): boolean {
   const prev = loadClear();
   if (prev?.runs.some(run => run.endingId === endingId)) return true;
-  const run: ClearRun = { date: new Date().toISOString().slice(0, 10), married: marriedTo(c.bonds), difficulty: c.difficulty, hard: !!c.hard, turns: c.turns ?? 0, falls: c.falls ?? 0, round: c.round ?? 1, endingId };
+  const endingBranches = { sPairs: ENDING_S_PAIRS.filter(k => (ctx.bonds[k]?.rank ?? 0) >= 4), out: CANDIDATES.filter(id => ctx.out.includes(id)) };
+  const run: ClearRun = { date: new Date().toISOString().slice(0, 10), married: ctx.married, difficulty: c.difficulty, hard: !!c.hard, turns: c.turns ?? 0, falls: c.falls ?? 0, round: c.round ?? 1, endingId, endingBranches };
   const d: ClearData = { v: 1, runs: [...(prev?.runs ?? []), run].slice(-20), seen: [...new Set([...(prev?.seen ?? []), ...seen])], gold: c.gold, stash: [...(c.stash ?? [])] };
   try { localStorage.setItem(CLEAR_KEY, JSON.stringify(d)); return true; } catch { return false; }
 }
@@ -1238,12 +1250,11 @@ const endingLog: string[] = [];
  * Epilogue → the 7 afterwords (married or companion version) → closing → staff roll → title.
  * first = right after clearing the last chapter (marks the story as finished); otherwise a replay from the 記録.
  */
-async function playEnding(first: boolean, married?: string[]) {
-  if (!camp && !married) return;
+async function playEnding(first: boolean, replayContext?: EndingCtx) {
+  const ctx = replayContext ?? (camp && { married: marriedTo(camp.bonds), bonds: camp.bonds, out: camp.roster.filter(u => u.out && CANDIDATES.includes(u.id)).map(u => u.id) });
+  if (!ctx) return;
   const completedCamp = first ? camp : null;
   const endingId = completedCamp && (completedCamp.endingId ??= newEndingId());
-  // married = a replay from the title's 鑑賞 (no camp): the last clear's marriages
-  const ctx = camp && !married ? { married: marriedTo(camp.bonds), bonds: camp.bonds, out: camp.roster.filter(u => u.out && CANDIDATES.includes(u.id)).map(u => u.id) } : { married: married ?? [], bonds: {} as Bonds, out: [] };
   if (completedCamp) save();
   for (const part of endingSequence(ctx)) {
     endingLog.push(part.id);
@@ -1255,7 +1266,7 @@ async function playEnding(first: boolean, married?: string[]) {
   await credits();
   if (completedCamp && endingId) {
     // Save the linking ID and viewed scenes before the clear record, then mark the camp finished.
-    if (!save() || !recordClear(completedCamp, endingId)) {
+    if (!save() || !recordClear(completedCamp, endingId, ctx)) {
       showTitle('クリア記録を保存できませんでした。');
       return;
     }
@@ -1263,6 +1274,13 @@ async function playEnding(first: boolean, married?: string[]) {
     save();
     showTitle('クリアおめでとう！　「つづきから」で章間に戻り、記録から結末を見返せる。「はじめから」で引き継いで始められる。');
   }
+}
+/** Re-create the last clear's ending in the gallery; a completed camp retains its full state. */
+function replayEnding(lastRun?: ClearRun) {
+  if (camp?.ended) return playEnding(false);
+  const branches = lastRun?.endingBranches;
+  const bonds: Bonds = Object.fromEntries((branches?.sPairs ?? []).map(k => [k, { rank: 4, pts: 0 }]));
+  return playEnding(false, { married: lastRun?.married ?? [], bonds, out: branches?.out ?? [] });
 }
 /** スタッフロール風の締め：名前が下から流れる。タップで飛ばせる。 */
 function credits(): Promise<void> {
@@ -1497,10 +1515,10 @@ function renderLog() {
     if (sc.chapter !== part) { part = sc.chapter; list.appendChild(el('h3', 'prepHead', esc(sc.chapter === 0 ? '序章' : sc.chapter === 11 ? '告白' : CHAPTERS[sc.chapter - 1]?.title.replace(/\s+/g, '　') ?? `第${sc.chapter}章`))); }
     list.appendChild(has(id) ? btn(sc.title.replace(/^第\d+章　/, ''), () => replay(async () => { await playScene(id); }), 'logItem') : lock());
   }
-  const lastWed = clear?.runs[clear.runs.length - 1]?.married ?? [];
+  const lastRun = clear?.runs[clear.runs.length - 1], lastWed = lastRun?.married ?? [];
   if (camp?.ended || all) {
     list.appendChild(el('h3', 'prepHead', '結末'));
-    list.appendChild(btn('エピローグと後日談、スタッフロール', () => replay(() => (camp?.ended ? playEnding(false) : playEnding(false, lastWed))), 'logItem'));
+    list.appendChild(btn('エピローグと後日談、スタッフロール', () => replay(() => replayEnding(lastRun)), 'logItem'));
   }
   sec1.appendChild(list);
   // 支援会話（組ごと・ランクごと）
